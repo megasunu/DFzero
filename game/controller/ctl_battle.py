@@ -20,6 +20,7 @@ from game.system.combat import (
     resources,
     stats,
     status,
+    traits,
 )
 from game.controller.ctl_party import 장비데이터모음_생성
 from game.controller.ctl_registry import (
@@ -327,19 +328,23 @@ def 일반공격_가능여부(게임상태, 참가자):
 def 아군_일반공격(게임상태, 대상참가자):
     """combat.attacks.일반공격_실행() 자체는 행동자원을 소모하지 않으므로(무기 명중/피해
     계산만 한다), 여기서 직접 낸다 - 이번 턴에 열린 추가행동이 있으면 그것을, 없으면 일반행동
-    1개를 깎고 추가행동을 연다(DnD 추가 공격, combat.resources 추가행동)."""
+    1개를 깎고 추가행동을 연다(DnD 추가 공격, combat.resources 추가행동). 원펀맨 특성이면 일반행동으로
+    낸 일반공격에 남은 일반행동과 그 추가공격을 모두 합친다(resources.원펀맨_합치기)."""
     전투상태 = 게임상태["전투상태"]
     공격자 = 현재_턴_참가자(게임상태)
     if not 일반공격_가능여부(게임상태, 공격자):
         raise ValueError("일반행동이 남아있지 않다.")
     if not 대상참가자["생존"]:  # B12 - 부활 규칙이 없으므로 로직에서 거부한다
         raise ValueError(f"'{대상참가자['이름']}'은(는) 이미 쓰러져 지정할 수 없다.")
+    배수 = 1
     if resources.추가행동_남은수(공격자) > 0:
         resources.추가행동_소모(공격자)
+    elif traits.특성_수치(전투상태, 공격자, "원펀맨") > 0:
+        배수 = resources.원펀맨_합치기(공격자)
     else:
         공격자["행동자원"]["일반행동"] -= 1
         resources.추가행동_열기(공격자)
-    결과 = attacks.일반공격_실행(전투상태, 공격자, 대상참가자)
+    결과 = attacks.일반공격_실행(전투상태, 공격자, 대상참가자, 배수=배수)
     core.종료판정_갱신(전투상태)  # 마지막 적을 쓰러뜨렸으면 바로 끝낸다(B9)
     return 결과
 
