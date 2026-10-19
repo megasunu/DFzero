@@ -2667,6 +2667,17 @@ class 스모크앱(main.DnfMobileApp):
             if isinstance(w, ToggleButton) and w.text in ("커먼", "언커먼")
         ]
         assert {w.text for w in 레어도줄} == {"커먼", "언커먼"}, "무기 탭에 레어도 필터"
+        # 그 등급 장비가 없어도 레어도 탭 8개(전체 + 7등급)가 다 있고 화면 안에 보인다
+        레어도탭 = gf.도감_레어도탭(상태, "장비", "무기")
+        탭버튼 = [
+            w
+            for w in 화면._하위탭틀.walk(restrict=True)
+            if isinstance(w, ToggleButton) and w.text in 레어도탭
+        ]
+        assert [w.text for w in 탭버튼][-len(레어도탭) :] == 레어도탭, 탭버튼
+        for w in 탭버튼[-len(레어도탭) :]:
+            x, _ = w.to_window(w.right, w.y)
+            assert w.width > 0 and x <= Window.width + 1, (w.text, x, Window.width)
         next(w for w in 레어도줄 if w.text == "언커먼").trigger_action(duration=0)
         yield 0.3
         이름들 = [
