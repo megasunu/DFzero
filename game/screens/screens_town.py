@@ -972,8 +972,8 @@ class 전문직업화면(상점화면):
         나가기버튼.bind(on_release=self._나가기)
         self.내용틀.add_widget(나가기버튼)
 
-    def _봉인_그리기(self, 모드):
-        """봉인해제: 봉인 장비 목록, 봉인변환: 봉인을 푼 장비 목록 - 줄마다 [자세히]와 실행 버튼."""
+    def _하위창_틀(self, 제목글):
+        """[◀ 뒤로] + 제목 줄과 스크롤 목록틀(self._목록틀)을 그린다 - 봉인해제/봉인변환/인형사 공용."""
         self._비우기()
         상단 = BoxLayout(
             orientation="horizontal", size_hint=(1, None), height=글자_높이()
@@ -982,9 +982,7 @@ class 전문직업화면(상점화면):
         뒤로키_버튼(뒤로버튼)
         뒤로버튼.bind(on_release=lambda *_: self._메인_그리기())
         상단.add_widget(뒤로버튼)
-        상단.add_widget(
-            Label(text=f"{모드} ({gameflow.전문직업_비용글})", size_hint=(0.68, 1))
-        )
+        상단.add_widget(Label(text=제목글, size_hint=(0.68, 1)))
         self.내용틀.add_widget(상단)
 
         목록스크롤 = ScrollView(size_hint=(1, 1))
@@ -993,6 +991,10 @@ class 전문직업화면(상점화면):
         목록스크롤.add_widget(목록틀)
         self.내용틀.add_widget(목록스크롤)
         self._목록틀 = 목록틀
+
+    def _봉인_그리기(self, 모드):
+        """봉인해제: 봉인 장비 목록, 봉인변환: 봉인을 푼 장비 목록 - 줄마다 [자세히]와 실행 버튼."""
+        self._하위창_틀(f"{모드} ({gameflow.전문직업_비용글})")
         self._봉인목록_채우기(모드)
 
     def _봉인목록_채우기(self, 모드):
