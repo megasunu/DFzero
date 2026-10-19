@@ -36,8 +36,11 @@ def test_fix_eol은_cp1252_콘솔에서도_끝까지_찍는다(monkeypatch):
     assert "0개 파일 변환" in 글[0]
 
 
-def test_check는_cp1252_콘솔에서도_끝까지_찍는다(monkeypatch):
+def test_check는_cp1252_콘솔에서도_끝까지_찍는다(monkeypatch, tmp_path):
     monkeypatch.setattr(check, "STEPS", [("빈 단계", [sys.executable, "-c", "pass"])])
+    monkeypatch.setattr(
+        check, "TIME_LOG", str(tmp_path)
+    )  # 세션의 작업시간 기록을 더럽히지 않는다
     with cp1252_콘솔() as 글:
         assert check.main() == 0
     assert "PASS: 모든 검사 통과" in 글[0]
