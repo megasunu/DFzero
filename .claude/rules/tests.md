@@ -17,6 +17,7 @@ paths:
 | `test_combat_rules.py` | 수식, 피해, 속성, 사용 가능 여부, 타겟, 효과 적용, 조건 | 정확한 값 |
 | `test_combat_skills.py` | 스킬 전수(기본/준비됨) | 골든 |
 | `test_combat_monsters.py` | 몬스터 고유 패턴 전수 + 보스 칭호 | 골든 |
+| `test_perks_common.py` | 공용 퍽 전투 특성(만독불침/심안/웨펀·아머브레이커) | 정확한 값 |
 | `test_combat_effects.py` | 상태이상/버프/디버프 전수, 반응스킬 전투 | 골든 |
 | `test_battle_log.py` | 골든 로그의 화면 문장 기준(`battle_log_sentences`), 로그 `"종류"` 규칙(conftest가 모든 테스트에서 검사) | 골든 + 규칙 |
 | `test_screen_api.py` | 화면용 gameflow 창구, 화면 -> system/controller 직접 호출 금지 | 값 + 규칙 |
