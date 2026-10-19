@@ -3,7 +3,7 @@
 
 from game.data.buff.status_effects import 상태이상목록
 from game.system import drink_system, town_system
-from game.controller.ctl_party import 파티_최대치로_회복
+from game.controller.ctl_party import 내아내몬_보유, 인형_동기화, 파티_최대치로_회복
 from game.controller.ctl_registry import 던전_레지스트리
 
 __all__ = [
@@ -41,7 +41,13 @@ def 이동가능던전목록(게임상태):
 
 
 def 휴식(게임상태):
-    게임상태["파티"]["인형"] = None  # 인형은 마을 휴식으로 사라진다(인형사)
+    # 인형은 마을 휴식으로 사라진다(인형사) - 내아내몬 보유자가 있으면 남아서 같이 회복한다
+    인형 = 게임상태["파티"].get("인형")
+    if 인형 and 내아내몬_보유(게임상태):
+        인형_동기화(게임상태)
+        인형["현재HP"] = 인형["기본최대HP"]
+    else:
+        게임상태["파티"]["인형"] = None
     town_system.휴식_처리(게임상태["파티"])
     for 캐릭터 in 게임상태["파티"]["파티원"]:  # 취기/만취는 휴식으로 풀린다
         캐릭터["상태이상"] = drink_system.휴식_해제(

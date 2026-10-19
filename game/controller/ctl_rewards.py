@@ -15,7 +15,7 @@ from game.system import (
     town_system,
 )
 from game.controller.ctl_battle import 아군_목록
-from game.controller.ctl_party import 플레이어뷰
+from game.controller.ctl_party import 내아내몬_보유, 플레이어뷰
 from game.controller.ctl_registry import 플레이어레벨업_트리거
 
 __all__ = [
@@ -211,7 +211,8 @@ def 전투_결과_정리(게임상태):
             참가자["상태이상"], 상태이상목록
         )
     인형 = 게임상태["파티"].get("인형")
-    if 인형 and 인형["현재HP"] <= 0:  # 전투에서 쓰러진 인형은 사라진다(인형사)
+    # 전투에서 쓰러진 인형은 사라진다(인형사) - 내아내몬이면 HP 0으로 남는다(캐릭터처럼)
+    if 인형 and 인형["현재HP"] <= 0 and not 내아내몬_보유(게임상태):
         게임상태["파티"]["인형"] = None
 
     # 도감/업적: 처치한 적(도망 제외)은 결과와 상관없이 몬스터 도감에 등록하고, 이긴 전투
