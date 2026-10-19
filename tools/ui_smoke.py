@@ -40,6 +40,7 @@ Config.set("graphics", "height", "2340")
 Config.set("graphics", "resizable", "0")
 
 import main  # noqa: E402 - 크래시 로그 훅/폰트 등록 등 앱 초기화를 그대로 쓴다
+from kivy.animation import Animation  # noqa: E402
 from kivy.app import App  # noqa: E402
 from kivy.clock import Clock  # noqa: E402
 from kivy.core.window import Window  # noqa: E402
@@ -190,13 +191,24 @@ class 스모크앱(main.DnfMobileApp):
     def _다음(self, _dt):
         try:
             Clock.schedule_once(
-                self._다음, next(self._단계)
+                lambda _: self._애니메이션_기다리기(0), next(self._단계)
             )  # 단계 사이에 화면을 그리게 기다린다
         except StopIteration:
             self.stop()
         except Exception:  # noqa: BLE001
             결과["오류"] = traceback.format_exc()
             self.stop()
+
+    def _애니메이션_기다리기(self, 기다린):
+        """정해진 시간이 지나도 팝업 열기/닫기 애니메이션(kivy ModalView의 페이드)이 아직 돌면 끝날 때까지
+        0.05초씩 더 기다린 뒤 다음 단계로(최대 5초). 느린 러너(CI Python 3.11)에서는 0.1초짜리 페이드가
+        0.3초 뒤에도 안 끝나 닫히는 팝업이 남아 팝업 수를 2로 셌다(#231)."""
+        if Animation._instances and 기다린 < 5:
+            Clock.schedule_once(
+                lambda _: self._애니메이션_기다리기(기다린 + 0.05), 0.05
+            )
+            return
+        self._다음(0)
 
     def _단계들(self):
         random.seed(3)
@@ -622,7 +634,12 @@ class 스모크앱(main.DnfMobileApp):
         yield 0.3
         assert 팝업().title == "28호"
         줄들 = [w.text for w in 팝업().walk(restrict=True) if isinstance(w, Label)]
-        for 글 in ("이름: 28호", "AC = 14 + 민첩보정", "6. 넨가드"):
+        for 글 in (
+            "이름: 28호",
+            "직업스타일: 캐스터",
+            "AC = 14 + 민첩보정",
+            "6. 넨가드",
+        ):
             assert 글 in 줄들, 줄들
         assert any(줄.startswith("HP = (6 + 건강보정)") for 줄 in 줄들), 줄들
         _찍기("profession_doll_detail")
@@ -652,7 +669,7 @@ class 스모크앱(main.DnfMobileApp):
         화면._나가기()
         yield 0.3
         결과["단계"].append(
-            "인형사: 인형제작 창(레어 소울 0/10이면 제작 못 누름), 상세보기(수식/패턴 6개), "
+            "인형사: 인형제작 창(레어 소울 0/10이면 제작 못 누름), 상세보기(직업스타일/수식/패턴 6개), "
             "제작 -> 소지품 1개 + 도감 인형"
         )
 

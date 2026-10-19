@@ -4070,6 +4070,77 @@ def test_인형_넨탄은_플레이어_레벨의_차수로_굴린다(monkeypatch
     assert core.차수(인형) == 2
 
 
+def _인형_행동수(monkeypatch, 스타일, 플레이어레벨, 주사위=1):
+    """인형 스타일을 바꿔 인형_턴 한 번에 스킬을 몇 번 쓰는지(스킬_실행은 세기만 한다)."""
+    from game.data.item.item_doll import 인형_데이터
+
+    monkeypatch.setitem(인형_데이터["28호"], "스타일", 스타일)
+    상태, 인형 = _인형_전투(플레이어레벨=플레이어레벨)
+    전투상태 = 상태["전투상태"]
+    전투상태["현재턴"] = 전투상태["참가자"].index(인형)
+    flow.턴_시작_처리(전투상태, 인형)
+    쓴것 = []
+    monkeypatch.setattr(ss, "스킬_실행", lambda *a, **k: 쓴것.append(a[2]))
+    굴림 = []
+    원래 = dice_utils.주사위_합
+    monkeypatch.setattr(
+        dice_utils, "주사위_합", lambda n, m: 굴림.append(m) or 원래(n, m)
+    )
+    _주사위고정(monkeypatch, 주사위)
+    gf.인형_턴(상태, 인형)
+    return 쓴것, 굴림, 전투상태
+
+
+def test_28호는_캐스터다():
+    from game.data.item.item_doll import 인형_데이터
+
+    assert 인형_데이터["28호"]["스타일"] == "캐스터"
+
+
+def test_캐스터_인형은_차수와_상관없이_패턴을_한_번만_쓴다(monkeypatch):
+    쓴것, 굴림, _ = _인형_행동수(monkeypatch, "캐스터", 플레이어레벨=11)  # 3차수
+    assert 쓴것 == ["넨탄"] and 굴림 == [6]
+
+
+def test_밀리_인형은_차수만큼_패턴_주사위를_새로_굴린다(monkeypatch):
+    쓴것, 굴림, _ = _인형_행동수(monkeypatch, "밀리", 플레이어레벨=11)  # 3차수
+    assert 쓴것 == ["넨탄"] * 3 and 굴림 == [6, 6, 6]
+
+
+def test_하이브리드_인형은_지금은_밀리처럼_행동한다(monkeypatch):
+    쓴것, 굴림, _ = _인형_행동수(monkeypatch, "하이브리드", 플레이어레벨=6)  # 2차수
+    assert 쓴것 == ["넨탄"] * 2 and 굴림 == [6, 6]
+
+
+def test_밀리_인형의_미정_패턴은_그_한_번만_쉰다(monkeypatch):
+    쓴것, 굴림, 전투상태 = _인형_행동수(
+        monkeypatch, "밀리", 플레이어레벨=6, 주사위=6
+    )  # 넨가드 - 미정
+    assert 쓴것 == [] and 굴림 == [6, 6]
+    assert sum(1 for e in 전투상태["로그"] if e.get("쉼")) == 2
+
+
+def test_밀리_인형은_적이_다_쓰러지면_남은_행동을_하지_않는다(monkeypatch):
+    from game.data.item.item_doll import 인형_데이터
+
+    monkeypatch.setitem(인형_데이터["28호"], "스타일", "밀리")
+    상태, 인형 = _인형_전투(플레이어레벨=11)
+    전투상태 = 상태["전투상태"]
+    전투상태["현재턴"] = 전투상태["참가자"].index(인형)
+    flow.턴_시작_처리(전투상태, 인형)
+    쓴것 = []
+
+    def 쓰러뜨리기(전투상태, 시전자, 이름, *a, **k):
+        쓴것.append(이름)
+        for 적 in gf.적_목록(상태):
+            적["현재HP"], 적["생존"] = 0, False
+
+    monkeypatch.setattr(ss, "스킬_실행", 쓰러뜨리기)
+    _주사위고정(monkeypatch, 1)
+    gf.인형_턴(상태, 인형)
+    assert 쓴것 == ["넨탄"]
+
+
 def test_전투_중_인형_사용은_행동을_쓰지_않고_교체하면_옛_인형은_빠진다():
     상태, 옛인형 = _인형_전투()
     while not gf.아군_차례인가(상태):
