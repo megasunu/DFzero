@@ -404,7 +404,9 @@ class 스모크앱(main.DnfMobileApp):
         assert 이름들 and all(무기[n]["분류"] == "거너 무기" for n in 이름들), 이름들
         탭(종류[1]).trigger_action(duration=0)
         yield 0.3
-        assert all(무기[n]["타입"] == 종류[1] for n in 목록이름()), 목록이름()
+        assert all(
+            gf.상점_분류_일치("무기", 무기[n], None, 종류[1]) for n in 목록이름()
+        ), 목록이름()
         _찍기("shop_buy_weapon_gunner")
         # 방어구: 재질 탭
         탭("상의").trigger_action(duration=0)

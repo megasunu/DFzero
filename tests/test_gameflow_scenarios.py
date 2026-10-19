@@ -2869,7 +2869,7 @@ def test_상점_탭줄과_하위_분류탭():
     assert 거너무기 and all(무기[n]["분류"] == "거너 무기" for n in 거너무기)
     assert [
         n for n, d in 무기.items() if gf.상점_분류_일치("무기", d, "귀검사", "대검")
-    ] == [n for n, d in 무기.items() if d["타입"] == "대검"]
+    ] == [n for n, d in 무기.items() if d["타입"] in ("대검", ["대검", "마법봉인"])]
     상의 = 상태["상점카탈로그"]["장비"]["상의"]
     assert {
         d["재질"] for d in 상의.values() if gf.상점_분류_일치("상의", d, None, "판금")
