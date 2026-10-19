@@ -15,11 +15,15 @@
 필요한 도구: pip install pytest pytest-cov ruff==0.16.9 (CI와 같은 버전 - 서식 결과가 버전마다 다르다)
 """
 
+import datetime
+import glob
 import importlib.util
+import json
 import os
 import shutil
 import subprocess
 import sys
+import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -64,6 +68,25 @@ STEPS = [
     ),
 ]
 
+# 작업시간 기록(임시, #239 - 지울 때 #237 목록대로): 단계마다 걸린 시간을 .claude/hooks/time-log.cjs의 세션 기록에 남긴다.
+TIME_LOG = os.path.join(ROOT, ".claude", "time-log")
+
+
+def 시간_기록(폴더, 단계, 초, 성공):
+    """가장 최근 세션 기록에 GateStep 한 줄을 더한다. 기록이 없으면(CI) 아무것도 안 한다."""
+    기록들 = glob.glob(os.path.join(폴더, "*.jsonl"))
+    if not 기록들:
+        return
+    줄 = {
+        "t": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "ev": "GateStep",
+        "step": 단계,
+        "sec": round(초, 1),
+        "ok": 성공,
+    }
+    with open(max(기록들, key=os.path.getmtime), "a", encoding="utf-8") as f:
+        f.write(json.dumps(줄, ensure_ascii=False) + "\n")
+
 
 def main():
     # Windows에서 리디렉션된 출력은 cp1252라 한글 print가 죽는다(#200) - 콘솔 인코딩과 상관없이 UTF-8로.
@@ -85,7 +108,11 @@ def main():
             print(
                 "   (pytest-cov 없음 - 커버리지 하한 검사를 건너뜀: pip install pytest-cov)"
             )
+        시작 = time.monotonic()
         result = subprocess.run(cmd, cwd=ROOT)
+        초 = time.monotonic() - 시작
+        print(f"   ({초:.1f}초)")
+        시간_기록(TIME_LOG, name, 초, result.returncode == 0)
         if result.returncode != 0:
             failed.append(name)
     print()
