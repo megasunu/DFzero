@@ -44,7 +44,6 @@ const git = (sub) => new RegExp(`\\bgit\\s+(?:-[cC]\\s+\\S+\\s+)*(?:${sub})\\b`)
 
 // Shell categories, heaviest first: a mixed command is timed under the first that matches.
 const BASH = [
-  ["시간 기록", /time-log\.cjs\s+(mark|report)\b/],
   ["저장소 저장 - 올리기", git("push")],
   ["저장소 저장 - 커밋", git("commit")],
   ["깃 - 병합", git("merge")],
@@ -66,6 +65,7 @@ const BASH = [
   ["코드 검색", /\b(grep|rg|find)\s/],
   ["파일 읽기", /\b(cat|head|tail|wc)\s|\bsed\s+-n/],
   ["환경 확인", /\b(ls|which|pwd|df|du|date)\b|--version/],
+  ["시간 기록", /time-log\.cjs\s+(mark|report)\b/], // last: `mark x && <real work>` is timed as the work
 ];
 
 const GROUPS = {
@@ -211,8 +211,8 @@ function summarize(events) {
   let stopAt = null;
   let waiting = 0;
 
-  const closeTurn = (end, stop) => {
-    turns.push({ s: ms(open), e: ms(end), start: open, output: stop.output || 0, context: stop.context || 0 });
+  const closeTurn = (end, stop, cut) => {
+    turns.push({ s: ms(open), e: ms(end), start: open, output: stop.output || 0, context: stop.context || 0, cut });
     working.push([ms(open), ms(end)]);
     open = null;
   };
@@ -223,12 +223,12 @@ function summarize(events) {
       calls.push({ s: ms(pre[e.id].t), e: ms(e.t), cat: pre[e.id].cat, ok: e.ok !== false });
       delete pre[e.id];
     } else if (e.ev === "UserPromptSubmit") {
-      if (open) closeTurn(e.t, {}); // a turn that ended without Stop (interrupted)
+      if (open) closeTurn(e.t, e.prev || {}, true); // a message sent while Claude was still answering
       if (stopAt) waiting += (ms(e.t) - ms(stopAt)) / 1000;
       open = e.t;
       stopAt = null;
     } else if (e.ev === "Stop" && open) {
-      closeTurn(e.t, e);
+      closeTurn(e.t, e, false);
       stopAt = e.t;
     } else if (e.ev === "Mark") marks.push(e);
     else if (e.ev === "Task") tasks.push(e);
@@ -240,7 +240,7 @@ function summarize(events) {
     }
   }
   const end = events.length ? events[events.length - 1].t : null;
-  if (open) closeTurn(end, {});
+  if (open) closeTurn(end, {}, false);
 
   const taskAt = (t) => {
     const last = tasks.filter((k) => ms(k.t) <= t).pop();
@@ -264,6 +264,7 @@ function summarize(events) {
       task: taskAt(turn.e),
       fails: mine.filter((c) => !c.ok).length,
       cats,
+      cut: turn.cut,
     };
   });
 
@@ -309,7 +310,8 @@ function summarize(events) {
 }
 
 function dur(sec) {
-  if (sec >= 60) return `${Math.floor(sec / 60)}분 ${Math.round(sec % 60)}초`;
+  const whole = Math.round(sec);
+  if (whole >= 60) return `${Math.floor(whole / 60)}분 ${whole % 60}초`;
   return Number.isInteger(sec) ? `${sec}초` : `${sec.toFixed(1)}초`;
 }
 
@@ -328,7 +330,7 @@ function format(s) {
       (r) => `| ${r.name} | ${r.kind} | ${r.turns} | ${dur(r.sec)} | ${dur(r.think)} | ${dur(r.tools)} | ${r.fails} |`,
     ),
     "",
-    "**턴별** (사용자 메시지부터 답을 마칠 때까지)",
+    "**턴별** (사용자 메시지부터 답을 마칠 때까지, `+`는 답하는 도중 새 메시지가 와서 나뉜 턴)",
     "",
     "| 턴 | 작업 | 시작(UTC) | 걸린 시간 | 생각·답변 | 도구 | 실패 | 맥락 | 출력 토큰 | 주요 도구 |",
     "|---|---|---|---|---|---|---|---|---|---|",
@@ -339,7 +341,7 @@ function format(s) {
         .map(([cat, sec]) => `${cat} ${dur(sec)}`)
         .join(", ");
       return (
-        `| ${r.n} | ${r.task} | ${r.start.slice(11, 19)} | ${dur(r.sec)} | ${dur(r.think)} | ${dur(r.tools)} | ` +
+        `| ${r.n}${r.cut ? "+" : ""} | ${r.task} | ${r.start.slice(11, 19)} | ${dur(r.sec)} | ${dur(r.think)} | ${dur(r.tools)} | ` +
         `${r.fails} | ${k(r.context)} | ${r.output} | ${top || "-"} |`
       );
     }),
@@ -403,6 +405,12 @@ function hook(input, dir) {
   const transcript = input.transcript_path;
   if (line.ev === "UserPromptSubmit" && transcript && fs.existsSync(transcript)) {
     line.off = fs.statSync(transcript).size;
+    // A prompt while the last turn has no Stop yet: that turn is cut here, keep its tokens on this line.
+    const events = fs.existsSync(file) ? readLog(file) : [];
+    const last = events.filter((e) => e.ev === "UserPromptSubmit" || e.ev === "Stop").pop();
+    if (last && last.ev === "UserPromptSubmit" && typeof last.off === "number") {
+      line.prev = turnTokens(readFrom(transcript, last.off));
+    }
   }
   if (line.ev === "Stop" && transcript && fs.existsSync(transcript) && fs.existsSync(file)) {
     const prompt = readLog(file)

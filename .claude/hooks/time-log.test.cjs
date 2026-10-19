@@ -42,6 +42,7 @@ test("classify: checks and runs", () => {
   assert.strictEqual(bash("pip install -q pytest"), "환경 준비");
   assert.strictEqual(bash("node .claude/hooks/time-log.cjs mark 구현"), "시간 기록");
   assert.strictEqual(bash("node .claude/hooks/time-log.cjs report"), "시간 기록");
+  assert.strictEqual(bash("node .claude/hooks/time-log.cjs mark 게이트 && python tools/check.py"), "전체 게이트");
   assert.strictEqual(bash("sed -n 1,9p .claude/hooks/time-log.cjs"), "파일 읽기"); // only mark/report
 });
 
@@ -196,6 +197,7 @@ test("summarize: turns with their task, tool time and thinking time", () => {
       task: "#1 상점",
       fails: 1,
       cats: { "파일 읽기": 3, "코드 검색": 4, "전체 게이트": 20 },
+      cut: false,
     },
     {
       n: 2,
@@ -208,6 +210,7 @@ test("summarize: turns with their task, tool time and thinking time", () => {
       task: "#2 전투",
       fails: 0,
       cats: { "저장소 저장 - 커밋": 2 },
+      cut: false,
     },
   ]);
   assert.strictEqual(s.waiting, 60);
@@ -238,10 +241,27 @@ test("format: markdown tables in seconds", () => {
   assert.match(text, /끝나지 않은 도구 호출\(거부·중단\): 1/);
 });
 
+test("summarize: a message sent mid-turn splits the turn and carries the tokens of the first part", () => {
+  const s = t.summarize([
+    { t: at(0), ev: "UserPromptSubmit" },
+    { t: at(30), ev: "UserPromptSubmit", prev: { output: 70, context: 9000 } },
+    { t: at(50), ev: "Stop", output: 5, context: 9500 },
+  ]);
+  assert.deepStrictEqual(
+    s.turns.map((r) => [r.n, r.sec, r.output, r.context, r.cut]),
+    [
+      [1, 30, 70, 9000, true],
+      [2, 20, 5, 9500, false],
+    ],
+  );
+  assert.match(t.format(s), /\| 1\+ \|/);
+});
+
 test("format: a turn of minutes shows minutes and seconds", () => {
   assert.strictEqual(t.dur(75), "1분 15초");
   assert.strictEqual(t.dur(7.26), "7.3초");
   assert.strictEqual(t.dur(0), "0초");
+  assert.strictEqual(t.dur(119.6), "2분 0초");
 });
 
 test("end to end: hook writes the session log with tokens, mark and report read it", () => {
@@ -272,6 +292,16 @@ test("end to end: hook writes the session log with tokens, mark and report read 
   assert.strictEqual(lines[0].off, 16);
   assert.deepStrictEqual([lines[4].output, lines[4].context], [11, 7]);
   assert.match(run(["report"]), /\| #3 상점 \| 기능 \| 1 \|/);
+
+  // a message sent while Claude is still answering: the turn so far gets its tokens on the new prompt line
+  run([], { ...base, hook_event_name: "UserPromptSubmit" });
+  fs.appendFileSync(
+    transcript,
+    JSON.stringify({ type: "assistant", message: { id: "n", usage: { input_tokens: 9, output_tokens: 4 } } }) + "\n",
+  );
+  run([], { ...base, hook_event_name: "UserPromptSubmit" });
+  const last = JSON.parse(fs.readFileSync(file, "utf8").trim().split("\n").pop());
+  assert.deepStrictEqual(last.prev, { output: 4, context: 9 });
 });
 
 test("the hook never fails a tool call: bad input prints nothing and exits 0", () => {
