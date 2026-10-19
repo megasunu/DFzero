@@ -603,7 +603,7 @@ def test_gameflow는_손상오류를_그대로_올린다(임시_세이브폴더)
 def test_세이브에는_버전이_들어_있다(임시_세이브폴더):
     _저장(1)
     저장 = json.loads((임시_세이브폴더 / "slot_1.json").read_text(encoding="utf-8"))
-    assert 저장["버전"] == save_system.세이브_버전 == 6
+    assert 저장["버전"] == save_system.세이브_버전 == 7
 
 
 def test_버전_없는_세이브는_0으로_보고_현재_형태로_변환한다(임시_세이브폴더):
@@ -669,6 +669,21 @@ def test_버전5_세이브의_파티에는_인형이_없다(임시_세이브폴�
     경로.write_text(json.dumps(옛, ensure_ascii=False), encoding="utf-8")
     플레이어, _ = save_system.게임_불러오기(1)
     assert 플레이어["파티"]["인형"] is None
+
+
+def test_버전6_세이브의_던전위치에는_봉절이_없다(임시_세이브폴더):
+    """봉절 도입(2026-10-19) - 그전에 던전 안에서 저장한 세이브는 봉절 걸음 0으로 불러온다."""
+    상태 = support.새게임()
+    gf.던전_진입(상태, "dungeon_01A_D01_Lorien")
+    gf.게임_저장(상태, 1)
+    경로 = 임시_세이브폴더 / "slot_1.json"
+    옛 = json.loads(경로.read_text(encoding="utf-8"))
+    옛["버전"] = 6
+    옛["던전위치"].pop("봉절걸음")
+    경로.write_text(json.dumps(옛, ensure_ascii=False), encoding="utf-8")
+    플레이어, _ = save_system.게임_불러오기(1)
+    assert 플레이어["던전위치"]["봉절걸음"] == 0
+    assert gf.게임_불러오기(1)["던전상태"]["봉절걸음"] == 0
 
 
 def test_인형은_세이브_왕복에서_그대로_남는다(임시_세이브폴더):
