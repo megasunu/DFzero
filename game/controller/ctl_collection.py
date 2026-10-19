@@ -8,7 +8,7 @@ from game.data.collection.collection_monster import 도감_출현장소
 from game.data.monster.monster_drop import 드랍표_모음
 from game.system import collection_system
 from game.controller.ctl_registry import 몬스터목록
-from game.controller.ctl_shop import 상점_탭줄
+from game.controller.ctl_shop import 상점_탭목록, 상점_탭줄
 
 __all__ = [
     "_재료탭",
@@ -18,8 +18,10 @@ __all__ = [
     "도감_대분류목록",
     "도감_탭줄",
     "도감_목록",
-    "도감_레어도탭",
-    "도감_레어도_일치",
+    "도감_장비필터_기본",
+    "도감_장비필터_바꾸기",
+    "도감_장비필터_선택지",
+    "도감_장비필터_목록",
     "도감_등록현황",
     "도감_몬스터_상세",
 ]
@@ -68,15 +70,26 @@ def 도감_목록(게임상태, 대분류, 탭):
     ]
 
 
-def 도감_레어도탭(게임상태, 대분류, 탭):
-    """레어도 필터 탭([전체] + 그 부위에 있는 레어도). 장비가 아니면 []."""
-    if 대분류 != "장비":
-        return []
-    return collection_system.레어도_탭목록(_항목들(게임상태, 대분류, 탭))
+도감_장비필터_기본 = dict(collection_system.장비필터_기본)
 
 
-def 도감_레어도_일치(아이템, 레어도):
-    return collection_system.레어도_일치(아이템, 레어도)
+def 도감_장비필터_바꾸기(필터, 키, 값):
+    """장비 도감 고르는 상자 하나를 바꾼 새 필터(그 아래 분류는 전체로)."""
+    return collection_system.장비필터_바꾸기(필터, 키, 값)
+
+
+def 도감_장비필터_선택지(게임상태, 필터):
+    """{"상위"/"중위"/"하위"/"레어도": [전체, ...]} - 고를 수 없는 상자는 []."""
+    return collection_system.장비필터_선택지(게임상태["상점카탈로그"]["장비"], 필터)
+
+
+def 도감_장비필터_목록(게임상태, 필터):
+    """[(장비, 등록여부)] - 필터를 통과한 장비를 부위 탭 순서대로."""
+    장비들 = collection_system.장비필터_목록(
+        게임상태["상점카탈로그"]["장비"], 상점_탭목록("장비"), 필터
+    )
+    진행도 = 게임상태["진행도"]
+    return [(a, collection_system.등록됨(진행도, "장비", a["이름"])) for a in 장비들]
 
 
 def 도감_등록현황(게임상태, 대분류):

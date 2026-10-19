@@ -929,7 +929,12 @@ class 상점화면(Screen):
                 for k, v in 값.items()
             )
         if isinstance(값, (list, tuple)):
-            return ", ".join(str(v) for v in 값)
+            return ", ".join(
+                f"{v['변동대상']} {v['변동값']:+d}"  # 장비효과 원소 - "최대MP +10"
+                if isinstance(v, dict) and isinstance(v.get("변동값"), int)
+                else str(v)
+                for v in 값
+            )
         return str(값)
 
 

@@ -129,7 +129,7 @@ def 전투_보상_부위(게임상태, 이름):
     for 대분류, 탭모음 in 게임상태["상점카탈로그"].items():
         for 탭, 아이템들 in 탭모음.items():
             if 이름 in 아이템들:
-                타입 = 아이템들[이름].get("타입")
+                타입 = equipment_system.무기_종류(아이템들[이름])
                 return f"{탭}({타입})" if 탭 == "무기" and 타입 else 탭
     return ""
 

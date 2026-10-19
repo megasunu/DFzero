@@ -1,8 +1,8 @@
 # =====================
 # 도감 / 업적 화면 (게임 중 [메뉴] -> [도감] / [업적])
 # =====================
-# 도감: 대분류(몬스터/장비/소모품/재료) -> 소분류 탭 -> 목록. 장비는 소지품 화면과 같은 부위 탭과 하위 필터
-# (무기 직업군/종류, 방어구 재질)에 레어도 필터 한 줄이 더 붙는다. 등록하지 않은 항목도 이름은 보이지만
+# 도감: 대분류(몬스터/장비/소모품/재료) -> 소분류 탭 -> 목록. 장비는 탭 대신 고르는 상자 4개(상위/중위/하위분류,
+# 레어도 - 2026-10-19 사용자 결정, gameflow.도감_장비필터_*)로 거른다. 등록하지 않은 항목도 이름은 보이지만
 # 어둡게 보이고 [상세보기]를 누를 수 없다. 아이템 [상세보기]는 소지품 화면 것을 그대로 쓴다.
 # 업적: 왼쪽에 분류(레벨/도감/전투/특수), 오른쪽에 그 분류의 업적(이름 한 줄)과 줄마다 [보상받기], 오른쪽 아래 [보상 전부 받기].
 # 달성하지 않았거나 이미 받은 업적의 [보상받기]는 눌리지 않는다. 로직은 전부 gameflow.도감_*/업적_*.
@@ -16,6 +16,8 @@ from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen
+from kivy.uix.scrollview import ScrollView
+from kivy.uix.spinner import Spinner
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.widget import Widget
 from kivy.utils import escape_markup
@@ -27,7 +29,6 @@ from game.screens.screens_common import (
     뒤로키_버튼,
     닫기_버튼,
     스크롤_목록,
-    탭_줄,
     글자_높이,
     아이템_이름_글,
 )
@@ -80,47 +81,93 @@ class 도감화면(소지품화면):
     def _탭줄(self, 모드, 대분류):
         return gameflow.도감_탭줄(App.get_running_app().게임상태, 대분류)
 
-    def _부위_고르기(self, 모드, 대분류, 탭):
-        self._필터 = {"직업군": None, "분류": None, "레어도": None}
-        self._하위탭_그리기(모드, 대분류, 탭)
-        self._아이템목록_그리기(모드, 대분류, 탭, self._목록틀)
-
-    def _하위탭_그리기(self, 모드, 대분류, 탭):
-        """소지품/상점과 같은 하위 탭(무기 직업군/종류, 방어구 재질) 아래에 레어도 탭 한 줄."""
-        super()._하위탭_그리기(모드, 대분류, 탭)
-        레어도탭 = gameflow.도감_레어도탭(App.get_running_app().게임상태, 대분류, 탭)
-        if not 레어도탭:
+    def _탭목록_그리기(self, 모드, 대분류):
+        if 대분류 != "장비":
+            super()._탭목록_그리기(모드, 대분류)
             return
-        높이 = 글자_높이("13sp")
-        틀 = self._하위탭틀
-        틀.add_widget(
-            탭_줄(
-                레어도탭,
-                lambda 값, m=모드, d=대분류, t=탭: self._하위_고르기(
-                    m, d, t, "레어도", 값
-                ),
-                self._필터.get("레어도") or 레어도탭[0],
-                높이=높이,
-                font_size="13sp",
-            )
+        self._비우기()
+        상단 = BoxLayout(
+            orientation="horizontal", size_hint=(1, None), height=글자_높이()
         )
-        줄수 = len(틀.children)
-        틀.height = 줄수 * 높이 + (줄수 - 1) * dp(4)
+        뒤로버튼 = Button(text="◀ 뒤로", size_hint=(0.32, 1))
+        뒤로키_버튼(뒤로버튼)
+        뒤로버튼.bind(on_release=lambda *_: self._대분류_그리기(모드))
+        상단.add_widget(뒤로버튼)
+        상단.add_widget(Label(text=f"{모드} - {대분류}", size_hint=(0.68, 1)))
+        self.내용틀.add_widget(상단)
+
+        # 고르는 상자 4개(위에 이름, 아래에 상자). 모두 [전체]로 시작한다.
+        self._장비필터 = dict(gameflow.도감_장비필터_기본)
+        self._필터틀 = BoxLayout(
+            orientation="horizontal",
+            size_hint=(1, None),
+            height=글자_높이("13sp") + 글자_높이(),
+            spacing=dp(4),
+        )
+        self.내용틀.add_widget(self._필터틀)
+
+        목록스크롤 = ScrollView(size_hint=(1, 1))
+        목록틀 = BoxLayout(orientation="vertical", size_hint_y=None, spacing=4)
+        목록틀.bind(minimum_height=목록틀.setter("height"))
+        목록스크롤.add_widget(목록틀)
+        self.내용틀.add_widget(목록스크롤)
+        self._목록틀 = 목록틀
+        self._장비필터_그리기(모드)
+        self._아이템목록_그리기(모드, 대분류, None, 목록틀)
+
+    def _장비필터_그리기(self, 모드):
+        """상자마다 지금 고를 수 있는 값으로 다시 만든다. 고를 수 없는 상자는 누를 수 없다."""
+        틀 = self._필터틀
+        틀.clear_widgets()
+        선택지 = gameflow.도감_장비필터_선택지(
+            App.get_running_app().게임상태, self._장비필터
+        )
+        self.장비필터상자 = {}
+        for 키, 이름 in (
+            ("상위", "상위분류"),
+            ("중위", "중위분류"),
+            ("하위", "하위분류"),
+            ("레어도", "레어도"),
+        ):
+            칸 = BoxLayout(orientation="vertical")
+            칸.add_widget(
+                Label(
+                    text=이름,
+                    font_size="13sp",
+                    size_hint=(1, None),
+                    height=글자_높이("13sp"),
+                )
+            )
+            상자 = Spinner(
+                text=self._장비필터[키],
+                values=선택지[키],
+                disabled=not 선택지[키],
+                size_hint=(1, None),
+                height=글자_높이(),
+            )
+            상자.bind(
+                text=lambda inst, 값, k=키, m=모드: self._장비필터_고르기(m, k, 값)
+            )
+            칸.add_widget(상자)
+            틀.add_widget(칸)
+            self.장비필터상자[키] = 상자
+
+    def _장비필터_고르기(self, 모드, 키, 값):
+        if self._장비필터.get(키) == 값:
+            return
+        self._장비필터 = gameflow.도감_장비필터_바꾸기(self._장비필터, 키, 값)
+        if 키 != "레어도":
+            self._장비필터_그리기(모드)
+        self._아이템목록_그리기(모드, "장비", None, self._목록틀)
 
     def _아이템목록_그리기(self, 모드, 대분류, 탭, 목록틀):
         목록틀.clear_widgets()
         self._현재 = (대분류, 탭, 목록틀)
         게임상태 = App.get_running_app().게임상태
-        필터 = getattr(self, "_필터", None) or {}
-        항목목록 = [
-            (항목, 등록)
-            for 항목, 등록 in gameflow.도감_목록(게임상태, 대분류, 탭)
-            if 대분류 != "장비"
-            or (
-                gameflow.상점_분류_일치(탭, 항목, 필터.get("직업군"), 필터.get("분류"))
-                and gameflow.도감_레어도_일치(항목, 필터.get("레어도"))
-            )
-        ]
+        if 대분류 == "장비":
+            항목목록 = gameflow.도감_장비필터_목록(게임상태, self._장비필터)
+        else:
+            항목목록 = gameflow.도감_목록(게임상태, 대분류, 탭)
         if not 항목목록:
             목록틀.add_widget(
                 Label(
