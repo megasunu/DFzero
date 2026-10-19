@@ -228,6 +228,7 @@ class 스모크앱(main.DnfMobileApp):
         전투 = yield from self._단계_장비_포션_뒤로키_전투팝업(상태, 매니저)
         yield from self._단계_전투종료_자동전투_주점(상태, 매니저, 전투)
         yield from self._단계_맵_타일(상태, 매니저)
+        yield from self._단계_출입구_위(상태, 매니저)
         yield from self._단계_목록_스크롤(상태, 매니저)
         yield from self._단계_세이브(상태, 매니저)
         yield from self._단계_설정(매니저)
@@ -1805,12 +1806,31 @@ class 스모크앱(main.DnfMobileApp):
             if abs(c.size[0] - 칸폭 * 2) < 1 and abs(c.size[1] - 칸높이 * 2) < 1
         ]
         assert 감옥, "감옥이 2x2칸 크기로 그려지지 않음"
+        # 출입구("#") 칸은 감옥보다 위에 그린다(_단계_출입구_위) - 바닥 비교에서 뺀다
+        출입구칸 = [
+            지도._칸위치(화면x, 화면y)
+            for 화면y in range(지도._행수)
+            for 화면x in range(지도._열수)
+            if 지도._칸_문자(*지도._맵_좌표(화면x, 화면y)) == "#"
+        ]
+
+        def 출입구에(c):  # 캔버스 좌표는 float32라 조금 어긋난다
+            return any(
+                abs(c.pos[0] - x) < 1 and abs(c.pos[1] - y) < 1 for x, y in 출입구칸
+            )
+
+        assert 출입구칸, "로리엔 보스 옆 출입구가 안 보임"
         칸들 = [
             i
             for i, c in enumerate(사각형들)
-            if abs(c.size[0] - 칸폭) < 1 and abs(c.size[1] - 칸높이) < 1
+            if abs(c.size[0] - 칸폭) < 1
+            and abs(c.size[1] - 칸높이) < 1
+            and not 출입구에(c)
         ]
         assert max(칸들) < 감옥[0], "감옥이 바닥보다 먼저 그려짐"
+        assert any(출입구에(c) for c in 사각형들[감옥[0] :]), (
+            "출입구가 감옥보다 먼저 그려짐"
+        )
         assert 지도.canvas.children[-1] is not 사각형들[감옥[0]]  # 플레이어가 맨 위
         _찍기("dungeon_prison_2x2")
         gf.던전_진입(상태, "dungeon_02A_D11_amon_lower")
@@ -1879,6 +1899,66 @@ class 스모크앱(main.DnfMobileApp):
         yield 0.3
         결과["단계"].append(
             "맵 타일(하늘성 발판/벽/노을 하늘/게이트 겹침), 정사각형 칸, 감옥 2x2칸(바닥 위, 플레이어 아래), 이어진 맵 함께 보이기"
+        )
+
+    def _단계_출입구_위(self, 상태, 매니저):
+        """출입구("#")는 한 칸 그림으로, 나무/큰 오브젝트를 다 그린 뒤(플레이어 아래)에
+        그려서 가려지지 않는다 - 그란플로리스(로리엔)와 하늘성(아몬 상층) 둘 다"""
+        from kivy.graphics import Rectangle
+
+        _팝업_닫기()
+        매니저.current = "던전"
+        던전 = 매니저.get_screen("던전")
+        지도 = 던전.지도위젯
+
+        def 사각형들():
+            return [c for c in 지도.canvas.children if isinstance(c, Rectangle)]
+
+        def 마지막(텍스처):
+            # 잘라 그리기(get_region) 조각도 같은 GL 텍스처라 id로 찾는다
+            return max(
+                (
+                    i
+                    for i, c in enumerate(사각형들())
+                    if c.texture is not None and c.texture.id == 텍스처.id
+                ),
+                default=-1,
+            )
+
+        # 로리엔 서쪽 출입구(0,3) - 바로 아래(0,4)가 나무라 그 위 절반이 출입구 칸에 겹친다
+        gf.던전_진입(상태, "dungeon_01A_D01_Lorien")
+        상태["던전상태"]["위치"] = (2, 3)
+        던전.갱신()
+        yield 0.5
+        assert 지도._칸_문자(0, 3) == "#" and 지도._칸_문자(0, 4) == "X"
+        게이트 = 지도._타일("게이트")
+        assert 게이트 is not None, "그란플로리스 게이트 그림을 못 읽음"
+        assert 게이트.size == (8, 8), ("게이트 그림이 한 칸이 아님", 게이트.size)
+        칸폭, 칸높이 = 지도._칸_크기()
+        게이트칸 = [
+            c for c in 사각형들() if c.texture is not None and c.texture.id == 게이트.id
+        ]
+        assert 게이트칸 and all(
+            abs(c.size[0] - 칸폭) < 1 and abs(c.size[1] - 칸높이) < 1 for c in 게이트칸
+        ), "게이트가 한 칸 크기로 그려지지 않음"
+        assert 마지막(게이트) > 마지막(지도._타일("나무")), "게이트가 나무에 가려짐"
+        assert 지도.canvas.children[-1] is not 게이트칸[-1]  # 플레이어가 맨 위
+        _찍기("dungeon_gate_grandflores")
+
+        # 아몬 상층 마을 포탈(3,19) - 벽 위 하늘성 게이트도 다른 칸을 다 그린 뒤에
+        gf.던전_진입(상태, "dungeon_02A_D12_amon_upper")
+        상태["던전상태"]["위치"] = (4, 16)
+        던전.갱신()
+        yield 0.5
+        하늘성 = 지도._맵_타일("#")[-1]
+        발판 = 지도._맵_타일("O")[-1]
+        assert 마지막(하늘성) > 마지막(발판) >= 0, "하늘성 게이트가 먼저 그려짐"
+        _찍기("dungeon_gate_skycastle")
+        상태["던전상태"] = None
+        매니저.current = "마을"
+        yield 0.3
+        결과["단계"].append(
+            "출입구는 한 칸 그림으로 나무/큰 오브젝트 위(플레이어 아래)에 - 그란플로리스·하늘성"
         )
 
     def _단계_목록_스크롤(self, 상태, 매니저):

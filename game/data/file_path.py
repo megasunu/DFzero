@@ -253,7 +253,7 @@
 #     │   │                  asset_tile_dirt.webp    흙길 (8x8)
 #     │   │                  asset_tile_forest.webp  숲 (8x8, 아직 미사용)
 #     │   │                  asset_tile_tree.webp    나무 (8x16, 세로 2칸)
-#     │   │                  asset_tile_gate_grandflores.webp 게이트 - 그란플로리스 (8x16, 세로 2칸, 공용)
+#     │   │                  asset_tile_gate_grandflores.webp 게이트 - 그란플로리스 (8x8, 한 칸, 공용)
 #     │   │                  asset_tile_gate_skycastle.webp 게이트 - 하늘성 (64x64, 한 칸, 투명 배경)
 #     │   │                  asset_tile_prison_seria.webp 감옥 - 세리아 (96x96, 오브젝트 "타일크기" 2)
 #     │   │                  asset_tile_prison_lorien.webp 감옥 - 로리안 (128x128, 투명 배경, 아몬 하층 보스 "타일크기" 2)
