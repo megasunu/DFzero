@@ -2589,7 +2589,7 @@ class 스모크앱(main.DnfMobileApp):
 
     def _단계_도감_업적(self, 상태, 매니저):
         """[메뉴] -> [도감]: 대분류 등록 수, 몬스터 종족 탭(미등록은 어둡고 [상세보기] 못 누름, 몬스터 상세),
-        장비 무기 탭의 직업군/레어도 필터, 나가기 -> 연 화면. [메뉴] -> [업적]: 분류 4개, 달성 전 [보상받기]는
+        장비 고르는 상자 4개(상위/중위/하위분류, 레어도), 나가기 -> 연 화면. [메뉴] -> [업적]: 분류 4개, 달성 전 [보상받기]는
         못 누름, [보상받기] -> 골드 +10/받음, [보상 전부 받기]"""
         앱 = App.get_running_app()
         앱.게임상태 = 상태
@@ -2661,33 +2661,50 @@ class 스모크앱(main.DnfMobileApp):
             if isinstance(w, Button) and w.text.startswith("장비 (")
         ).trigger_action(duration=0)
         yield 0.3
-        레어도줄 = [
-            w
-            for w in 화면._하위탭틀.walk(restrict=True)
-            if isinstance(w, ToggleButton) and w.text in ("커먼", "언커먼")
-        ]
-        assert {w.text for w in 레어도줄} == {"커먼", "언커먼"}, "무기 탭에 레어도 필터"
-        # 그 등급 장비가 없어도 레어도 탭 8개(전체 + 7등급)가 다 있고 화면 안에 보인다
-        레어도탭 = gf.도감_레어도탭(상태, "장비", "무기")
-        탭버튼 = [
-            w
-            for w in 화면._하위탭틀.walk(restrict=True)
-            if isinstance(w, ToggleButton) and w.text in 레어도탭
-        ]
-        assert [w.text for w in 탭버튼][-len(레어도탭) :] == 레어도탭, 탭버튼
-        for w in 탭버튼[-len(레어도탭) :]:
+        # 장비 도감은 고르는 상자 4개 - 모두 [전체]로 시작, 상위가 전체면 중위/하위는 못 누른다
+        상자 = 화면.장비필터상자
+        assert {k: w.text for k, w in 상자.items()} == dict(gf.도감_장비필터_기본)
+        assert 상자["중위"].disabled and 상자["하위"].disabled
+        assert not 상자["상위"].disabled and not 상자["레어도"].disabled
+        assert 상자["레어도"].values[-4:] == ["유니크", "크로니클", "레전더리", "에픽"]
+
+        def 이름들():
+            return [
+                _글(w.text)
+                for w in 화면._목록틀.walk(restrict=True)
+                if isinstance(w, Label) and w.text and w.size_hint_x == 0.56
+            ]
+
+        assert len(이름들()) == len(gf.도감_장비필터_목록(상태, gf.도감_장비필터_기본))
+        상자["상위"].is_open = True  # 누르면 목록이 펼쳐진다
+        yield 0.3
+        _찍기("collection_equipment_dropdown")
+        상자["상위"].is_open = False
+        상자["상위"].text = "무기"
+        yield 0.3
+        상자 = 화면.장비필터상자
+        assert not 상자["중위"].disabled and "귀검사" in 상자["중위"].values
+        상자["중위"].text = "귀검사"
+        yield 0.3
+        상자 = 화면.장비필터상자
+        assert 상자["하위"].values == ["전체", "소검", "도", "둔기", "대검", "광검"]
+        상자["레어도"].text = "언커먼"
+        yield 0.3
+        무기 = {a["이름"]: a for a, _ in gf.도감_목록(상태, "장비", "무기")}
+        보인것 = 이름들()
+        assert 보인것 and all(
+            무기[n]["레어도"] == "언커먼" and 무기[n]["분류"] == "귀검사 무기"
+            for n in 보인것
+        ), 보인것
+        for w in 화면.장비필터상자.values():
             x, _ = w.to_window(w.right, w.y)
             assert w.width > 0 and x <= Window.width + 1, (w.text, x, Window.width)
-        next(w for w in 레어도줄 if w.text == "언커먼").trigger_action(duration=0)
-        yield 0.3
-        이름들 = [
-            _글(w.text)
-            for w in 화면._목록틀.walk(restrict=True)
-            if isinstance(w, Label) and w.text and w.size_hint_x == 0.56
-        ]
-        무기 = {a["이름"]: a for a, _ in gf.도감_목록(상태, "장비", "무기")}
-        assert 이름들 and all(무기[n]["레어도"] == "언커먼" for n in 이름들), 이름들
         _찍기("collection_equipment")
+        상자["상위"].text = "전체"  # 위를 바꾸면 아래는 전체로, 레어도는 그대로
+        yield 0.3
+        상자 = 화면.장비필터상자
+        assert (상자["중위"].text, 상자["하위"].text) == ("전체", "전체")
+        assert 상자["중위"].disabled and 상자["레어도"].text == "언커먼"
         버튼(화면, "◀ 뒤로").trigger_action(duration=0)
         yield 0.3
         버튼(화면, "◀ 나가기").trigger_action(duration=0)
@@ -2762,7 +2779,7 @@ class 스모크앱(main.DnfMobileApp):
         assert 매니저.current == "마을"
         결과["단계"].append(
             "도감/업적 - [메뉴] -> [도감] 등록 수, 몬스터(미등록 어둡게/상세보기 못 누름, 상세 팝업), "
-            "무기 레어도 필터, 나가기 -> 마을. [메뉴] -> [업적] 분류 4개, 달성 전 못 누름, 보상받기/전부 받기, "
+            "장비 고르는 상자 4개(전체 시작, 상위 전체면 중위·하위 못 누름, 무기 -> 귀검사 -> 언커먼), 나가기 -> 마을. [메뉴] -> [업적] 분류 4개, 달성 전 못 누름, 보상받기/전부 받기, "
             "특수업적 보상받기(봉인 레어 무기와 안내 글)"
         )
 
