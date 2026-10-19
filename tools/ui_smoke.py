@@ -621,7 +621,12 @@ class 스모크앱(main.DnfMobileApp):
         yield 0.3
         assert 팝업().title == "28호"
         줄들 = [w.text for w in 팝업().walk(restrict=True) if isinstance(w, Label)]
-        for 글 in ("이름: 28호", "AC = 14 + 민첩보정", "6. 넨가드"):
+        for 글 in (
+            "이름: 28호",
+            "직업스타일: 캐스터",
+            "AC = 14 + 민첩보정",
+            "6. 넨가드",
+        ):
             assert 글 in 줄들, 줄들
         assert any(줄.startswith("HP = (6 + 건강보정)") for 줄 in 줄들), 줄들
         _찍기("profession_doll_detail")
@@ -651,7 +656,7 @@ class 스모크앱(main.DnfMobileApp):
         화면._나가기()
         yield 0.3
         결과["단계"].append(
-            "인형사: 인형제작 창(레어 소울 0/10이면 제작 못 누름), 상세보기(수식/패턴 6개), "
+            "인형사: 인형제작 창(레어 소울 0/10이면 제작 못 누름), 상세보기(직업스타일/수식/패턴 6개), "
             "제작 -> 소지품 1개 + 도감 인형"
         )
 
