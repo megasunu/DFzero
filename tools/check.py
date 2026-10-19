@@ -8,7 +8,7 @@
 3. pytest      : tests/ (kivy 없이 gameflow 이하 로직만 헤드리스로 검사)
                 pytest-cov가 설치돼 있으면 game/system + game/controller + gameflow.py 커버리지가
                 COVERAGE_FLOOR(%) 아래로 떨어져도 실패한다(CI는 항상 설치).
-4. node --test : .claude/hooks/context-guard.cjs(맥락 크기 훅)의 테스트. node가 없으면 건너뛰고
+4. node --test : .claude/hooks/의 훅(context-guard 맥락 크기, time-log 작업시간)의 테스트. node가 없으면 건너뛰고
                 NOT VERIFIED라고 찍는다(CI 러너에는 node가 있다).
 
 하나라도 실패하면 0이 아닌 코드로 끝난다. Windows/리눅스 어디서나 돈다.
@@ -53,7 +53,15 @@ STEPS = [
     ("ruff check", [sys.executable, "-m", "ruff", "check", "."]),
     ("ruff format", [sys.executable, "-m", "ruff", "format", "--check", "."]),
     ("pytest", PYTEST),
-    ("node --test", ["node", "--test", ".claude/hooks/context-guard.test.cjs"]),
+    (
+        "node --test",
+        [
+            "node",
+            "--test",
+            ".claude/hooks/context-guard.test.cjs",
+            ".claude/hooks/time-log.test.cjs",
+        ],
+    ),
 ]
 
 
@@ -69,7 +77,7 @@ def main():
             continue
         if name == "node --test" and shutil.which("node") is None:
             print(
-                f"== {name}: node 없음, 건너뜀 - NOT VERIFIED: context-guard 훅 테스트"
+                f"== {name}: node 없음, 건너뜀 - NOT VERIFIED: context-guard·time-log 훅 테스트"
             )
             continue
         print(f"== {name}")
