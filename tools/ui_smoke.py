@@ -224,6 +224,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_화면_틀(매니저)
         yield from self._단계_공격연출(상태, 매니저)
         yield from self._단계_감옥_대상팝업(상태, 매니저)
+        yield from self._단계_인형(상태, 매니저)
         yield from self._단계_소지품(상태, 매니저)
         yield from self._단계_도감_업적(상태, 매니저)
         yield from self._단계_메뉴(상태, 매니저)
@@ -2347,6 +2348,54 @@ class 스모크앱(main.DnfMobileApp):
         _찍기("battle_prison_meteor")
         결과["단계"].append(
             "얼음감옥: 갇힌 아군 칸에 뒤/앞 그림, 적 칸에는 없고 대상 팝업에 나오며 골라서 공격. 운석은 뒤 그림만"
+        )
+
+    def _단계_인형(self, 상태, 매니저):
+        """인형사(사용자 지정 2026-10-19): 전투 [아이템]에서 인형을 쓰면(행동 없음) 아군 칸이 4개에서
+        5개가 되고 맨 오른쪽 칸에 인형 이름과 HP(MP 없음), 그림 칸은 비어 있다."""
+        gf.전투_시작(상태, ["고블린"], 레벨=2, 차수=1)
+        support.반응_처리(상태)
+        전투상태 = 상태["전투상태"]
+        p = _차례(전투상태, "귀검사")
+        상태["소지품"]["소모품"]["28호"] = 1
+        전투 = 매니저.get_screen("전투")
+        전투.갱신(신규=True)
+        매니저.current = "전투"
+        yield 0.5
+        _팝업_닫기()
+        assert len(전투.아군상태틀.children) == 4, len(전투.아군상태틀.children)
+        행동 = dict(p["행동자원"])
+        전투._아이템_클릭()
+        yield 0.3
+        버튼 = [b for b in _대상버튼들() if b.text.startswith("28호")]
+        assert 버튼 and "(행동 없음)" in 버튼[0].text, [b.text for b in _대상버튼들()]
+        _찍기("battle_doll_popup")
+        버튼[0].trigger_action(duration=0)
+        yield 0.5
+        assert p["행동자원"] == 행동, p["행동자원"]
+        전투.갱신()
+        yield 0.3
+        상태칸 = list(reversed(전투.아군상태틀.children))
+        그림칸 = list(reversed(전투.아군그래픽행.children))
+        assert len(상태칸) == 5 and len(그림칸) == 5, (len(상태칸), len(그림칸))
+        글 = [
+            w.text for w in 상태칸[-1].walk(restrict=True) if isinstance(w, main.Label)
+        ]
+        assert 글[0] == "28호" and 글[1].startswith("HP ") and len(글) == 2, (
+            글
+        )  # MP 줄 없음
+        # 5칸이 같은 폭으로 한 줄 안에 들어간다
+        assert len({round(c.width) for c in 상태칸}) == 1
+        assert 상태칸[-1].right <= 전투.아군상태틀.right + 1
+        assert 상태칸[0].x >= 전투.아군상태틀.x - 1
+        인형칸 = 전투._그림칸[
+            next(q["id"] for q in gf.아군_목록(상태) if q.get("인형"))
+        ]
+        assert 인형칸 is 그림칸[-1]
+        _찍기("battle_doll")
+        상태["파티"]["인형"] = None  # 다음 단계 전투에 끼지 않게
+        결과["단계"].append(
+            "인형: 전투 [아이템] 28호(행동 없음) -> 아군 칸 5개, 맨 오른쪽에 이름/HP(MP 없음), 그림 칸 비움"
         )
 
     def _단계_공격연출(self, 상태, 매니저):

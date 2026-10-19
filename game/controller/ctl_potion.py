@@ -5,6 +5,7 @@
 
 from game.data.buff.status_effects import 상태이상목록
 from game.data.item.item_consumable import 소모품_데이터
+from game.data.item.item_doll import 인형_데이터
 from game.data.item.item_food import 음식_데이터
 from game.data.item.item_potion import 포션_데이터
 from game.system import (
@@ -18,15 +19,16 @@ from game.system import (
     shop_system,
     skill_system,
 )
-from game.system.combat import core, resources, stats
+from game.system.combat import core, flow, resources, stats
 from game.controller.ctl_battle import 현재_턴_참가자
 from game.controller.ctl_party import (
+    인형_만들기,
     캐릭터_능력치_보정치,
     캐릭터_최대HP,
     캐릭터_최대MP,
     플레이어뷰,
 )
-from game.controller.ctl_shop import 상점_탭목록, 상점_탭줄
+from game.controller.ctl_shop import 상점_탭줄
 
 __all__ = [
     "_회복포션",
@@ -67,6 +69,8 @@ __all__ = [
     "캐릭터_음식사용",
     "_항아리",
     "항아리_열기",
+    "아군_인형_목록",
+    "인형_사용",
     "_사용종류",
     "소지품_탭줄",
     "소지품_목록",
@@ -605,14 +609,49 @@ def 항아리_열기(게임상태, 이름):
     return next(탭[장비이름] for 탭 in 장비카탈로그.values() if 장비이름 in 탭)
 
 
+def 아군_인형_목록(게임상태):
+    """전투 화면 [아이템]용 - 소지품의 인형 [(이름, 개수, None)]. 행동을 쓰지 않아 늘 쓸 수 있다."""
+    보유 = 게임상태["소지품"].get("소모품", {})
+    return [(이름, 보유[이름], None) for 이름 in 인형_데이터 if 보유.get(이름, 0) > 0]
+
+
+def 인형_사용(게임상태, 이름):
+    """인형 1개를 써서 파티에 붙인다(2026-10-19 사용자 결정) - 마을/던전/전투 어디서든, 전투 중에도
+    행동을 쓰지 않는다. 이미 인형이 있으면 새 인형(HP 가득)으로 바뀐다. 전투 중이면 바로 아군 맨
+    뒤 칸으로 들어온다(combat.flow.인형_참가). 새 인형(파티["인형"])을 돌려준다."""
+    if 이름 not in 인형_데이터:
+        raise ValueError(f"'{이름}'은(는) 인형이 아니다.")
+    if 게임상태["소지품"].get("소모품", {}).get(이름, 0) <= 0:
+        raise ValueError(f"'{이름}'이(가) 소지품에 없다.")
+    potion_system.소지품_차감_카테고리(게임상태["소지품"], "소모품", 이름)
+    인형 = 인형_만들기(게임상태, 이름)
+    게임상태["파티"]["인형"] = 인형
+    전투상태 = 게임상태.get("전투상태")
+    if 전투상태 and 전투상태.get("종료") is None:
+        게임상태["장비데이터모음"][인형["캐릭터명"]] = {}
+        flow.인형_참가(전투상태, 인형)
+        core.로그(
+            전투상태,
+            {
+                "공격자": 현재_턴_참가자(게임상태)["이름"],
+                "행동": f"{이름} 사용 - 인형 '{인형['캐릭터명']}' 등장",
+                "아이템": 이름,
+            },
+            종류="행동",
+        )
+    return 인형
+
+
 # -------------------------------------------------------------- 소지품 화면 - 목록/상세보기
 
 
 def _사용종류(대분류, 탭, 아이템):
-    """소지품 화면에서 [사용]할 수 있으면 그 종류("항아리"/"회복포션"/"음식"/"주류"), 아니면 None.
+    """소지품 화면에서 [사용]할 수 있으면 그 종류("항아리"/"회복포션"/"음식"/"주류"/"인형"), 아니면 None.
     버프포션/투척/소환 아이템은 전투 중에만 쓴다(전투 화면 [아이템])."""
     if 대분류 != "소모품":
         return None
+    if 탭 == "인형":
+        return "인형"
     if 탭 == "포션":
         return "회복포션" if 아이템.get("분류") == "회복포션" else None
     return 탭 if 탭 in ("항아리", "음식", "주류") else None
@@ -624,7 +663,7 @@ def 소지품_탭줄(게임상태, 대분류):
         return [list(게임상태["상점카탈로그"]["재료"])]
     if 대분류 == "장비":
         return 상점_탭줄("판매", 대분류)
-    return [상점_탭목록(대분류)]
+    return [list(shop_system.소지품_소모품_탭순서)]
 
 
 def 소지품_목록(게임상태, 대분류, 탭):
@@ -643,6 +682,14 @@ def 소지품_상세(아이템):
     분류 = 아이템.get("분류")
     if 분류 == "항아리":
         return [f"열면 {아이템['장비레어도']} 등급 장비 1개가 나온다."]
+    if 아이템.get("타입") == "인형":
+        능력치 = 아이템["능력치"]
+        return [
+            "쓰면 파티에 인형이 붙는다(전투에서 아군 5번째 칸, 스스로 행동).",
+            " ".join(f"{n} {v}" for n, v in 능력치.items()),
+            f"AC {아이템['기본AC']} + 민첩 보정, 체력 {아이템['체력']} 기준",
+            "마을 휴식이나 전투에서 쓰러지면 사라진다. 상점에서 사고팔지 않는다.",
+        ]
     if 분류 == "회복포션":
         식 = 아이템["회복값"].replace("(차수)", str(아이템["티어"]))
         return [

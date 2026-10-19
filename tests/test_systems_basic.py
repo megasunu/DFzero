@@ -137,7 +137,7 @@ def test_파티_규칙():
 
 def test_소지품_규칙():
     플레이어 = player_system.빈_플레이어()
-    assert 플레이어["레벨"] == 1 and 플레이어["파티"] == {"파티원": []}
+    assert 플레이어["레벨"] == 1 and 플레이어["파티"] == {"파티원": [], "인형": None}
     player_system.골드_추가(플레이어, 30)
     player_system.골드_추가({}, 1)  # 소지품이 없으면 만들어서 넣는다
     with pytest.raises(ValueError):
