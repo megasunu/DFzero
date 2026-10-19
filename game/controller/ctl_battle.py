@@ -8,8 +8,9 @@ from game.data.buff.buff import 버프목록
 from game.data.buff.debuff import 디버프목록
 from game.data.buff.status_effects import 상태이상목록
 from game.data.equipment.eq_02_armor_set import 방어구세트목록
+from game.data.item.item_doll import 인형_데이터
 from game.data.monster.monster_title import 칭호목록
-from game.system import settings_system, skill_system
+from game.system import dice_utils, settings_system, skill_system
 from game.system.combat import (
     attacks,
     core,
@@ -20,8 +21,9 @@ from game.system.combat import (
     resources,
     stats,
     status,
+    traits,
 )
-from game.controller.ctl_party import 장비데이터모음_생성
+from game.controller.ctl_party import 장비데이터모음_생성, 인형_동기화
 from game.controller.ctl_registry import (
     몬스터목록,
     전투용_몬스터특성정의,
@@ -59,6 +61,7 @@ __all__ = [
     "새_공격연출_가져오기",
     "공격연출_그림파일",
     "아군_일반공격",
+    "인형_턴",
     "일반공격_가능여부",
     "추가행동_남은수",
     "아군_스킬사용",
@@ -200,6 +203,7 @@ def 전투_시작(게임상태, 몬스터항목목록, 클리어위치=None, 레
     if not 몬스터원본목록:
         return None
 
+    인형_동기화(게임상태)  # 인형 레벨 = 지금 플레이어 레벨
     # 캐릭터명이 키라 전직으로 이름이 바뀌었을 수 있다 - 전투 전에 새로 만든다.
     게임상태["장비데이터모음"] = 장비데이터모음_생성(
         게임상태["파티"], 게임상태["상점카탈로그"]
@@ -234,12 +238,13 @@ def 현재_턴_참가자(게임상태):
 
 
 def 아군_차례인가(게임상태):
-    """플레이어가 조종할 아군의 차례인가. 만취("무작위행동") 아군은 조종할 수 없어
-    False - 화면은 몬스터 차례처럼 턴_넘기기로 진행하고, 그 행동은 _만취_턴이 한다."""
+    """플레이어가 조종할 아군의 차례인가. 만취("무작위행동") 아군과 인형은 조종할 수 없어
+    False - 화면은 몬스터 차례처럼 턴_넘기기로 진행하고, 그 행동은 _만취_턴/인형_턴이 한다."""
     참가자 = 현재_턴_참가자(게임상태)
     return (
         참가자["진영"] == "아군"
         and 참가자["생존"]
+        and not 참가자.get("인형")
         and not 무작위행동_상태인가(게임상태, 참가자)
     )
 
@@ -273,7 +278,14 @@ def 적_HP표시(게임상태, 적참가자):
 
 
 def 아군_목록(게임상태):
-    return [p for p in 게임상태["전투상태"]["참가자"] if p["진영"] == "아군"]
+    """아군 참가자 - 캐릭터는 참가자 순서 그대로, 인형은 맨 뒤(5번째 칸). 전투 중에 바꿔 부른 옛
+    인형("교체됨")은 뺀다."""
+    아군 = [
+        p
+        for p in 게임상태["전투상태"]["참가자"]
+        if p["진영"] == "아군" and not p.get("교체됨")
+    ]
+    return sorted(아군, key=lambda p: bool(p.get("인형")))
 
 
 def 새_로그_가져오기(게임상태):
@@ -327,19 +339,23 @@ def 일반공격_가능여부(게임상태, 참가자):
 def 아군_일반공격(게임상태, 대상참가자):
     """combat.attacks.일반공격_실행() 자체는 행동자원을 소모하지 않으므로(무기 명중/피해
     계산만 한다), 여기서 직접 낸다 - 이번 턴에 열린 추가행동이 있으면 그것을, 없으면 일반행동
-    1개를 깎고 추가행동을 연다(DnD 추가 공격, combat.resources 추가행동)."""
+    1개를 깎고 추가행동을 연다(DnD 추가 공격, combat.resources 추가행동). 원펀맨 특성이면 일반행동으로
+    낸 일반공격에 남은 일반행동과 그 추가공격을 모두 합친다(resources.원펀맨_합치기)."""
     전투상태 = 게임상태["전투상태"]
     공격자 = 현재_턴_참가자(게임상태)
     if not 일반공격_가능여부(게임상태, 공격자):
         raise ValueError("일반행동이 남아있지 않다.")
     if not 대상참가자["생존"]:  # B12 - 부활 규칙이 없으므로 로직에서 거부한다
         raise ValueError(f"'{대상참가자['이름']}'은(는) 이미 쓰러져 지정할 수 없다.")
+    배수 = 1
     if resources.추가행동_남은수(공격자) > 0:
         resources.추가행동_소모(공격자)
+    elif traits.특성_수치(전투상태, 공격자, "원펀맨") > 0:
+        배수 = resources.원펀맨_합치기(공격자)
     else:
         공격자["행동자원"]["일반행동"] -= 1
         resources.추가행동_열기(공격자)
-    결과 = attacks.일반공격_실행(전투상태, 공격자, 대상참가자)
+    결과 = attacks.일반공격_실행(전투상태, 공격자, 대상참가자, 배수=배수)
     core.종료판정_갱신(전투상태)  # 마지막 적을 쓰러뜨렸으면 바로 끝낸다(B9)
     return 결과
 
@@ -491,6 +507,29 @@ def _만취_턴(게임상태, 참가자):
         아군_일반공격(게임상태, random.choice(후보))
 
 
+def 인형_턴(게임상태, 참가자):
+    """인형의 차례 - 몬스터처럼 행동표(item_doll.py "행동표")에서 d6을 굴려 고른다. 스킬 이름이면
+    그 스킬을 MP 소모 없이 살아 있는 적 하나에게 쓰고(넨탄 - 차수 = 플레이어 레벨의 차수), 아직
+    없는(미정) 패턴이면 그 턴은 쉰다. 행동불가면 아무것도 안 한다."""
+    전투상태 = 게임상태["전투상태"]
+    전투상태["현재턴_행동완료"] = True
+    if status.상태이상_플래그(전투상태, 참가자, "행동불가"):
+        return
+    패턴 = 인형_데이터[참가자["원본"]["인형"]]["행동표"][dice_utils.주사위_합(1, 6)]
+    스킬데이터 = 게임상태["스킬데이터모음"].get(패턴)
+    대상후보 = 공격대상_목록(게임상태)
+    if 스킬데이터 is None or not 대상후보:
+        core.로그(전투상태, {"공격자": 참가자["이름"], "쉼": True}, 종류="행동")
+        return
+    skill_system.스킬_실행(
+        전투상태,
+        참가자,
+        패턴,
+        {**스킬데이터, "MP소모": 0},
+        중심대상=random.choice(대상후보),
+    )
+
+
 def 턴_넘기기(게임상태):
     """현재 참가자의 턴을 끝낸다. 다음이 몬스터나 만취 아군이면 자동으로 행동시키고
     계속 넘겨서, 다시 조종할 아군 차례가 되거나 전투가 끝나면 멈춘다(화면 갱신
@@ -509,6 +548,8 @@ def 턴_넘기기(게임상태):
     ):
         if 현재["진영"] == "적":
             monster_actions.몬스터_턴_실행(전투상태, 현재)
+        elif 현재.get("인형"):
+            인형_턴(게임상태, 현재)
         elif 무작위행동_상태인가(게임상태, 현재):
             _만취_턴(게임상태, 현재)
         if core.종료판정_갱신(전투상태) is not None:
@@ -518,7 +559,9 @@ def 턴_넘기기(게임상태):
         참가자 = skill_system.다음_턴(전투상태)
         if 전투상태["종료"] is not None:
             return
-        if 참가자["진영"] == "아군":
+        if 참가자.get("인형"):
+            인형_턴(게임상태, 참가자)
+        elif 참가자["진영"] == "아군":
             if not 무작위행동_상태인가(게임상태, 참가자):
                 return
             _만취_턴(게임상태, 참가자)

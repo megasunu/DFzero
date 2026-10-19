@@ -646,10 +646,13 @@ class 파티칸줄(Widget):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.칸수 = (
+            None  # 칸 폭 기준 인원(없으면 파티 최대인원 4) - 전투에 인형이 있으면 5
+        )
         self.bind(pos=self._배치, size=self._배치, children=self._배치)
 
     def 칸폭(self):
-        최대 = gameflow.파티_최대인원
+        최대 = self.칸수 or gameflow.파티_최대인원
         return (self.width - 2 * 하단_좌우여백 - (최대 - 1) * 파티칸_틈) / 최대
 
     def _배치(self, *args):
