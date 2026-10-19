@@ -2307,8 +2307,32 @@ class 스모크앱(main.DnfMobileApp):
             ].text
             _팝업_닫기()
             yield 0.2
+            # 봉절: 쓰면 상태줄에 남은 걸음, 다시 열면 (풀기), 누르면 풀린다
+            귀검사["보유스킬"].append("봉절")
+            귀검사["현재MP"] = 귀검사["기본최대MP"]
+            스킬버튼.trigger_action(duration=0)
+            yield 0.3
+            줄 = [b for b in _대상버튼들() if " - 봉절" in b.text]
+            assert len(줄) == 1 and "MP 5" in 줄[0].text, [
+                b.text for b in _대상버튼들()
+            ]
+            줄[0].trigger_action(duration=0)
+            yield 0.4
+            걸음 = 10 + 귀검사["레벨"]
+            assert f"봉절 {걸음}" in 던전.상태라벨.text, 던전.상태라벨.text
+            assert f"{걸음}걸음" in 던전.메시지라벨.text, 던전.메시지라벨.text
+            _찍기("dungeon_skill_seal")
+            스킬버튼.trigger_action(duration=0)
+            yield 0.3
+            줄 = [b for b in _대상버튼들() if " - 봉절" in b.text]
+            assert "(풀기)" in 줄[0].text and not 줄[0].disabled, 줄[0].text
+            줄[0].trigger_action(duration=0)
+            yield 0.4
+            assert "봉절" not in 던전.상태라벨.text, 던전.상태라벨.text
+            assert "풀렸다" in 던전.메시지라벨.text, 던전.메시지라벨.text
             결과["단계"].append(
-                "던전 [스킬]: 던전 캠핑 줄(1/1, MP 0) -> 파티 HP 최대(쓰러진 파티원 포함), 다시 열면 0/1 비활성"
+                "던전 [스킬]: 던전 캠핑 줄(1/1, MP 0) -> 파티 HP 최대(쓰러진 파티원 포함), 다시 열면 0/1 비활성. "
+                "봉절(MP 5) -> 상태줄 '봉절 N' -> 다시 열면 (풀기) -> 풀림"
             )
         finally:
             상태["던전상태"] = 원래[0]
