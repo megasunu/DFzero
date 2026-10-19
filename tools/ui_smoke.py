@@ -221,6 +221,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_설정(매니저)
         yield from self._단계_화면_배치(상태, 매니저)
         yield from self._단계_던전목록(상태, 매니저)
+        yield from self._단계_던전_스킬(상태, 매니저)
         yield from self._단계_화면_틀(매니저)
         yield from self._단계_공격연출(상태, 매니저)
         yield from self._단계_감옥_대상팝업(상태, 매니저)
@@ -2262,6 +2263,60 @@ class 스모크앱(main.DnfMobileApp):
             결과["단계"].append("던전 이동 목록 - 앞 던전 보스 전엔 비활성, 깨면 활성")
         finally:
             진행도["현재마을"], 진행도["클리어한던전"] = 원래
+            매니저.current = "마을"
+
+    def _단계_던전_스킬(self, 상태, 매니저):
+        """던전 화면 [스킬](사용자 지정 2026-10-19 - 유루캠 "던전 캠핑"): 방향판 오른쪽 아래 칸.
+        팝업 줄 "이름 - 스킬 남은/최대 MP n"을 누르면 파티 HP가 최대가 되고(쓰러진 파티원도), 다시 열면
+        그 줄이 비활성(휴식당 1회 사유)이다."""
+        귀검사 = next(c for c in 상태["파티"]["파티원"] if c["직업"] == "귀검사")
+        원래 = (상태.get("던전상태"), list(귀검사["보유스킬"]))
+        try:
+            귀검사["보유스킬"].append("던전 캠핑")
+            gf.던전_진입(상태, "dungeon_01A_D01_Lorien")
+            파티 = 상태["파티"]["파티원"]
+            파티[1]["현재HP"] = 0
+            파티[2]["현재HP"] = 1
+            던전 = 매니저.get_screen("던전")
+            던전.갱신()
+            매니저.current = "던전"
+            yield 0.4
+            스킬버튼 = next(
+                w
+                for w in 던전.walk(restrict=True)
+                if isinstance(w, Button) and w.text == "스킬"
+            )
+            스킬버튼.trigger_action(duration=0)
+            yield 0.3
+            줄 = [b for b in _대상버튼들() if "던전 캠핑" in b.text]
+            assert len(줄) == 1 and not 줄[0].disabled, [b.text for b in _대상버튼들()]
+            assert "1/1" in 줄[0].text and "MP 0" in 줄[0].text, 줄[0].text
+            _찍기("dungeon_skill_popup")
+            줄[0].trigger_action(duration=0)
+            yield 0.4
+            assert _팝업수() == 0, _팝업수()
+            for c in 파티:
+                assert c["현재HP"] == gf.캐릭터_최대HP(상태, c), c["직업"]
+            assert "던전 캠핑" in 던전.메시지라벨.text, 던전.메시지라벨.text
+            _찍기("dungeon_skill_used")
+            스킬버튼.trigger_action(duration=0)
+            yield 0.3
+            줄 = [b for b in _대상버튼들() if "던전 캠핑" in b.text]
+            assert 줄[0].disabled and "0/1" in 줄[0].text and "휴식" in 줄[0].text, 줄[
+                0
+            ].text
+            _팝업_닫기()
+            yield 0.2
+            결과["단계"].append(
+                "던전 [스킬]: 던전 캠핑 줄(1/1, MP 0) -> 파티 HP 최대(쓰러진 파티원 포함), 다시 열면 0/1 비활성"
+            )
+        finally:
+            상태["던전상태"] = 원래[0]
+            귀검사["보유스킬"][:] = 원래[1]
+            귀검사.get("횟수제한스킬", {}).get("휴식제한스킬", {}).pop(
+                "던전 캠핑", None
+            )
+            gf.파티_최대치로_회복(상태)
             매니저.current = "마을"
 
     def _단계_화면_틀(self, 매니저):
