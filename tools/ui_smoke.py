@@ -316,10 +316,11 @@ class 스모크앱(main.DnfMobileApp):
         )
 
     def _단계_상점(self, 상태, 매니저):
-        """상점 - 구매/판매 목록, [전문직업] 장비해체(일괄해체 확인 팝업)와 봉인해제/봉인변환"""
+        """상점 - 구매/판매 목록, [전문직업] 장비해체(일괄해체 확인 팝업)와 봉인해제/봉인변환, 인형사"""
         yield from self._단계_상점_구매판매(상태, 매니저)
         yield from self._단계_상점_해체(상태, 매니저)
         yield from self._단계_봉인(상태, 매니저)
+        yield from self._단계_인형사(상태, 매니저)
 
     def _단계_상점_구매판매(self, 상태, 매니저):
         """상점 구매 - 레어도 색, 장비 탭 2줄, 무기 직업군/종류 탭, 방어구 재질 탭, 판매 목록"""
@@ -449,12 +450,13 @@ class 스모크앱(main.DnfMobileApp):
             for w in 상점.내용틀.walk(restrict=True)
             if isinstance(w, Button)
         ]
-        assert 메뉴글[:5] == [
+        assert 메뉴글[:6] == [
             ("장비강화 (미구현)", True),
             ("장비해체", False),
             ("마법부여 (미구현)", True),
             ("봉인해제", False),
             ("봉인변환", False),
+            ("인형사", False),
         ], 메뉴글
         _찍기("profession_menu")
         # 장비해체: 장비 목록에서 해체하면 소울/큐브 조각이 재료로
@@ -522,7 +524,7 @@ class 스모크앱(main.DnfMobileApp):
         assert not gf.상점_일괄해체_대상(상태, "커먼", "전체")
         _찍기("shop_dismantle_batch_after")
         결과["단계"].append(
-            "전문직업 메뉴 5개(장비강화/마법부여 미구현), 상점에 해체 없음, "
+            "전문직업 메뉴 6개(장비강화/마법부여 미구현), 상점에 해체 없음, "
             "장비해체(장비 -> 소울 + 큐브 조각, [전체] 탭, 일괄해체 커먼/전체 확인 팝업)"
         )
 
@@ -582,6 +584,75 @@ class 스모크앱(main.DnfMobileApp):
         yield 0.3
         결과["단계"].append(
             "봉인해제(착용 중인 무기 -> 마법의 무기, 100G/레어 소울), 봉인변환(다른 능력), 소울 부족 안내"
+        )
+
+    def _단계_인형사(self, 상태, 매니저):
+        """[전문직업] 인형사 - 인형제작 창(재료 보유/필요, 모자라면 [제작] 못 누름), [상세보기]
+        (이름/HP·AC 수식/능력치/보너스/패턴 6개), [제작] -> 소지품 소모품 + 도감 "인형" """
+
+        def 버튼(위젯, 글):
+            return next(
+                w
+                for w in 위젯.walk(restrict=True)
+                if isinstance(w, Button) and w.text == 글
+            )
+
+        def 팝업():
+            return Window.children[0]
+
+        매니저.current = "전문직업"
+        yield 0.3
+        화면 = 매니저.get_screen("전문직업")
+        소지품 = 상태["소지품"]
+        소지품["재료"].pop("레어 소울", None)
+        화면._메인_그리기()
+        버튼(화면.내용틀, "인형사").dispatch("on_release")
+        yield 0.3
+        행 = next(
+            w.parent
+            for w in 화면._목록틀.walk(restrict=True)
+            if isinstance(w, Label) and w.text.startswith("28호")
+        )
+        assert "레어 소울 0/10" in 행.children[-1].text, 행.children[-1].text
+        assert 버튼(행, "제작").disabled, "재료가 모자라면 제작 못 누름"
+        _찍기("profession_doll_list_short")
+
+        버튼(행, "상세보기").dispatch("on_release")
+        yield 0.3
+        assert 팝업().title == "28호"
+        줄들 = [w.text for w in 팝업().walk(restrict=True) if isinstance(w, Label)]
+        for 글 in ("이름: 28호", "AC = 14 + 민첩보정", "6. 넨가드"):
+            assert 글 in 줄들, 줄들
+        assert any(줄.startswith("HP = (6 + 건강보정)") for 줄 in 줄들), 줄들
+        _찍기("profession_doll_detail")
+        _팝업_닫기()
+        yield 0.3
+
+        소지품["재료"]["레어 소울"] = 10
+        보유전 = 소지품["소모품"].get("28호", 0)
+        화면._인형사_그리기()
+        yield 0.3
+        행 = next(
+            w.parent
+            for w in 화면._목록틀.walk(restrict=True)
+            if isinstance(w, Label) and w.text.startswith("28호")
+        )
+        assert not 버튼(행, "제작").disabled
+        버튼(행, "제작").dispatch("on_release")
+        yield 0.3
+        assert 소지품["소모품"]["28호"] == 보유전 + 1
+        assert "레어 소울" not in 소지품["재료"]
+        assert "28호" in 상태["진행도"]["도감"]["인형"]
+        assert "28호" in 화면.안내라벨.text, 화면.안내라벨.text
+        _찍기("profession_doll_crafted")
+        소지품["소모품"]["28호"] -= 1  # 다음 단계(전투 [아이템])가 개수를 직접 둔다
+        if not 소지품["소모품"]["28호"]:
+            del 소지품["소모품"]["28호"]
+        화면._나가기()
+        yield 0.3
+        결과["단계"].append(
+            "인형사: 인형제작 창(레어 소울 0/10이면 제작 못 누름), 상세보기(수식/패턴 6개), "
+            "제작 -> 소지품 1개 + 도감 인형"
         )
 
     def _단계_파티관리_팝업(self, 상태, 매니저):

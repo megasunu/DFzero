@@ -946,9 +946,10 @@ class 상점화면(Screen):
 
 
 class 전문직업화면(상점화면):
-    """마을 [전문직업] - 장비강화/장비해체/마법부여/봉인해제/봉인변환(2026-10-15 사용자 결정).
+    """마을 [전문직업] - 장비강화/장비해체/마법부여/봉인해제/봉인변환(2026-10-15 사용자 결정), 인형사(2026-10-19).
     장비해체는 상점에 있던 [해체]를 옮겨 온 것(상점화면의 해체 목록을 그대로 쓴다).
-    봉인해제/봉인변환은 장착 중인 장비도 고를 수 있다. 장비강화/마법부여는 미구현."""
+    봉인해제/봉인변환은 장착 중인 장비도 고를 수 있다. 장비강화/마법부여는 미구현.
+    인형사는 인형제작 창 - 인형마다 필요 재료(보유/필요), [상세보기], [제작]."""
 
     제목 = "전문직업"
 
@@ -964,6 +965,8 @@ class 전문직업화면(상점화면):
             )
             if 메뉴 == "장비해체":
                 버튼.bind(on_release=lambda *_: self._탭목록_그리기("해체", "장비"))
+            elif 메뉴 == "인형사":
+                버튼.bind(on_release=lambda *_: self._인형사_그리기())
             elif 구현됨:
                 버튼.bind(on_release=lambda *_, m=메뉴: self._봉인_그리기(m))
             self.내용틀.add_widget(버튼)
@@ -972,8 +975,8 @@ class 전문직업화면(상점화면):
         나가기버튼.bind(on_release=self._나가기)
         self.내용틀.add_widget(나가기버튼)
 
-    def _봉인_그리기(self, 모드):
-        """봉인해제: 봉인 장비 목록, 봉인변환: 봉인을 푼 장비 목록 - 줄마다 [자세히]와 실행 버튼."""
+    def _하위창_틀(self, 제목글):
+        """[◀ 뒤로] + 제목 줄과 스크롤 목록틀(self._목록틀)을 그린다 - 봉인해제/봉인변환/인형사 공용."""
         self._비우기()
         상단 = BoxLayout(
             orientation="horizontal", size_hint=(1, None), height=글자_높이()
@@ -982,9 +985,7 @@ class 전문직업화면(상점화면):
         뒤로키_버튼(뒤로버튼)
         뒤로버튼.bind(on_release=lambda *_: self._메인_그리기())
         상단.add_widget(뒤로버튼)
-        상단.add_widget(
-            Label(text=f"{모드} ({gameflow.전문직업_비용글})", size_hint=(0.68, 1))
-        )
+        상단.add_widget(Label(text=제목글, size_hint=(0.68, 1)))
         self.내용틀.add_widget(상단)
 
         목록스크롤 = ScrollView(size_hint=(1, 1))
@@ -993,6 +994,10 @@ class 전문직업화면(상점화면):
         목록스크롤.add_widget(목록틀)
         self.내용틀.add_widget(목록스크롤)
         self._목록틀 = 목록틀
+
+    def _봉인_그리기(self, 모드):
+        """봉인해제: 봉인 장비 목록, 봉인변환: 봉인을 푼 장비 목록 - 줄마다 [자세히]와 실행 버튼."""
+        self._하위창_틀(f"{모드} ({gameflow.전문직업_비용글})")
         self._봉인목록_채우기(모드)
 
     def _봉인목록_채우기(self, 모드):
@@ -1055,6 +1060,75 @@ class 전문직업화면(상점화면):
         self._골드_갱신()
         self._봉인목록_채우기(모드)
         self.안내라벨.text = f"{항목['이름']} -> {새이름}"
+
+    # ------------------------------------------------------------ 인형사 (인형제작 창)
+
+    def _인형사_그리기(self):
+        self._하위창_틀("인형제작")
+        self._인형목록_채우기()
+
+    def _인형목록_채우기(self):
+        self._목록틀.clear_widgets()
+        for 항목 in gameflow.전문직업_인형목록(App.get_running_app().게임상태):
+            self._목록틀.add_widget(self._인형_행(항목))
+
+    def _인형_행(self, 항목):
+        글자 = _행_글자크기
+        행 = BoxLayout(
+            orientation="horizontal", size_hint=(1, None), height=56, spacing=4
+        )
+        이름라벨 = Label(
+            text=f"{항목['이름']}  ({항목['재료글']})",
+            size_hint=(0.56, 1),
+            halign="left",
+            valign="middle",
+            font_size=글자,
+            shorten=True,
+            shorten_from="right",
+        )
+        이름라벨.bind(size=lambda inst, size: setattr(inst, "text_size", size))
+        행.add_widget(이름라벨)
+        상세버튼 = Button(text="상세보기", size_hint=(0.24, 1), font_size=글자)
+        상세버튼.bind(on_release=lambda *_: self._인형_상세(항목["이름"]))
+        행.add_widget(상세버튼)
+        제작버튼 = Button(
+            text="제작",
+            size_hint=(0.2, 1),
+            font_size=글자,
+            disabled=not 항목["제작가능"],
+        )
+        제작버튼.bind(on_release=lambda *_: self._인형_제작(항목["이름"]))
+        행.add_widget(제작버튼)
+        return 행
+
+    def _인형_상세(self, 이름):
+        본문 = BoxLayout(orientation="vertical", spacing=6, padding=12)
+        스크롤 = ScrollView(size_hint=(1, 1))
+        내용틀 = BoxLayout(orientation="vertical", size_hint_y=None, spacing=4)
+        내용틀.bind(minimum_height=내용틀.setter("height"))
+        스크롤.add_widget(내용틀)
+        본문.add_widget(스크롤)
+        for 줄 in gameflow.전문직업_인형상세(이름):
+            라벨 = Label(text=줄, size_hint=(1, None), height=dp(32), halign="left")
+            라벨.bind(size=lambda inst, size: setattr(inst, "text_size", size))
+            내용틀.add_widget(라벨)
+        팝업 = Popup(
+            title=이름, content=본문, size_hint=(0.85, 0.75), auto_dismiss=False
+        )
+        본문.add_widget(닫기_버튼(팝업, size_hint=(1, None), height=_버튼_높이))
+        팝업.open()
+        return 팝업
+
+    def _인형_제작(self, 이름):
+        try:
+            gameflow.전문직업_인형제작(App.get_running_app().게임상태, 이름)
+        except ValueError as 오류:
+            self.안내라벨.text = str(오류)
+            return
+        self._인형목록_채우기()
+        self.안내라벨.text = (
+            f"인형 '{이름}'을(를) 만들었습니다. (소지품 > 소모품 > 인형)"
+        )
 
 
 class 소지품화면(상점화면):
