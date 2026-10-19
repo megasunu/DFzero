@@ -29,3 +29,6 @@ game/saves/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# 작업시간 기록 훅(.claude/hooks/time-log.cjs)의 세션별 기록 - 요약만 이슈 댓글로 남긴다
+.claude/time-log/
