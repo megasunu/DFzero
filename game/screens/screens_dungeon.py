@@ -12,6 +12,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen
 from kivy.uix.widget import Widget
 from kivy.core.image import Image as CoreImage
@@ -20,6 +21,8 @@ from kivy.graphics import Color, Rectangle, Ellipse, ScissorPush, ScissorPop
 import gameflow
 from game.screens.screens_common import (
     게임메뉴_열기,
+    닫기_버튼,
+    스크롤_목록,
     _캐릭터이미지_경로,
     _에셋_경로,
     뒤로키_버튼,
@@ -580,7 +583,9 @@ class 던전화면(Screen):
         아래버튼 = Button(text="▼")
         아래버튼.bind(on_release=lambda *_: self._이동("아래"))
         방향틀.add_widget(아래버튼)
-        방향틀.add_widget(Label())
+        스킬버튼 = Button(text="스킬")
+        스킬버튼.bind(on_release=self._스킬_클릭)
+        방향틀.add_widget(스킬버튼)
 
         나머지.add_widget(방향틀)
 
@@ -667,6 +672,48 @@ class 던전화면(Screen):
 
         self.상호작용버튼.disabled = True
         self._대기중오브젝트 = None
+
+    def _스킬_클릭(self, *args):
+        """[스킬] - 파티원의 던전스킬(던전 캠핑 등) 목록 팝업. 줄을 누르면 쓴다."""
+        게임상태 = App.get_running_app().게임상태
+        줄들 = gameflow.던전스킬_목록(게임상태)
+        if not 줄들:
+            self.메시지라벨.text = "던전에서 쓸 수 있는 스킬이 없습니다."
+            return
+        본문 = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12))
+        팝업 = Popup(
+            title="던전 스킬", content=본문, size_hint=(0.9, None), height=dp(480)
+        )
+        스크롤, 목록틀 = 스크롤_목록(0.85, 간격=dp(6))
+        for 줄 in 줄들:
+            캐릭터 = 줄["캐릭터"]
+            이름 = 캐릭터.get("캐릭터명") or 캐릭터.get("직업", "")
+            남은 = f" {줄['남은'][0]}/{줄['남은'][1]}" if 줄["남은"] else ""
+            글 = f"{이름} - {줄['스킬']}{남은}  MP {줄['MP']}"
+            if not 줄["가능"]:
+                글 += f"\n({줄['사유']})"
+            버튼 = Button(
+                text=글,
+                size_hint_y=None,
+                height=dp(72),
+                halign="center",
+                disabled=not 줄["가능"],
+            )
+            버튼.bind(
+                on_release=lambda *_, 캐릭터=캐릭터, 스킬=줄["스킬"]: self._스킬_사용(
+                    팝업, 캐릭터, 스킬
+                )
+            )
+            목록틀.add_widget(버튼)
+        본문.add_widget(스크롤)
+        본문.add_widget(닫기_버튼(팝업, size_hint=(1, 0.15)))
+        팝업.open()
+
+    def _스킬_사용(self, 팝업, 캐릭터, 스킬이름):
+        팝업.dismiss()
+        결과 = gameflow.던전스킬_사용(App.get_running_app().게임상태, 캐릭터, 스킬이름)
+        self.갱신()  # 파티 HP 칸을 다시 그린다(메시지를 비우므로 문구는 뒤에)
+        self.메시지라벨.text = 결과["문구"]
 
     def _소지품_클릭(self, *args):
         self.manager.get_screen("소지품").복귀화면 = "던전"
