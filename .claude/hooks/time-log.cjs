@@ -261,6 +261,7 @@ function summarize(events) {
   let open = null;
   let openKind = null;
   let stopAt = null;
+  let lastStop = null;
   let waiting = 0;
   let bgWaiting = 0;
 
@@ -297,6 +298,16 @@ function summarize(events) {
     } else if (e.ev === "Stop" && open) {
       closeTurn(e.t, e, false);
       stopAt = e.t;
+      lastStop = e;
+    } else if (e.ev === "Stop" && stopAt) {
+      // A Stop hook's feedback: Claude went on from the last Stop with no new prompt (#272). This Stop's
+      // tokens count from the same prompt as the last one, so the output is the difference.
+      open = stopAt;
+      openKind = "훅피드백";
+      const output = typeof lastStop.output === "number" ? (e.output || 0) - lastStop.output : e.output;
+      closeTurn(e.t, { output: Math.max(0, output || 0), context: e.context }, false);
+      stopAt = e.t;
+      lastStop = e;
     } else if (e.ev === "Mark") marks.push(e);
     else if (e.ev === "Task") tasks.push(e);
     else if (e.ev === "BgStart") bgStarts.push(e);
