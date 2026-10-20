@@ -421,6 +421,38 @@ test("summarize: a message sent mid-turn splits the turn and carries the tokens 
   assert.match(t.format(s), /\| 1\+ \|/);
 });
 
+// A Stop hook's feedback makes Claude go on without a new prompt: Stop, more work, Stop again (#272).
+// The second Stop's tokens count from the same prompt, so they include the first part's.
+const FEEDBACK = [
+  { t: at(0), ev: "UserPromptSubmit", kind: "사람" },
+  { t: at(1), ev: "Task", kind: "버그", name: "#9" },
+  { t: at(30), ev: "Stop", output: 1000, context: 5000 },
+  { t: at(32), ev: "PreToolUse", tool: "Bash", cat: "파일 읽기", id: "r" },
+  { t: at(33), ev: "PostToolUse", id: "r", ok: true },
+  { t: at(42), ev: "Stop", output: 1300, context: 5600 },
+  { t: at(100), ev: "UserPromptSubmit", kind: "사람" },
+  { t: at(110), ev: "Stop", output: 50, context: 6000 },
+];
+
+test("summarize: work after a Stop hook's feedback is a turn of its own, not waiting on the user", () => {
+  const s = t.summarize(FEEDBACK);
+  assert.deepStrictEqual(
+    s.turns.map((r) => [r.n, r.kind, r.sec, r.tools, r.output, r.context, r.task]),
+    [
+      [1, "사람", 30, 0, 1000, 5000, "#9"],
+      [2, "훅피드백", 12, 1, 300, 5600, "#9"],
+      [3, "사람", 10, 0, 50, 6000, "#9"],
+    ],
+  );
+  assert.strictEqual(s.waiting, 58); // from the second Stop, not the first
+  assert.deepStrictEqual(s.categories["파일 읽기"], { count: 1, fails: 0, sec: 1 });
+  assert.deepStrictEqual(
+    s.phases.map((p) => [p.phase, p.sec]),
+    [["단계 없음", 52]],
+  );
+  assert.match(t.format(s), /\| 2 \(훅\) \| #9 \|/);
+});
+
 test("format: a turn of minutes shows minutes and seconds", () => {
   assert.strictEqual(t.dur(75), "1분 15초");
   assert.strictEqual(t.dur(7.26), "7.3초");
