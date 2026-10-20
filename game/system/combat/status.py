@@ -110,9 +110,12 @@ def _특성_정의들(전투상태, 참가자):
     원본 = 참가자.get("원본", {})
     for 특성이름 in 원본.get("특성") or []:
         yield 전투상태.get("특성정의", {}).get(특성이름) or {}
+    켜진특성 = 원본.get("켜진특성") or []
     for 특성이름 in 원본.get("보유특성") or []:
         정의 = 전투상태.get("캐릭터특성정의", {}).get(특성이름) or {}
-        if 정의.get("발동조건") is None and not 정의.get("토글"):
+        if 정의.get("발동조건") is None and (
+            not 정의.get("토글") or 특성이름 in 켜진특성
+        ):
             yield 정의
 
 
