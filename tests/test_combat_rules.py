@@ -868,6 +868,40 @@ def test_효과_상태이상_내성(전장, monkeypatch):
     assert [i["이름"] for i in 적[2]["상태이상"]] == ["슈퍼아머"]
 
 
+@pytest.mark.parametrize(
+    "이점수, 불리수, 기대",
+    [
+        (0, 0, (False, False)),
+        (1, 0, (True, False)),
+        (0, 1, (False, True)),
+        (1, 1, (False, False)),
+        (2, 1, (True, False)),
+        (1, 3, (False, True)),
+    ],
+)
+def test_이점_불리점은_개수로_합산한다(이점수, 불리수, 기대):
+    # 많은 쪽 하나만, 같으면 둘 다 없음(#291)
+    assert dice_utils.이점_합산(이점수, 불리수) == 기대
+
+
+def test_대상_내성굴림은_보정치와_저주_불리점을_쓴다(전장, monkeypatch):
+    _, 전투상태, 적, _ = 전장
+    대상 = 적[0]
+    보정 = stats.내성굴림_보정치(전투상태, 대상, "건강")
+    굴림 = iter([15, 4])
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: next(굴림))
+    assert stats.대상_내성굴림(전투상태, 대상, "건강", 10) == (
+        15 + 보정 >= 10,
+        15 + 보정,
+        보정,
+    )
+    assert stats.내성굴림_이점불리(전투상태, 대상) == (0, 0)
+    ss.상태이상_부여(전투상태, 대상, "저주", 3, None)  # 내성굴림불리점
+    assert stats.내성굴림_이점불리(전투상태, 대상) == (0, 1)
+    굴림 = iter([15, 4])  # 불리점 - 두 번 굴려 낮은 쪽
+    assert stats.대상_내성굴림(전투상태, 대상, "건강", 10)[1] == 4 + 보정
+
+
 @pytest.mark.parametrize("이름, 차이", [("내성증가", 1), ("내성감소", -1)])
 def test_내성증가_내성감소는_모든_내성굴림에_더해진다(전장, monkeypatch, 이름, 차이):
     # 변동대상 "내성보너스" - 스킬 효과와 몬스터/특성 쪽 상태이상 내성 모두(2026-10-15 수정)

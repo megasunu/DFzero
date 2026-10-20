@@ -2,7 +2,7 @@
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
 from game.system import character_data_system as 캐릭터데이터
-from game.system import equipment_system
+from game.system import dice_utils, equipment_system
 from game.system.combat import core, formula, participants, resources, status, traits
 
 # =====================================================
@@ -268,6 +268,25 @@ def 내성굴림_보정치(전투상태, 참가자, 능력치이름):
         + traits.특성_수치(전투상태, 참가자, "내성보너스")
         + 마봉_수치(참가자, "내성보너스")
     )
+
+
+def 내성굴림_이점불리(전투상태, 대상, 상태이상이름=None):
+    """내성굴림의 (이점 수, 불리점 수). 불리점: "내성굴림불리점" 상태이상(저주). 이점: 상태이상을 막는
+    굴림이면(상태이상이름) 특성 "상태이상내성이점"(가죽숙달 등)."""
+    이점 = int(
+        bool(상태이상이름) and traits.상태이상_내성이점(전투상태, 대상, 상태이상이름)
+    )
+    불리 = int(status.상태이상_플래그(전투상태, 대상, "내성굴림불리점"))
+    return 이점, 불리
+
+
+def 대상_내성굴림(전투상태, 대상, 내성스탯, 난이도, 상태이상이름=None):
+    """대상의 내성굴림 한 번 - (성공, 굴린 값, 보정치). 내성굴림을 하는 곳은 모두 이것을 쓴다
+    (보정치는 내성굴림_보정치, 이점·불리점은 내성굴림_이점불리를 개수로 합산)."""
+    보정치 = 내성굴림_보정치(전투상태, 대상, 내성스탯)
+    이점, 불리 = dice_utils.이점_합산(*내성굴림_이점불리(전투상태, 대상, 상태이상이름))
+    성공, 값 = dice_utils.내성_굴림(보정치, 난이도, 이점=이점, 불리=불리)
+    return 성공, 값, 보정치
 
 
 def 유효_능력치(전투상태, 참가자):
