@@ -6,7 +6,7 @@ import pytest
 
 import gameflow as gf
 from game.system import dice_utils, skill_system as ss
-from game.system.combat import stats, traits
+from game.system.combat import damage, status, stats, traits
 from tests import support
 
 
@@ -126,3 +126,72 @@ def test_혈십자_단계는_경계에서_높은_단계다():
     ]
     assert [traits.혈십자_단계(h, 100) for h in (21, 20, 1, 0)] == [4, 5, 5, 5]
     assert traits.혈십자_단계(13, 25) == 3  # 52%
+
+
+# ------------------------------------------------------------------ 레벨 8 폭주
+
+
+def _폭주_걸기(전투상태, bs):
+    return _쓰기(전투상태, bs, "폭주")
+
+
+def test_폭주는_레벨8_버프이고_행동없이_HP_5로_10턴_휴식당_1회다(버서커전장):
+    _, 전투상태, _, bs = 버서커전장
+    폭주 = _스킬("폭주")
+    assert "폭주" in bs["원본"]["보유스킬"]
+    assert (폭주["습득방법"], 폭주["행동"], 폭주["타겟"]) == ("레벨진행", None, "자신")
+    assert (폭주["MP소모"], 폭주["휴식당횟수"]) == (10, 1)
+    bs["현재HP"] = 30
+    행동 = dict(bs["행동자원"])
+    _폭주_걸기(전투상태, bs)
+    assert bs["현재HP"] == 25  # 혈기왕성: MP 10 -> HP 5
+    assert [(b["이름"], b["지속턴"]) for b in bs["버프"]] == [("폭주", 10)]
+    assert not ss.사용_가능여부(전투상태, bs, 폭주)[0]
+    assert {k: bs["행동자원"][k] for k in 행동} == {
+        **행동,
+        "일반행동": 1,
+        "보조행동": 1,
+    }  # _쓰기가 채운 행동이 그대로 - 행동을 쓰지 않는다
+
+
+def test_폭주는_공격에_이점_피격에_공격자_이점을_준다(버서커전장, monkeypatch):
+    _, 전투상태, 적, bs = 버서커전장
+    굴림 = []
+    원래 = damage.dice_utils.d20_굴림
+
+    def 기록(이점=False, 불리=False):
+        굴림.append((이점, 불리))
+        return 원래(이점=이점, 불리=불리)
+
+    monkeypatch.setattr(damage.dice_utils, "d20_굴림", 기록)
+    damage.명중_판정_계산(전투상태, bs, 적[0], "보정명중률")
+    damage.명중_판정_계산(전투상태, 적[0], bs, "근력판정")
+    assert 굴림 == [(False, False), (False, False)]
+    _폭주_걸기(전투상태, bs)
+    damage.명중_판정_계산(전투상태, bs, 적[0], "보정명중률")
+    damage.명중_판정_계산(전투상태, 적[0], bs, "근력판정")
+    assert 굴림[2:] == [(True, False), (True, False)]
+
+
+def test_폭주는_무력화CC_면역이고_약화CC와_지속피해_내성에_이점이다(버서커전장):
+    _, 전투상태, _, bs = 버서커전장
+    assert not status.상태이상_면역(전투상태, bs, "기절")
+    assert not traits.상태이상_내성이점(전투상태, bs, "둔화")
+    _폭주_걸기(전투상태, bs)
+    assert all(
+        status.상태이상_면역(전투상태, bs, n)
+        for n in ("기절", "공중에뜸", "수면", "빙결", "석화")
+    )
+    assert not status.상태이상_면역(전투상태, bs, "둔화")
+    assert all(
+        traits.상태이상_내성이점(전투상태, bs, n)
+        for n in ("둔화", "넘어짐", "출혈", "중독")
+    )
+    assert not traits.상태이상_내성이점(전투상태, bs, "은신")
+
+
+def test_폭주_중_무력화_상태이상은_걸리지_않는다(버서커전장):
+    _, 전투상태, _, bs = 버서커전장
+    _폭주_걸기(전투상태, bs)
+    ss.상태이상_부여(전투상태, bs, "기절", 1)
+    assert all(s["이름"] != "기절" for s in bs["상태이상"])

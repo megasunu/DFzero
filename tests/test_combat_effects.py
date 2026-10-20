@@ -191,7 +191,7 @@ def 효과_시나리오(이름):
 @pytest.mark.parametrize("종류", ["버프", "디버프"])
 def test_버프_디버프_전수(종류, golden):
     목록 = 버프목록 if 종류 == "버프" else 디버프목록
-    assert len(목록) == {"버프": 30, "디버프": 24}[종류]
+    assert len(목록) == {"버프": 31, "디버프": 24}[종류]
     golden(f"combat_{종류}", {이름: 효과_시나리오(이름) for 이름 in 목록})
 
 
