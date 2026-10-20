@@ -808,6 +808,16 @@ class 스모크앱(main.DnfMobileApp):
             "훔쳐배우기: 퍽 선택 -> 다른 전직 스킬/특성 팝업 -> 고른 것(귀신 : 브레멘)을 배움"
         )
 
+        # 퍽 "타입"(#289): 스탯획득 퍽(능력치향상)을 고르면 능력치 배분 팝업이 열린다
+        매니저.get_screen("파티관리")._퍽선택_팝업(버서커, 고른.append)
+        yield 0.5
+        _팝업_버튼("능력치향상").dispatch("on_release")
+        yield 0.6
+        assert list(Window.children)[0].title == "능력치 배분", list(Window.children)
+        list(Window.children)[0].dismiss()
+        yield 0.6
+        결과["단계"].append("능력치향상: 퍽 선택 -> 능력치 배분 팝업")
+
         # [스킬습득] 팝업: 직업 계열 스킬 목록 + 비용, 골드가 모자라면 버튼 잠금, 누르면 배운다
         파티관리 = 매니저.get_screen("파티관리")
         파티관리.갱신()
