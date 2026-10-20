@@ -2,14 +2,13 @@
 
 지금 동작이 "맞는지"가 아니라 "지금 이렇게 동작한다"를 고정한다. 리팩터링
 중에 이 테스트나 골든 파일이 바뀌면 동작이 바뀐 것이다.
-전투/인카운트는 전역 random만 쓰므로 random.seed()로 재현된다
+전투/인카운트는 전역 random만 쓰므로 rng.시드()로 재현된다
 (PYTHONHASHSEED와 무관함을 확인함).
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 
 기대_직업목록 = ["귀검사", "격투가", "거너", "마법사", "프리스트"]
@@ -139,7 +138,7 @@ def test_세이브_불러오기_왕복(임시_세이브폴더):
 
 def _보스전_자동진행(파티구성, 시드, 최대반복=500):
     """첫 던전(로리엔) 보스와 싸운다. 아군은 매 턴 살아있는 첫 적을 일반공격한다."""
-    random.seed(시드)
+    rng.시드(시드)
     상태 = gf.새_게임_시작(파티구성)
     던전 = gf.던전_진입(상태, "dungeon_01A_D01_Lorien")
     위치, 오브젝트 = next(

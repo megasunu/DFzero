@@ -6,10 +6,9 @@
 여기서는 스킬이 실전의 흐름 속에서 자원/행동/효과를 제대로 쓰고 거두는지를 본다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -100,7 +99,7 @@ def _전투(상태, 라벨, 결과목록):
 @pytest.mark.scenario("S2")
 @pytest.mark.parametrize("순번, 직업", list(enumerate(직업들)))
 def test_S2_스킬_실전(순번, 직업, golden):
-    random.seed(100 + 순번)
+    rng.시드(100 + 순번)
     파티 = [직업] + [j for j in 직업들 if j != 직업][:3]
     상태 = support.새게임([("", j) for j in 파티])
     for 캐릭터 in 상태["파티"]["파티원"]:

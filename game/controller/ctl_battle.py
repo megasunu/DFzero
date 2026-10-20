@@ -3,7 +3,7 @@
 # ([자동전투]/전력전투는 ctl_autobattle, 로그 문장은 ctl_battle_log)
 # (gameflow.py에서 분리 - N5. 화면은 gameflow.py 창구만 부른다. 설명은 gameflow.py 머리말)
 
-import random
+from game.system import rng
 from game.data.buff.buff import 버프목록
 from game.data.buff.debuff import 디버프목록
 from game.data.buff.status_effects import 상태이상목록
@@ -452,17 +452,17 @@ def _만취_스킬사용(게임상태, 참가자, 이름):
     if 타겟 in ("적단일", "아군단일"):
         if not 후보:
             raise ValueError("대상이 없다.")
-        중심대상 = random.choice(후보)
+        중심대상 = rng.대상.choice(후보)
     elif 타겟 == "적3체":
         적들 = [p for p in 후보 if p["진영"] == "적"]
         if not 적들:
             raise ValueError("대상이 없다.")
-        중심대상 = random.choice(적들)
+        중심대상 = rng.대상.choice(적들)
     elif 타겟 == "적반복지정":
         if not 후보:
             raise ValueError("대상이 없다.")
         횟수 = max(1, 현재참가자_수치(게임상태, 스킬데이터.get("공격횟수", 1)))
-        지정대상목록 = [random.choice(후보) for _ in range(횟수)]
+        지정대상목록 = [rng.대상.choice(후보) for _ in range(횟수)]
     return 아군_스킬사용(게임상태, 이름, 중심대상=중심대상, 지정대상목록=지정대상목록)
 
 
@@ -481,8 +481,8 @@ def _만취_턴(게임상태, 참가자):
         )
         return
     효과 = 상태이상목록["만취"]["효과"]
-    if random.random() < formula.수식_평가(효과["수면확률"], {}):
-        지속턴 = random.randint(*효과["수면지속턴"])
+    if rng.확률.random() < formula.수식_평가(효과["수면확률"], {}):
+        지속턴 = rng.주사위.randint(*효과["수면지속턴"])
         resources.몬스터_버프_부여(전투상태, 참가자, "수면", 지속턴)
         if status.상태이상_플래그(전투상태, 참가자, "행동불가"):
             참가자["행동자원"] = {"일반행동": 0, "보조행동": 0, "반응행동": 0}
@@ -493,7 +493,7 @@ def _만취_턴(게임상태, 참가자):
         )
         return
     선택지 = ["일반공격"] + _만취_스킬후보(게임상태, 참가자)
-    고른것 = random.choice(선택지)
+    고른것 = rng.대상.choice(선택지)
     core.로그(
         전투상태, {"공격자": 참가자["이름"], "행동": f"만취 - {고른것}"}, 종류="행동"
     )
@@ -505,7 +505,7 @@ def _만취_턴(게임상태, 참가자):
             pass
     후보 = _만취_대상후보(게임상태, 참가자)
     if 후보 and 참가자["행동자원"].get("일반행동", 0) > 0:
-        아군_일반공격(게임상태, random.choice(후보))
+        아군_일반공격(게임상태, rng.대상.choice(후보))
 
 
 def 인형_턴(게임상태, 참가자):
@@ -534,7 +534,7 @@ def 인형_턴(게임상태, 참가자):
             참가자,
             패턴,
             {**스킬데이터, "MP소모": 0},
-            중심대상=random.choice(대상후보),
+            중심대상=rng.대상.choice(대상후보),
         )
 
 

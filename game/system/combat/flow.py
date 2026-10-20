@@ -1,7 +1,7 @@
 # 전투 시스템 - 전투 흐름 - 전투 시작, 턴 시작/종료, 턴 순서, 다음 턴, 종료 판정, 전투 이탈.
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
-import random
+from game.system import rng
 
 from game.system import dice_utils
 from game.system import equipment_system
@@ -271,7 +271,7 @@ def _마봉_턴시작(전투상태, 참가자):
     (일반행동증가)는 이 턴부터 붙는다. 이 턴 시작의 지속턴 감소를 바로 받으므로, 행동버프가 아닌 버프는
     1을 더해 걸어 이 턴을 포함해 지속턴만큼 남게 한다(행동버프는 행동자원을 채울 때 이미 쓰였다)."""
     for 아이템, 원소 in stats.마봉_발동목록(참가자, "턴시작"):
-        if "확률" in 원소 and random.random() >= 원소["확률"]:
+        if "확률" in 원소 and rng.확률.random() >= 원소["확률"]:
             continue
         이름 = 원소["버프"]
         정의 = 전투상태["버프정의"].get(이름) or {}

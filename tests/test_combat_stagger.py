@@ -4,10 +4,9 @@
 잡기불가는 "잡기" 경직만 걸리지 않는다. 아직 행동하지 않은 참가자만 순서가 다시 정렬되고,
 다음 라운드에는 다시 계산된다. 전투 기록에는 남기지 않는다."""
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 from game.system import monster_ai, skill_system as ss
 from game.system.combat import attacks, damage, flow, monster_actions
@@ -17,7 +16,7 @@ from tests import support
 @pytest.fixture
 def 전장():
     """귀검사·격투가(레벨 3, 스킬 전부)와 고블린 셋. 모두 HP를 넉넉히 둔다."""
-    random.seed(3)
+    rng.시드(3)
     상태 = support.새게임([("", "귀검사"), ("", "격투가")])
     for c in 상태["파티"]["파티원"]:
         support.성장(상태, c, 3, 스킬습득=True)
@@ -271,7 +270,7 @@ def test_시전자가_쓰러지거나_무력화되면_홀딩이_피해없이_끝
 
 
 def test_넥업사이드는_1단계는_바로_2단계는_차례_시작에_들어간다(monkeypatch):
-    random.seed(5)
+    rng.시드(5)
     상태 = support.새게임([("", "프리스트")])
     프 = 상태["파티"]["파티원"][0]
     support.성장(상태, 프, 3, 스킬습득=True)

@@ -7,16 +7,15 @@
 전투는 [자동전투]와 같은 호출(tests/scenario.py 실전)이고, 도망 판정 자체의 규칙은 test_gameflow_scenarios.py가 값으로 검사한다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
 
 로리엔 = "dungeon_01A_D01_Lorien"
-시드_패배 = 7  # 0 -> 5: 탱커 역할군 -1/-1(2026-10-07) 뒤 시드 0~4는 지지 않는다. 5 -> 7: 고블린/투척병 개인 드랍(2026-10-08)으로 난수 순서가 바뀌어 5, 6은 지지 않는다
+시드_패배 = 8  # 0 -> 5: 탱커 역할군 -1/-1(2026-10-07) 뒤 시드 0~4는 지지 않는다. 5 -> 7: 고블린/투척병 개인 드랍(2026-10-08)으로 난수 순서가 바뀌어 5, 6은 지지 않는다. 7 -> 8: 난수 흐름 분리(2026-10-20)로 7은 지지 않는다
 시드_도망 = 0
 최대시도 = 30
 
@@ -53,7 +52,7 @@ def _패배_처리(상태, 기록, 시도, 골드전, 진행도전):
 
 @pytest.mark.scenario("S5")
 def test_S5_패배_휴식_재도전(golden):
-    random.seed(시드_패배)
+    rng.시드(시드_패배)
     상태 = support.새게임([("", "귀검사"), ("", "격투가")])
     기록 = {"패배": [], "전투": []}
 
@@ -121,7 +120,7 @@ def _도망_성공까지(상태, 기록, 라벨):
 
 @pytest.mark.scenario("S5")
 def test_S5_도망(golden):
-    random.seed(시드_도망)
+    rng.시드(시드_도망)
     상태 = support.새게임()
     기록 = {"도망": [], "전투": []}
     gf.던전_진입(상태, 로리엔)

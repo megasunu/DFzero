@@ -1,10 +1,10 @@
 """상점/장비/세이브/레벨업 시스템 단위 테스트."""
 
 import json
-import random
 
 import pytest
 
+from game.system import rng
 import gameflow as gf
 from game.data.equipment.eq_02_armor_set import 방어구세트목록
 from game.data.monster.monster_drop import 드랍표_모음
@@ -1047,7 +1047,7 @@ def test_골드_굴림_고정값과_미정(값, 기대):
 
 
 def test_골드_굴림_범위(monkeypatch):
-    monkeypatch.setattr(전리품.random, "randint", lambda a, b: a * 100 + b)
+    monkeypatch.setattr(rng.보상, "randint", lambda a, b: a * 100 + b)
     assert 전리품.골드_굴림("1~10") == 110
 
 
@@ -1070,7 +1070,7 @@ def test_미정_드랍표와_확률은_아무것도_주지_않는다(카탈로�
 
 
 def test_가중형은_하나_독립형은_통과한_것_전부(카탈로그, monkeypatch):
-    monkeypatch.setattr(전리품.random, "random", lambda: 0.0)  # 모든 확률 통과
+    monkeypatch.setattr(rng.보상, "random", lambda: 0.0)  # 모든 확률 통과
     가중 = 전리품.드랍표_굴림(드랍표_모음["커먼방어구군"], 카탈로그["장비"])
     assert len(가중) == 1 and 가중[0] in [
         i["아이템이름"] for i in 드랍표_모음["커먼방어구군"]["아이템"]
@@ -1084,7 +1084,7 @@ def test_가중형은_하나_독립형은_통과한_것_전부(카탈로그, mon
         ],
     }
     assert 전리품.드랍표_굴림(독립, 카탈로그["장비"]) == ["조잡한 반지", "조잡한 팔찌"]
-    monkeypatch.setattr(전리품.random, "random", lambda: 0.99)
+    monkeypatch.setattr(rng.보상, "random", lambda: 0.99)
     assert 전리품.드랍표_굴림(독립, 카탈로그["장비"]) == []
 
 
@@ -1180,7 +1180,7 @@ def test_보상_뽑기는_가중치로_뽑고_뽑힌_항목은_다시_안_뽑는
         받은가중치.append(list(weights))
         return [len(weights) - 1]  # 매번 마지막 항목
 
-    monkeypatch.setattr(전리품.random, "choices", 가짜)
+    monkeypatch.setattr(rng.보상, "choices", 가짜)
     assert 전리품.보상_뽑기([("A", 1), ("B", 2), ("C", 3), ("D", 4)]) == ["D", "C", "B"]
     assert 받은가중치 == [[1, 2, 3, 4], [1, 2, 3], [1, 2]]
 
@@ -1242,7 +1242,7 @@ def test_드랍그룹_이름과_포션군은_차수_티어의_HP06_MP04(카탈�
         ("초보자용 HP 포션", 0.6),
         ("초보자용 MP 포션", 0.4),
     ]
-    random.seed(2)
+    rng.시드(2)
     나온것 = [
         전리품.드랍표_굴림(드랍표_모음["포션군"], 카탈로그["장비"], 차수=2)[0]
         for _ in range(500)
@@ -1355,7 +1355,7 @@ def test_드랍표_항목이_다른_드랍표를_가리키면_그_표를_굴린�
         "없는표": {"타입": "가중형", "아이템": [{"드랍표": "없음", "드랍비율": 1}]},
         "순환": {"타입": "가중형", "아이템": [{"드랍표": "순환", "드랍비율": 1}]},
     }
-    random.seed(1)
+    rng.시드(1)
     나온것 = [tuple(전리품.드랍표_굴림(모음["겉"], 장비, 1, 모음)) for _ in range(500)]
     assert set(나온것) == {("녹슨 소검",), ("조잡한 반지", "조잡한 팔찌")}
     assert 350 < 나온것.count(("녹슨 소검",)) < 450  # 0.8

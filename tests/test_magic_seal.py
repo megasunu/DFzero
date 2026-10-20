@@ -3,15 +3,13 @@
 규칙은 docs/game-rules.md "마법으로 봉인된 장비".
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 from game.data.equipment.eq_00_magic_seal import 마봉능력
 from game.system import (
     collection_system,
-    dice_utils,
     equipment_system,
     loot_system,
     magic_seal_system,
@@ -164,7 +162,7 @@ def test_전문직업_비용과_메뉴():
 
 @pytest.fixture
 def 마봉전장():
-    random.seed(3)
+    rng.시드(3)
     상태 = support.새게임([("", "귀검사"), ("", "마법사")])
     gf.전투_시작(상태, ["고블린", "고블린"], 레벨=2, 차수=1)
     support.반응_처리(상태)
@@ -202,7 +200,7 @@ def _타입(monkeypatch, 몬스터, 타입):
 
 
 def _주사위(monkeypatch, 값):
-    monkeypatch.setattr(dice_utils.random, "randint", lambda a, b: min(max(값, a), b))
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: min(max(값, a), b))
 
 
 def test_기력_참선은_전투_안팎의_최대HP를_올린다(마봉전장):
@@ -320,7 +318,7 @@ def test_강타는_최종_데미지를_10퍼센트_올린다(마봉전장, monke
 
 
 def _확률(monkeypatch, 값):
-    monkeypatch.setattr(random, "random", lambda: 값)
+    monkeypatch.setattr(rng.확률, "random", lambda: 값)
 
 
 def test_필살과_타입별_추가피해는_명중한_공격에_더해진다(마봉전장, monkeypatch):

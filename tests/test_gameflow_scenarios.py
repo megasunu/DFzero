@@ -5,10 +5,10 @@
 """
 
 import copy
-import random
 
 import pytest
 
+from game.system import rng
 import gameflow as gf
 from game.controller import ctl_autobattle, ctl_battle
 from game.system import drink_system, loot_system
@@ -57,7 +57,7 @@ def _보스(상태, 기록):
 def test_캠페인_전체_진행(golden):
     """엘븐가드에서 시작해 던전 10개의 보스를 순서대로 잡는다. 인카운트는
     시드 1로 고정, 전투 결과는 강제 승리(전투 규칙은 test_combat_*가 검사)."""
-    random.seed(1)
+    rng.시드(1)
     상태 = 새게임()
     진행도 = 상태["진행도"]
     기록 = []
@@ -195,7 +195,7 @@ def test_보스전_몬스터_구성은_사용자가_정한_대로다(번호, 기
 
 
 def test_인카운트_전투는_던전_이동에서_시작된다(golden):
-    random.seed(3)
+    rng.시드(3)
     상태 = 새게임()
     gf.던전_진입(상태, _던전(1))
     기록 = []
@@ -251,7 +251,7 @@ def _도망_전투(상태, 직업="귀검사"):
 def test_도망은_현재_턴_캐릭터가_굴린다(monkeypatch, d20, 성공):
     상태 = 새게임()
     전투상태, 현재 = _도망_전투(상태, "귀검사")  # 민첩 최고는 거너 - 대표가 아니다
-    monkeypatch.setattr(dice_utils.random, "randint", lambda a, b: d20)
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: d20)
     결과, 굴림, 난이도 = gf.아군_도망시도(상태)
     assert 결과 is 성공
     assert gf.전투_종료됨(상태) is 성공
@@ -266,15 +266,15 @@ def test_도망은_현재_턴_캐릭터가_굴린다(monkeypatch, d20, 성공):
 def test_도망에_실패하면_현재_캐릭터의_턴이_끝난다(monkeypatch):
     상태 = 새게임()
     전투상태, 현재 = _도망_전투(상태, "귀검사")
-    monkeypatch.setattr(dice_utils.random, "randint", lambda a, b: 1)
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: 1)
     # 비교용: 같은 상태에서 도망 판정만 하고 [턴 넘기기]를 직접 누른 결과
     복제 = copy.deepcopy(상태)
     복제전투 = 복제["전투상태"]
-    random.seed(7)  # 몬스터 대상 고르기 등 randint 밖의 무작위도 맞춘다
+    rng.시드(7)  # 몬스터 대상 고르기 등 randint 밖의 무작위도 맞춘다
     flow.전투이탈_시도(복제전투, 복제전투["참가자"][복제전투["현재턴"]])
     gf.턴_넘기기(복제)
 
-    random.seed(7)
+    rng.시드(7)
     assert gf.아군_도망시도(상태)[0] is False
     지금 = 전투상태["참가자"][전투상태["현재턴"]]
     assert 지금 is not 현재
@@ -412,11 +412,9 @@ def test_승리하면_전리품을_소지품에_넣고_팝업_문구로_보여�
     상태 = 새게임()
     _전투_열기(상태, ["고블린", "고블린", "겁쟁이 고블린"])
     골드전 = 상태["소지품"]["골드"]
-    monkeypatch.setattr(loot_system.random, "uniform", lambda a, b: 1.0)
-    monkeypatch.setattr(loot_system.random, "random", lambda: 0.0)  # 30% 통과
-    monkeypatch.setattr(
-        loot_system.random, "choices", lambda 후보, weights, k: [후보[0]]
-    )
+    monkeypatch.setattr(rng.보상, "uniform", lambda a, b: 1.0)
+    monkeypatch.setattr(rng.보상, "random", lambda: 0.0)  # 30% 통과
+    monkeypatch.setattr(rng.보상, "choices", lambda 후보, weights, k: [후보[0]])
     support.강제_승리(상태)
     assert gf.전투_결과_정리(상태) == "아군승리"
     # 골드 공식 (10+레벨1)x일반1 = 11씩 x3, 커먼무기방어구군 첫 항목(커먼무기군)의 첫 항목(녹슨 소검)이
@@ -429,8 +427,11 @@ def test_승리하면_전리품을_소지품에_넣고_팝업_문구로_보여�
             ("녹슨 소검", 3),
             ("고블린 가죽", 3),
             ("고블린의 손뼈", 3),
+            (
+                "고블린 수염",
+                1,
+            ),  # 순서는 전리품을 처리하는 몬스터 순서(이니셔티브)를 따른다
             ("고블린의 팬티", 2),
-            ("고블린 수염", 1),
         ],
     }
     assert 상태["소지품"]["골드"] == 골드전 + 33
@@ -443,8 +444,8 @@ def test_승리하면_전리품을_소지품에_넣고_팝업_문구로_보여�
         "녹슨 소검 x3",
         "고블린 가죽 x3",
         "고블린의 손뼈 x3",
-        "고블린의 팬티 x2",
         "고블린 수염",  # 1개면 개수를 안 붙인다
+        "고블린의 팬티 x2",
     ]
 
 
@@ -453,7 +454,7 @@ def test_카겔은_표창_봄_카겔은_폭탄을_30퍼센트로_떨군다(monke
     for 굴림, 떨굼 in ((0.29, True), (0.31, False)):
         상태 = 새게임()
         _전투_열기(상태, [몬스터])
-        monkeypatch.setattr(loot_system.random, "random", lambda: 굴림)
+        monkeypatch.setattr(rng.보상, "random", lambda: 굴림)
         support.강제_승리(상태)
         gf.전투_결과_정리(상태)
         얻음 = dict(상태["전투_전리품"]["아이템"])
@@ -466,7 +467,7 @@ def test_고블린_투척병은_돌맹이_10퍼센트_짱돌_5퍼센트를_따�
     _전투_열기(상태, ["고블린 투척병"])
     전 = 상태["소지품"]["소모품"].get("돌맹이", 0)
     # 0.07: 공용 커먼방어구군(0.3) 통과, 돌맹이(0.1) 통과, 짱돌(0.05) 실패
-    monkeypatch.setattr(loot_system.random, "random", lambda: 0.07)
+    monkeypatch.setattr(rng.보상, "random", lambda: 0.07)
     support.강제_승리(상태)
     gf.전투_결과_정리(상태)
     아이템 = dict(상태["전투_전리품"]["아이템"])
@@ -483,7 +484,7 @@ def test_전리품이_없으면_없음_골드0_드랍없음(monkeypatch):
     _전투_열기(상태, ["포레스트 좀비"])  # 몬스터 드랍표 "미정"
     for p in gf.적_목록(상태):
         p["원본"]["획득골드"] = "미정"  # 골드도 미정이면 0
-    monkeypatch.setattr(loot_system.random, "random", lambda: 0.99)  # 던전 공용도 실패
+    monkeypatch.setattr(rng.보상, "random", lambda: 0.99)  # 던전 공용도 실패
     골드전 = 상태["소지품"]["골드"]
     support.강제_승리(상태)
     gf.전투_결과_정리(상태)
@@ -499,7 +500,7 @@ def test_골드_공식은_레벨_등급_보스와_07에서_13배():
     assert 공식({"레벨": 3, "적등급": "엘리트"}) == 19.5
     assert 공식({"레벨": 5, "적등급": "네임드", "칭호": "보스"}) == 60
     assert 공식({"레벨": 2, "적등급": "미정"}) == 12  # 미정은 일반과 같다
-    random.seed(3)
+    rng.시드(3)
     값들 = [
         loot_system.몬스터_골드(
             {"획득골드": "공식", "레벨": 5, "적등급": "네임드", "칭호": "보스"}
@@ -645,7 +646,7 @@ def test_카탈로그에_없는_이름과_장비가_아닌_것은_보상_후보�
 
 
 def _황금_전투(몬스터들, 레벨=3):
-    random.seed(5)
+    rng.시드(5)
     상태 = 새게임()
     gf.던전_진입(상태, _던전(1))
     gf.전투_시작(상태, 몬스터들, 레벨=레벨, 차수=1)
@@ -841,12 +842,11 @@ def test_인카운트는_1퍼센트로_한_마리를_황금_고블린으로_바�
     던전상태 = 상태["던전상태"]
     던전상태["걸음수"] = 999  # 인카운트 확률 100%
     assert dungeon_system.인카운트_교체확률 == 0.01
-    값 = iter([0.0, 0.0])  # 인카운트 판정, 교체 판정(< 0.01)
-    monkeypatch.setattr(dungeon_system.random, "random", lambda: next(값))
+    # 던전 흐름의 모든 굴림(인카운트, 몬스터 고르기의 가중치 굴림 포함)을 한 값으로 - 교체 판정은 < 0.01
+    monkeypatch.setattr(rng.던전, "random", lambda: 0.0)
     적 = dungeon_system.인카운트_판정(던전상태)["등장몬스터"]
     assert 적.count("황금 고블린") == 1
-    값 = iter([0.0, 0.01])  # 교체 판정 실패
-    monkeypatch.setattr(dungeon_system.random, "random", lambda: next(값))
+    monkeypatch.setattr(rng.던전, "random", lambda: 0.01)  # 교체 판정 실패
     assert "황금 고블린" not in dungeon_system.인카운트_판정(던전상태)["등장몬스터"]
 
 
@@ -866,14 +866,14 @@ def test_자동전투는_일반행동을_다_쓰고_턴을_넘긴다(monkeypatch
     assert 행동수 >= 1
     전투상태 = 상태["전투상태"]
     고른대상 = []  # 적을 고른 호출마다 그 순간의 (진영, 생존) 목록
-    원래선택 = random.choice
+    원래선택 = rng.대상.choice
 
     def 기록선택(후보):
         if 후보 and 후보[0].get("진영") == "적":
             고른대상.append([(p["진영"], p["생존"]) for p in 후보])
         return 원래선택(후보)
 
-    monkeypatch.setattr(random, "choice", 기록선택)
+    monkeypatch.setattr(rng.대상, "choice", 기록선택)
     넘김 = []
     # 자동전투_한_턴이 부르는 턴_넘기기를 가로챈다 - 구현 모듈(ctl_autobattle)이 가져온 이름을 바꿔야 한다
     # (gf는 재수출 창구라 gf의 이름을 바꿔도 컨트롤러 안의 호출은 그대로다)
@@ -983,7 +983,7 @@ def test_자동전투는_승패가_나면_바로_멈춘다(monkeypatch):
     _아군_차례로(상태, "귀검사")
     (고블린,) = gf.적_목록(상태)
     고블린["현재HP"] = 1
-    monkeypatch.setattr(dice_utils.random, "randint", lambda a, b: b)  # 명중
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: b)  # 명중
     넘김 = []
     monkeypatch.setattr(ctl_autobattle, "턴_넘기기", lambda s: 넘김.append(1))
     gf.자동전투_한_턴(상태)
@@ -1002,7 +1002,7 @@ def test_자동전투는_아군_차례에만():
 
 
 def test_자동전투를_이어_누르면_전투가_끝난다():
-    random.seed(11)
+    rng.시드(11)
     상태 = 새게임()
     _전투_열기(상태, ["타우 아미", "고블린", "고블린"])
     for _ in range(200):
@@ -1016,7 +1016,7 @@ def test_자동전투를_이어_누르면_전투가_끝난다():
 
 
 def test_치트용_마법석은_무작위_인카운트만_막는다(임시_세이브폴더):
-    random.seed(3)
+    rng.시드(3)
     상태 = 새게임()
     for 마을 in gf.마을파일_레지스트리.values():  # 모든 상점에서 0골드에 판다
         목록 = [
@@ -1103,7 +1103,7 @@ def test_장비변경_후_HP는_새_최대치로_깎인다(monkeypatch):
 
 
 def test_진행한_게임_세이브_왕복():
-    random.seed(5)
+    rng.시드(5)
     상태 = 새게임()
     gf.던전_진입(상태, _던전(1))
     보스_처치(상태)
@@ -1785,7 +1785,7 @@ def test_상점_해체는_소울과_큐브조각을_준다():
     장비["치트용 소검"] = 1  # 소울이 없는 레어도 - 해체 목록에 안 나온다
     assert [(a["이름"], n) for a, n, _ in gf.상점_해체목록(상태, "무기")] == [(무기, 2)]
 
-    random.seed(0)
+    rng.시드(0)
     얻음 = gf.상점_해체(상태, "무기", 무기, 2)
     assert 얻음["커먼 소울"] == 2
     조각 = {k: v for k, v in 얻음.items() if k.endswith("큐브 조각")}
@@ -1800,7 +1800,7 @@ def test_상점_해체는_소울과_큐브조각을_준다():
     assert sum(v for k, v in 재료.items() if k.endswith("조각")) == 20 + 2 + 3
 
     # 색 확률: 많이 굴리면 무색이 대부분, 황금은 없다
-    random.seed(1)
+    rng.시드(1)
     장비["찢어진 천갑 하의"] = 500
     많이 = gf.상점_해체(상태, "하의", "찢어진 천갑 하의", 500)
     assert 0.75 < 많이["무색 큐브 조각"] / 1000 < 0.85
@@ -1902,7 +1902,7 @@ def test_항아리는_모든_마을_상점_소모품_항아리_탭에서_판다(
 
 
 def test_항아리를_열면_그_등급_장비가_소지품에_들어오고_항아리가_줄어든다():
-    random.seed(1)
+    rng.시드(1)
     상태 = 새게임([("", "귀검사")])
     상태["소지품"]["소모품"] = {"만진의 항아리": 2}
     장비 = gf.항아리_열기(상태, "만진의 항아리")
@@ -1914,7 +1914,7 @@ def test_항아리를_열면_그_등급_장비가_소지품에_들어오고_항�
 
 
 def test_포린의_항아리는_레어_장비를_준다():
-    random.seed(1)
+    rng.시드(1)
     상태 = 새게임([("", "귀검사")])
     상태["소지품"]["소모품"] = {"포린의 항아리": 1}
     장비 = gf.항아리_열기(상태, "포린의 항아리")
@@ -2024,7 +2024,7 @@ def test_소지품_상세는_회복량과_항아리_등급을_쓴다():
 
 
 def test_전투_중_포션은_보조행동으로_자신에게만():
-    random.seed(3)
+    rng.시드(3)
     상태 = 새게임([("", "귀검사")])
     gf.전투_시작(상태, ["고블린"], 레벨=1, 차수=1)
     support.반응_처리(상태)
@@ -2066,7 +2066,7 @@ def _아군_차례_전투(직업):
 
 
 def test_전투_중_버프포션은_보조행동으로_자신에게_버프를_건다():
-    random.seed(3)
+    rng.시드(3)
     상태, 참가자 = _아군_차례_전투("귀검사")
     전투상태 = 상태["전투상태"]
     상태["소지품"]["포션"] = {"오거파워 플라스크": 2, "초보자용 HP 포션": 1}
@@ -2110,7 +2110,7 @@ def test_전투_중_버프포션은_보조행동으로_자신에게_버프를_�
 
 
 def test_가속_포션은_마신_턴에_바로_일반행동이_는다():
-    random.seed(3)
+    rng.시드(3)
     상태, 참가자 = _아군_차례_전투("귀검사")
     상태["소지품"]["포션"] = {"가속 포션": 1}
     일반 = 참가자["행동자원"]["일반행동"]
@@ -2133,7 +2133,7 @@ def _소환수_공격_로그(전투상태, 시작):
 
 
 def test_고블린_더스트는_보조행동으로_고블린을_소환하고_쓸수록_는다():
-    random.seed(3)
+    rng.시드(4)
     상태, 참가자 = _아군_차례_전투("귀검사")
     전투상태 = 상태["전투상태"]
     상태["소지품"]["소모품"]["고블린 더스트"] = 2
@@ -2188,7 +2188,7 @@ def _던지기_전투(monkeypatch, 눈, 내성성공):
     support.반응_처리(상태)
     while not gf.아군_차례인가(상태):
         gf.턴_넘기기(상태)
-    monkeypatch.setattr(dice_utils.random, "randint", lambda a, b: min(max(눈, a), b))
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: min(max(눈, a), b))
     monkeypatch.setattr(
         dice_utils, "내성_굴림", lambda 보정치, 난이도, **kw: (내성성공, 난이도)
     )
@@ -2299,7 +2299,7 @@ def test_고블린_소환수는_사용자의_매력으로_공격한다():
 
 
 def test_효도르처럼_중첩_없는_소환수는_한_번만_행동한다():
-    random.seed(3)
+    rng.시드(3)
     상태, 참가자 = _아군_차례_전투("마법사")
     전투상태 = 상태["전투상태"]
     ss.이름있는효과_부여(전투상태, 참가자, "효도르소환")
@@ -2644,10 +2644,10 @@ def test_무기의_극의_둔기는_명중시_20퍼센트_기절(monkeypatch):
     전투상태, p = _무기의_극의_전투("둔기")
     적 = next(x for x in 전투상태["참가자"] if x["진영"] != "아군")
     monkeypatch.setattr(dice_utils, "내성_굴림", lambda *a, **k: (False, 1))
-    monkeypatch.setattr(random, "random", lambda: 0.5)  # 20% 밖
+    monkeypatch.setattr(rng.확률, "random", lambda: 0.5)  # 20% 밖
     traits.특성_공격명중시_발동(전투상태, p, 적)
     assert not 적.get("상태이상")
-    monkeypatch.setattr(random, "random", lambda: 0.1)
+    monkeypatch.setattr(rng.확률, "random", lambda: 0.1)
     traits.특성_공격명중시_발동(전투상태, p, 적)
     assert [s["이름"] for s in 적["상태이상"]] == ["기절"]
 
@@ -3058,7 +3058,7 @@ def _주류_준비(상태, 이름, 개수):
 
 
 def test_주류는_마실때마다_취기를_쌓고_네번째에_만취가_된다():
-    random.seed(4)
+    rng.시드(4)
     상태 = 새게임()
     귀검사 = 상태["파티"]["파티원"][0]
     _주류_준비(상태, "맥주", 6)
@@ -3112,9 +3112,9 @@ def test_취기는_명중과_매력을_깎고_매력시전자는_회복한_뒤�
     매력전 = gf.캐릭터_유효능력치(상태, 프리스트)["매력"]
     for 중첩, 보정치 in ((1, 2), (2, 1)):  # 이번 회복은 마시기 전 매력으로
         프리스트["현재MP"] = 0
-        random.seed(중첩)
+        rng.시드(중첩)
         기대 = drink_system.회복량_굴림(와인, "MP", 보정치, 1)
-        random.seed(중첩)
+        rng.시드(중첩)
         회복, _ = gf.캐릭터_주류사용(상태, 프리스트, "와인")
         assert 회복 == {"MP": 기대}
         assert gf.캐릭터_유효능력치(상태, 프리스트)["매력"] == 매력전 - 중첩
@@ -3126,7 +3126,7 @@ def test_취기는_명중과_매력을_깎고_매력시전자는_회복한_뒤�
 
 
 def test_취기는_전투를_넘어_남고_전투_중_마시기는_보조행동_마을_휴식으로_풀린다():
-    random.seed(2)
+    rng.시드(2)
     상태 = 새게임()
     귀검사 = 상태["파티"]["파티원"][0]
     _주류_준비(상태, "럼주", 3)
@@ -3164,8 +3164,8 @@ def test_만취_아군은_조종할_수_없고_수면이나_무작위_행동을_
     전투상태 = 상태["전투상태"]
 
     # 1/4 - 2~5턴 수면(이번 턴 포함), 잠든 동안은 판정하지 않는다
-    monkeypatch.setattr(ctl_battle.random, "random", lambda: 0.0)
-    monkeypatch.setattr(ctl_battle.random, "randint", lambda a, b: (a, b) and 3)
+    monkeypatch.setattr(rng.확률, "random", lambda: 0.0)
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: (a, b) and 3)
     ctl_battle._만취_턴(상태, 현재)
     assert {"이름": "수면", "지속턴": 3} in 현재["상태이상"]
     assert 현재["행동자원"]["일반행동"] == 0
@@ -3177,11 +3177,11 @@ def test_만취_아군은_조종할_수_없고_수면이나_무작위_행동을_
     # 3/4 - 일반공격 또는 쓸 수 있는 스킬, 대상은 적/아군 중 무작위(자신 제외)
     현재["상태이상"] = [{"이름": "만취"}]
     flow.턴_시작_처리(전투상태, 현재)
-    monkeypatch.setattr(ctl_battle.random, "random", lambda: 0.9)
+    monkeypatch.setattr(rng.확률, "random", lambda: 0.9)
     아군 = next(p for p in gf.아군_목록(상태) if p is not 현재)
     고른 = []
     monkeypatch.setattr(
-        ctl_battle.random, "choice", lambda 목록: 고른.append(list(목록)) or 목록[0]
+        rng.대상, "choice", lambda 목록: 고른.append(list(목록)) or 목록[0]
     )
     monkeypatch.setattr(ctl_battle, "_만취_대상후보", lambda 상태, p: [아군])
     ctl_battle._만취_턴(상태, 현재)
@@ -3215,7 +3215,7 @@ def _취권_비교(잔수):
     """맥주를 잔수만큼 마신 귀검사 둘(취권 없음/있음)의 상태."""
     결과 = []
     for 취권 in (False, True):
-        random.seed(0)
+        rng.시드(0)
         상태 = 새게임([("", "귀검사")])
         c = 상태["파티"]["파티원"][0]
         if 취권:
@@ -3289,7 +3289,7 @@ def test_취권이면_만취여도_조종하고_잠들지_않으며_데미지보
 
 
 def test_만취_아군의_차례는_턴_넘기기가_대신_진행한다():
-    random.seed(7)
+    rng.시드(7)
     상태 = 새게임()
     for 캐릭터 in 상태["파티"]["파티원"][1:]:
         캐릭터["상태이상"] = [{"이름": "만취"}]
@@ -3326,7 +3326,7 @@ def _만취_스킬_써보기(파티구성):
 
 
 def test_만취_무작위_스킬은_직업마다_쓸_수_있는_스킬을_무작위_대상에게_쓴다():
-    random.seed(11)
+    rng.시드(11)
     assert _만취_스킬_써보기(support.기본_파티) >= 4
     assert _만취_스킬_써보기([("", "마법사")]) >= 1
 
@@ -3478,7 +3478,7 @@ def test_측정_파티_준비는_골드_스킬_없이_레벨별_언커먼_무기
 def test_측정_실전은_전투당_초보자용_포션을_한_번만_마신다():
     import scenario
 
-    random.seed(1)
+    rng.시드(1)
     상태 = 새게임()
     scenario.측정_파티_준비(상태, 1)
     for c in 상태["파티"]["파티원"]:
@@ -3502,7 +3502,7 @@ def _아군_차례까지(상태):
 def _고블린전(시드=1):
     import scenario
 
-    random.seed(시드)
+    rng.시드(시드)
     상태 = 새게임()
     scenario.측정_파티_준비(상태, 1)
     gf.전투_시작(상태, ["고블린", "고블린", "고블린"], 레벨=1, 차수=1)
@@ -3589,7 +3589,7 @@ def test_학습정책은_탐험률_1이면_퍽을_무작위로_고른다():
 
     본퍽 = set()
     for 시드 in range(8):
-        random.seed(시드)
+        rng.시드(시드)
         상태 = 새게임()
         scenario.측정_파티_준비(상태, 4, 정책=scenario.학습정책(탐험률=1.0))
         본퍽.add(gf.캐릭터_보유퍽(상태["파티"]["파티원"][0])[0])
@@ -3599,7 +3599,7 @@ def test_학습정책은_탐험률_1이면_퍽을_무작위로_고른다():
 def test_학습정책은_전투가_끝날_때마다_고른_퍽에_승패를_센다():
     import scenario
 
-    random.seed(1)
+    rng.시드(1)
     정책 = scenario.학습정책(탐험률=1.0)
     상태 = 새게임()
     scenario.측정_파티_준비(상태, 4, 정책=정책)

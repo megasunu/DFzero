@@ -8,17 +8,16 @@
 "흡혈귀 퍽" 절이 값으로 검사한다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
 from game.system.combat import stats
 
 로리엔 = "dungeon_01A_D01_Lorien"
-시드 = 0
+시드 = 6  # 난수 흐름 분리(2026-10-20) 뒤 시드 0은 이 시나리오의 효과가 안 나온다
 소검 = "마법으로 봉인된 소검"
 고를퍽 = {"귀검사": "얀데레", "격투가": "흡혈귀"}
 
@@ -51,7 +50,7 @@ def _맹타_소검(상태, 귀검사):
 
 @pytest.mark.scenario("S14")
 def test_S14_얀데레_흡혈귀_실전(golden):
-    random.seed(시드)
+    rng.시드(시드)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     for 캐릭터 in 파티:

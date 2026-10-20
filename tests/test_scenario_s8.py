@@ -8,10 +8,9 @@
 test_gameflow_scenarios.py가 값으로 검사한다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -60,7 +59,7 @@ def _전투(상태, 술=None):
 
 @pytest.mark.scenario("S8")
 def test_S8_주류_취기_만취_실전(golden):
-    random.seed(시드)
+    rng.시드(시드)
     상태 = support.새게임()
     귀검사, _, _, 프리스트 = 상태["파티"]["파티원"]
     상태["소지품"]["소모품"].update({"맥주": 4, "와인": 1, "럼주": 1})

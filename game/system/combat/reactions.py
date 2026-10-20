@@ -2,7 +2,7 @@
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
 import math
-import random
+from game.system import rng
 import re
 
 from game.system.combat import (
@@ -395,7 +395,7 @@ def 가드_반응(전투상태, 공격자, 대상, 판정):
         for 이름, 정의 in _자동발동_특성목록(전투상태, 대상):
             반격 = _가드_반격정의(정의.get("대상"))
             확률 = 정의["효과"].get("발동확률", 0) or 0
-            if 반격 and random.random() < 확률:
+            if 반격 and rng.확률.random() < 확률:
                 발동이름 = f"{이름}({정의.get('대상')})"
                 break
     if 발동이름 is None:
@@ -567,7 +567,7 @@ def 전투시작_반응(전투상태, 지연=False):
         이름, 정의 = 선택[0], 선택[1]
         _반응_소모(전투상태, 아군, 이름, 정의)
         _반응공격_실행(
-            전투상태, 아군, random.choice(적후보), 정의.get("효과") or {}, 이름
+            전투상태, 아군, rng.대상.choice(적후보), 정의.get("효과") or {}, 이름
         )
         이미시작 = 지연 and 전투상태["참가자"][전투상태["현재턴"]] is 아군
         if 정의.get("디버프획득") and not 이미시작:

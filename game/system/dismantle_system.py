@@ -8,7 +8,7 @@
 # 장착 중인 장비(파티원 + 모험단 숙소)는 해체할 수 없다(shop_system.판매목록과 같은
 # 기준). 레어도에 맞는 소울이 없는 장비(예: "치트")도 해체할 수 없다.
 
-import random
+from game.system import rng
 
 from game.system import player_system
 from game.system import shop_system
@@ -80,7 +80,7 @@ def 해체_처리(플레이어, 카탈로그, 탭, 이름, 수량):
 
     색들 = [색 for 색, _ in 조각_색확률]
     확률들 = [확률 for _, 확률 in 조각_색확률]
-    뽑힌색 = random.choices(색들, weights=확률들, k=조각_개수(탭) * 수량)
+    뽑힌색 = rng.보상.choices(색들, weights=확률들, k=조각_개수(탭) * 수량)
     결과 = {소울_이름(아이템): 수량}
     for 색 in 색들:
         if 뽑힌색.count(색):

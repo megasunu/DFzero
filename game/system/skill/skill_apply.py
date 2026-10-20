@@ -2,7 +2,7 @@
 
 패키지 설명과 구현 범위는 game/system/skill_system.py 머리 주석을 본다(밖에서는 skill_system을 통해 쓴다)."""
 
-import random
+from game.system import rng
 from dataclasses import dataclass
 
 from game.system import dice_utils
@@ -175,7 +175,7 @@ def _효과_해제(문맥, 항목, 로그):
             for i in 대상[목록이름]
             if not 자원류_효과인가(resources.효과정의_조회(i["이름"])[0])
         ]
-        random.shuffle(후보)
+        rng.대상.shuffle(후보)
         for i in 후보[:해제개수]:
             대상[목록이름].remove(i)
     로그.append(f"{대상['이름']}의 {종류} 처리")

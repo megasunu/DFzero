@@ -12,6 +12,7 @@ import re
 
 import pytest
 
+from game.system import rng
 from game.system import dice_utils
 from game.system.combat import formula
 from tests.test_data_integrity import _수식_모으기, 호출쪽_치환, 수식_컨텍스트
@@ -137,7 +138,7 @@ def 수식_평가_이전(수식, 컨텍스트, 치명타=False):
 
 
 def _결과(함수, *인자, 시드):
-    random.seed(시드)
+    rng.시드(시드)
     try:
         값 = 함수(*인자)
     except Exception:  # noqa: BLE001 - 어떤 종류든 "실패"로만 비교한다
@@ -300,12 +301,12 @@ def test_다이스_개수식에도_같은_제한이_걸린다():
         formula.수식_평가("(a)d6", {})
     with pytest.raises(ValueError):
         formula.수식_평가("2d(b)", {})
-    random.seed(1)
+    rng.시드(1)
     assert 2 <= formula.수식_평가("(1+1)d(3)", {}) <= 6
 
 
 def test_평가_결과는_캐시되어도_주사위는_매번_새로_굴린다():
     """캐시는 주사위를 숫자로 바꾼 뒤의 순수 계산식에만 걸린다 - 같은 수식도 굴릴 때마다 달라야 한다."""
-    random.seed(3)
+    rng.시드(3)
     값들 = {formula.수식_평가("1d20", {}) for _ in range(60)}
     assert len(값들) > 5
