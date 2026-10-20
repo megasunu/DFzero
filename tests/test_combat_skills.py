@@ -8,10 +8,9 @@
 결과(반환값, 로그, 전후 참가자 상태)는 직업별 골든 파일에 고정한다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 from game.data.buff.debuff import 디버프목록
 from game.system.combat import flow, stats
@@ -81,7 +80,7 @@ def 참가자_요약(p):
 
 def 전장_준비(직업, 시드):
     """직업을 선두로 한 레벨 10(전직) 파티와 적 4체의 전투를 연다."""
-    random.seed(시드)
+    rng.시드(시드)
     나머지 = [j for j in 전직 if j != 직업][:3]
     상태 = support.새게임([("", 직업)] + [("", j) for j in 나머지])
     for c in 상태["파티"]["파티원"]:

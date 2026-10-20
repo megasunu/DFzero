@@ -1,11 +1,10 @@
 """버서커(013m) 전직 특성/스킬/퍽 규칙 (#247, 2026-10-20 사용자 결정)."""
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
-from game.system import dice_utils, skill_system as ss
+from game.system import skill_system as ss
 from game.system.combat import attacks, damage, flow, status, stats, traits
 from tests import support
 
@@ -13,7 +12,7 @@ from tests import support
 @pytest.fixture
 def 버서커전장():
     """귀검사 -> 버서커 레벨 8(스킬 전부 습득)과 격투가, 고블린 셋."""
-    random.seed(7)
+    rng.시드(7)
     상태 = support.새게임([("", "귀검사"), ("", "격투가")])
     c = 상태["파티"]["파티원"][0]
     support.성장(상태, c, 8, 전직="버서커", 스킬습득=True)
@@ -31,7 +30,7 @@ def 버서커전장():
 
 
 def _주사위고정(monkeypatch, 값):
-    monkeypatch.setattr(dice_utils.random, "randint", lambda a, b: min(max(값, a), b))
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: min(max(값, a), b))
 
 
 def _스킬(이름):
@@ -207,7 +206,7 @@ def _광기_고르기(캐릭터, 후보):
 @pytest.fixture
 def 광기전장():
     """레벨 9에 퍽 '광기'를 고른 버서커와 격투가, 고블린 셋."""
-    random.seed(7)
+    rng.시드(7)
     상태 = support.새게임([("", "귀검사"), ("", "격투가")])
     c = 상태["파티"]["파티원"][0]
     support.성장(상태, c, 8, 전직="버서커", 스킬습득=True)
@@ -231,7 +230,7 @@ def _프렌지_켜기(전투상태, bs):
 
 
 def test_광기는_버서커만_고르는_2차수_퍽이고_프렌지와_사무치는_광기를_준다():
-    random.seed(7)
+    rng.시드(7)
     상태 = support.새게임([("", "귀검사"), ("", "귀검사")])
     bs, sb = 상태["파티"]["파티원"]
     support.성장(상태, bs, 8, 전직="버서커")
@@ -256,7 +255,7 @@ def test_프렌지는_행동없이_켜고_끄고_전투가_끝나도_그대로�
 
 
 def test_프렌지는_던전_스킬창에서도_켜고_끈다():
-    random.seed(7)
+    rng.시드(7)
     상태 = support.새게임([("", "귀검사")])
     c = 상태["파티"]["파티원"][0]
     support.성장(상태, c, 8, 전직="버서커")

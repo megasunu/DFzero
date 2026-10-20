@@ -1,7 +1,7 @@
 # 컨트롤러 - 자동전투 - [자동전투] 한 턴(일반공격 방식 / 전력전투 방식), 전력전투 스킬 고르기
 # (ctl_battle.py에서 분리 - 품질 계획 P5. ctl_autobattle -> ctl_battle 한 방향. 설정 값(자동전투_방식)은 ctl_battle에 있다)
 
-import random
+from game.system import rng
 from game.system.combat import formula, stats
 from game.controller.ctl_party import 캐릭터_최대HP
 from game.controller.ctl_battle import (
@@ -69,7 +69,7 @@ def 자동전투_한_턴(게임상태):
         if not 후보:
             break
         # 일반공격 방식은 무작위, 전력전투는 남은 일반행동도 가장 약한 적에게
-        대상 = 후보[0] if 자동전투_방식() == "전력전투" else random.choice(후보)
+        대상 = 후보[0] if 자동전투_방식() == "전력전투" else rng.대상.choice(후보)
         스킬 = _자동전투_스킬(게임상태, 현재)
         if 스킬:
             아군_스킬사용(게임상태, 스킬, 중심대상=대상)

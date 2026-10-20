@@ -1,7 +1,7 @@
 # 전투 시스템 - 몬스터 특성/캐릭터 특성/칭호 수치와 발동(공격명중시/턴종료시/해제시/전투시작시).
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
-import random
+from game.system import rng
 
 from game.system import dice_utils
 from game.system import equipment_system
@@ -577,7 +577,7 @@ def _대체행동_대상(참가자, 상대들, 대체):
         if p["생존"] and any(s["이름"] == 상태이름 for s in p.get("상태이상", []))
     ]
     if 후보:
-        return 대체["패턴"], random.choice(후보)
+        return 대체["패턴"], rng.대상.choice(후보)
     return None
 
 
@@ -700,7 +700,7 @@ def 특성_공격명중시_발동(전투상태, 공격자, 대상):
             )
     # 캐릭터 특성의 "명중시상태이상"(무기의 극의 - 둔기 기절 20%)
     for 원소 in 캐릭터특성_무기효과(전투상태, 공격자, "명중시상태이상"):
-        if random.random() < 원소.get("발동확률", 1):
+        if rng.확률.random() < 원소.get("발동확률", 1):
             상태이상_효과_적용(전투상태, 공격자, 대상, 원소.get("효과"), "특성")
 
 
@@ -778,7 +778,7 @@ def 특성_피격시_발동(전투상태, 공격자, 피격자):
         return
     for 이름, 정의 in _특성_목록(전투상태, 피격자):
         for 항목 in 정의.get("피격시효과") or []:
-            if random.random() >= 항목.get("확률", 1):
+            if rng.확률.random() >= 항목.get("확률", 1):
                 continue
             if 항목.get("타겟") == "공격자":
                 대상들 = [공격자] if 공격자.get("생존") else []

@@ -6,10 +6,9 @@
 디버프 줄이 로그에 나올 때까지(최대 6번) 진행한다. 수치 규칙은 tests/test_perks_common.py가 값으로 본다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -32,7 +31,7 @@ def _퍽고르기(캐릭터, 후보):
 
 @pytest.mark.scenario("S16")
 def test_S16_전투_특성_퍽_실전(golden):
-    random.seed(시드)
+    rng.시드(시드)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     귀검사 = next(c for c in 파티 if c["직업"] == "귀검사")

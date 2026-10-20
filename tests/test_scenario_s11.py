@@ -6,10 +6,9 @@
 기록이 남고 [보상 전부 받기]가 업적마다 10골드(세리아 구출은 봉인 레어 무기)를 주는지를 본다. 단위 규칙은 test_collection_achievement.py.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -40,7 +39,7 @@ def _실전_기록(상태, 처치, 들어온):
 
 @pytest.mark.scenario("S11")
 def test_S11_도감_업적_실전(임시_세이브폴더):
-    random.seed(시드)
+    rng.시드(시드)
     상태 = support.새게임()
     진행도 = 상태["진행도"]
     assert gf.업적_받을_보상_수(상태) == 1  # 1레벨 달성은 처음부터

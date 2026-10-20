@@ -10,10 +10,9 @@
 결과는 골든.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 from game.data.buff.debuff import 디버프목록
 from game.data.buff.buff import 버프목록
@@ -66,7 +65,7 @@ from tests.test_combat_skills import 정리, 참가자_요약
 
 
 def _전투(시드, 적=("타우 아미", "고블린"), 파티구성=파티):
-    random.seed(시드)
+    rng.시드(시드)
     상태 = support.새게임(파티구성)
     for c in 상태["파티"]["파티원"]:
         support.성장(상태, c, 10, 전직=전직[c["직업"]], 스킬습득=True)
@@ -213,7 +212,7 @@ def test_버프_디버프_전수(종류, golden):
 def 반응_전투(시드, 자동):
     try:
         gf.반응_자동_설정(자동)
-        random.seed(시드)
+        rng.시드(시드)
         구성 = (
             [("", "귀검사"), ("", "격투가"), ("", "거너"), ("", "마법사")]
             if 시드 % 2

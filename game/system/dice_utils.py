@@ -8,13 +8,13 @@
 # 알아야 하는 작업이라 combat 패키지 쪽에서 처리한다. 여기서는
 # 순수하게 난수만 다룬다.
 
-import random
+from game.system import rng
 
 
 def 주사위_굴림(개수, 면수):
     """개수만큼 면수짜리 주사위를 굴려 각 눈금을 리스트로 반환한다.
     예: 주사위_굴림(2, 8) -> [주사위 눈금, 주사위 눈금] (각 눈금은 1~8)"""
-    return [random.randint(1, 면수) for _ in range(개수)]
+    return [rng.주사위.randint(1, 면수) for _ in range(개수)]
 
 
 def 주사위_합(개수, 면수):
@@ -31,9 +31,9 @@ def d20_굴림(이점=False, 불리=False):
         이점 = 불리 = False
 
     if not 이점 and not 불리:
-        return random.randint(1, 20)
+        return rng.주사위.randint(1, 20)
 
-    굴림값들 = [random.randint(1, 20), random.randint(1, 20)]
+    굴림값들 = [rng.주사위.randint(1, 20), rng.주사위.randint(1, 20)]
     return max(굴림값들) if 이점 else min(굴림값들)
 
 

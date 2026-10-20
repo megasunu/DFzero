@@ -7,10 +7,9 @@
 성장 단계별 수치와 전투 요약만 골든으로 비교한다. 전투는 S2의 스킬 우선 정책이다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -47,7 +46,7 @@ class _패배(Exception):
 
 class _시나리오:
     def __init__(self, 직업, 시드):
-        random.seed(시드)
+        rng.시드(시드)
         파티 = [직업] + [j for j in 직업들 if j != 직업][:3]
         self.상태 = support.새게임([("", j) for j in 파티])
         self.기록 = {"전투": [], "성장": [], "진행도": [], "패배": [], "시도": {}}

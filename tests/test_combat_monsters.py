@@ -7,10 +7,10 @@
 """
 
 import json
-import random
 
 import pytest
 
+from game.system import rng
 import gameflow as gf
 from game.system.combat import flow, monster_actions, stats, traits
 from game.system import monster_ai
@@ -49,7 +49,7 @@ def _고유_패턴(몬스터):
 
 
 def _전투(이름, 시드, 칭호=None):
-    random.seed(시드)
+    rng.시드(시드)
     상태 = support.새게임(파티)
     for c in 상태["파티"]["파티원"]:
         support.성장(상태, c, 10, 전직=전직[c["직업"]], 스킬습득=True)

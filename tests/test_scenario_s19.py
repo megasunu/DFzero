@@ -8,10 +8,9 @@
 케이가 지속(5 + 사슬 해제 5 = 10턴)을 본다. 수치 규칙은 tests/test_job_soul_bender.py가 값으로 검사한다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -88,7 +87,7 @@ def _전투(상태, 기록, 번호):
 
 @pytest.mark.scenario("S19")
 def test_S19_소울브링어_실전(golden):
-    random.seed(시드)
+    rng.시드(시드)
     상태 = support.새게임(파티구성)
     파티 = 상태["파티"]["파티원"]
     for c in 파티:

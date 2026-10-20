@@ -10,7 +10,7 @@
 # (사용자 결정 2026-09-30) - 발동확률/드랍비율/드랍확률/아이템이름 어느
 # 하나라도 "미정"이면 그 항목은 건너뛴다.
 
-import random
+from game.system import rng
 from fractions import Fraction
 
 from game.system.combat import formula
@@ -79,7 +79,7 @@ def 골드_굴림(획득골드, 몬스터원본=None):
         return max(0, 숫자들[0])
     if len(숫자들) != 2 or 숫자들[0] > 숫자들[1]:
         return 0
-    return max(0, random.randint(숫자들[0], 숫자들[1]))
+    return max(0, rng.보상.randint(숫자들[0], 숫자들[1]))
 
 
 # 골드 공식 - (10 + 레벨) × 등급배수 × 보스배수 × 랜덤(0.7~1.3) (monster_format.py 참고)
@@ -109,11 +109,11 @@ def 몬스터_골드(몬스터원본):
         기본 = 골드_굴림(획득골드, 몬스터원본)
     if 기본 <= 0:
         return 0
-    return formula.올림(기본 * random.uniform(*골드_랜덤범위))
+    return formula.올림(기본 * rng.보상.uniform(*골드_랜덤범위))
 
 
 def _통과(확률):
-    return 확률 is not None and random.random() < 확률
+    return 확률 is not None and rng.보상.random() < 확률
 
 
 def _조건_후보(조건, 장비카탈로그):
@@ -140,7 +140,7 @@ def 레어도_장비_뽑기(장비카탈로그, 레어도):
     후보 = list(
         dict.fromkeys(_조건_후보({"카테고리": "장비", "레어도": 레어도}, 장비카탈로그))
     )
-    return random.choice(후보) if 후보 else None
+    return rng.보상.choice(후보) if 후보 else None
 
 
 def _항목_아이템(항목, 장비카탈로그):
@@ -151,7 +151,7 @@ def _항목_아이템(항목, 장비카탈로그):
     조건 = 항목.get("아이템조건")
     if isinstance(조건, dict):
         후보 = _조건_후보(조건, 장비카탈로그)
-        return random.choice(후보) if 후보 else None
+        return rng.보상.choice(후보) if 후보 else None
     return None
 
 
@@ -190,7 +190,7 @@ def 드랍표_굴림(드랍표, 장비카탈로그, 차수=1, 드랍표_모음=N
         후보 = [(항목, w) for 항목, w in 후보 if w is not None and w > 0]
         if not 후보:
             return []
-        항목 = random.choices(
+        항목 = rng.보상.choices(
             [h for h, _ in 후보], weights=[float(w) for _, w in 후보], k=1
         )[0]
         return _항목_아이템들(항목, 장비카탈로그, 차수, 드랍표_모음, 깊이)
@@ -295,6 +295,6 @@ def 보상_뽑기(후보, 칸수=보상_칸수):
         if not 남은:
             결과.append(None)
             continue
-        번호 = random.choices(range(len(남은)), weights=[w for _, w in 남은], k=1)[0]
+        번호 = rng.보상.choices(range(len(남은)), weights=[w for _, w in 남은], k=1)[0]
         결과.append(남은.pop(번호)[0])
     return 결과

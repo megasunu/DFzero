@@ -9,6 +9,7 @@
 import json
 import os
 
+from game.system import rng
 import gameflow as gf
 from game.system.combat import core
 from tests import support
@@ -39,11 +40,10 @@ def test_문장_처리표는_엔진의_로그_종류를_빠짐없이_안다():
 
 def test_거대화로_쉬는_차례는_은는을_맞춰_쉬고있다로_보인다():
     """사용자 지정 2026-10-14 - 받침에 맞춰 "은/는"을 붙인다."""
-    import random
 
     from game.system.combat import flow, monster_actions
 
-    random.seed(3)
+    rng.시드(3)
     상태 = support.새게임([("", "귀검사")])
     gf.전투_시작(상태, ["타우 비스트"], 레벨=2, 차수=1)
     support.반응_처리(상태)

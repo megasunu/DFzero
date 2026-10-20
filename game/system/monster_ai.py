@@ -6,7 +6,7 @@
 # combat 패키지가 이 파일의 결정 함수를 불러 쓰는 방향으로만 의존한다
 # (이 파일은 combat 패키지를 불러오지 않는다 - 순환 참조 방지).
 
-import random
+from game.system import rng
 
 from game.system import dice_utils
 
@@ -85,7 +85,7 @@ def 타겟_선택(생존아군참가자목록, 상태이상정의=None, 우선�
             )
         ]
         if 표적고정후보:
-            return random.choice(표적고정후보)
+            return rng.대상.choice(표적고정후보)
 
     # 몬스터 특성의 "우선표적상태이상"(종족:좀비 - 출혈): 그 상태이상인 아군이 있으면 그중에서
     # 어그로 비중으로 고른다(사용자 지정 2026-10-16)
@@ -103,5 +103,5 @@ def 타겟_선택(생존아군참가자목록, 상태이상정의=None, 우선�
         for p in 생존아군참가자목록
     ]
     if sum(가중치들) == 0:
-        return random.choice(생존아군참가자목록)
-    return random.choices(생존아군참가자목록, weights=가중치들, k=1)[0]
+        return rng.대상.choice(생존아군참가자목록)
+    return rng.대상.choices(생존아군참가자목록, weights=가중치들, k=1)[0]

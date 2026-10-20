@@ -8,10 +8,9 @@ MP 대신 HP를 쓰는지(MP 그대로), 프렌지의 턴 시작 HP 감소·출�
 수치 규칙은 tests/test_job_berserker.py가 값으로 검사한다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -93,7 +92,7 @@ def _전투(상태, 기록):
 
 @pytest.mark.scenario("S20")
 def test_S20_버서커_실전(golden):
-    random.seed(시드)
+    rng.시드(시드)
     상태 = support.새게임(파티구성)
     파티 = 상태["파티"]["파티원"]
     for c in 파티:

@@ -1,7 +1,7 @@
 # 전투 시스템 - 몬스터 턴 - 패턴(공격/다중/자폭/버프/회복/내성)과 몬스터 소환수.
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
-import random
+from game.system import rng
 
 from game.system import dice_utils
 from game.system import monster_ai
@@ -39,7 +39,7 @@ def _몬스터_패턴_대상목록(전투상태, 몬스터참가자, 패턴, 기
         대상수 = 패턴.get("대상수", 1)
         if not isinstance(대상수, int) or 대상수 < 1:
             대상수 = 1
-        return random.sample(후보, min(대상수, len(후보)))
+        return rng.대상.sample(후보, min(대상수, len(후보)))
     if 타겟 == "적전체범위":
         목록 = []
         for 중심 in [
@@ -275,7 +275,7 @@ def _몬스터_자폭패턴_실행(전투상태, 몬스터참가자, 패턴):
         ]
         if not 생존상대:
             continue
-        대상 = random.choice(생존상대)
+        대상 = rng.대상.choice(생존상대)
         피해 = formula.수식_평가(
             패턴.get("데미지", "0"),
             {"능력치": stats.유효_능력치(전투상태, 몬스터참가자)},
@@ -802,7 +802,7 @@ def _소환수_공격_실행(전투상태, 소환자, 행동, 표시이름):
         이번대상들 = 대상목록
         if 이번대상들 is None:
             살아있는 = [p for p in 생존상대 if p["생존"]]
-            이번대상들 = [random.choice(살아있는)] if 살아있는 else []
+            이번대상들 = [rng.대상.choice(살아있는)] if 살아있는 else []
         for 대상 in 이번대상들:
             if not 대상["생존"]:
                 continue

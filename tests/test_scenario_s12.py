@@ -12,18 +12,18 @@
 소지품에 들어온다. 수치 규칙은 test_combat_rules.py/test_gameflow_scenarios.py/test_data_integrity.py가 값으로 본다.
 """
 
-import random
 from collections import Counter
 
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
 from game.system.combat import status
 
 로리엔 = "dungeon_01A_D01_Lorien"
-시드 = 0
+시드 = 8  # 난수 흐름 분리(2026-10-20) 뒤 시드 0은 이 시나리오의 효과가 안 나온다
 적구성 = ["카겔", "봄 카겔", "카겔"]
 네패턴 = {"표창 던지기", "다중 표창 던지기", "폭탄 던지기", "다중 폭탄 던지기"}
 
@@ -152,7 +152,7 @@ def _전투(상태):
 
 @pytest.mark.scenario("S12")
 def test_S12_카겔_봄카겔_투척_실전(golden):
-    random.seed(시드)
+    rng.시드(시드)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     for c in 파티:

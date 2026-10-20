@@ -9,10 +9,9 @@
 없음) 소지품에 직접 넣는다. 중첩/지속턴 갱신 규칙은 test_gameflow_scenarios.py가 값으로 검사한다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -115,7 +114,7 @@ def _보스인가(상태):
 
 @pytest.mark.scenario("S9")
 def test_S9_전투_중_버프포션과_회복포션_실전(golden):
-    random.seed(시드)
+    rng.시드(시드)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     상태["소지품"]["포션"] = {

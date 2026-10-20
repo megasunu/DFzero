@@ -8,10 +8,9 @@
 클리어 기록, 플레이어 레벨)은 test_gameflow_scenarios.py::test_캠페인_전체_진행이 값으로 따로 검사한다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -40,7 +39,7 @@ class _패배(Exception):
 
 class _캠페인:
     def __init__(self, 시드):
-        random.seed(시드)
+        rng.시드(시드)
         self.상태 = support.새게임()
         self.구간 = {}
         self.성장 = []
