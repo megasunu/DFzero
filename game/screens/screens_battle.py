@@ -1015,15 +1015,21 @@ class 전투화면(Screen):
     def _스킬_실행(self, 이름, 대상, 지정대상목록=None):
         앱 = App.get_running_app()
         행동지불, self._행동지불 = self._행동지불, None
-        self._오류표시_실행(
-            lambda: gameflow.아군_스킬사용(
+
+        def 쓰기():
+            결과 = gameflow.아군_스킬사용(
                 앱.게임상태,
                 이름,
                 대상,
                 지정대상목록=지정대상목록,
                 행동지불=행동지불,
             )
-        )
+            if isinstance(결과, dict) and 결과.get("캐스팅"):
+                # 축염포(#280) - 쓰는 순간 턴이 끝나고 밀린 차례까지 진행한다
+                gameflow.턴_넘기기(앱.게임상태)
+            return 결과
+
+        self._오류표시_실행(쓰기)
 
     def _오류표시_실행(self, 작업):
         """ValueError(자원 부족 등)는 안내 문구로 보여주고 화면은 그대로 둔다."""
