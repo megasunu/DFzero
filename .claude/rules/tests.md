@@ -32,6 +32,7 @@ paths:
 | `test_data_integrity.py` | 데이터의 수식이 엄격하게 평가되는지, 몬스터/스킬/버프/던전/마을/상점의 키·이름 참조 | 규칙(허용 목록은 이유와 함께) |
 | `test_scenario_*.py` | 풀 시나리오(실제 전투로 처음부터 끝까지, scenarios.md) | 요약 골든 + 값 |
 | `test_auto_merge_gate.py`, `test_project_bridge.py` | 자동 병합 판정, 보드 브리지(명령 라벨·사건별 상태·STATUS.md) | 값 |
+| `test_golden_diff.py` | `tools/golden_diff.py` 골든 차이 요약(키별 개수, 로그 갈림 번호, 한글 경로) | 값 |
 | `test_tools_console.py` | `tools/*.py` CLI가 cp1252 콘솔에서도 한글을 찍고 끝나는지(#200) | 값 |
 | `test_imports.py`, `test_repo_hygiene.py` | 모듈 import, file_path.py, LF 줄끝, 비밀값 금지, 시나리오 장부 대조, 게이트(싼 검사 실패 시 멈춤, `--빠른`) | 규칙 |
 
@@ -41,4 +42,4 @@ paths:
 - **데이터를 추가/수정하면** `test_data_integrity.py`가 오타(수식 변수, 특성/버프 이름, 그림 파일, 던전 연결)를 잡는다. 런타임은 평가할 수 없는
   수식을 0으로, 정의 없는 특성을 건너뛰어 조용히 넘어가므로 이 테스트가 유일한 안전망이다. 새 변수/예외는 허용 목록에 이유와 함께 더한다.
 - **새 스킬/몬스터/버프/상태이상 데이터를 추가하면** 전수 스윕이 자동으로 포함해 골든이
-  바뀐다 - `UPDATE_GOLDEN=1`로 다시 쓰고 새 항목이 맞는지 diff를 읽는다.
+  바뀐다 - `UPDATE_GOLDEN=1`로 다시 쓰고 `python tools/golden_diff.py`로 바뀐 곳을 본다(필요한 파일만 diff를 읽는다).
