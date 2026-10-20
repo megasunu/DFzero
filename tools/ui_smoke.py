@@ -241,6 +241,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_공격연출(상태, 매니저)
         yield from self._단계_감옥_대상팝업(상태, 매니저)
         yield from self._단계_인형(상태, 매니저)
+        yield from self._단계_란마(상태, 매니저)
         yield from self._단계_소지품(상태, 매니저)
         yield from self._단계_도감_업적(상태, 매니저)
         yield from self._단계_메뉴(상태, 매니저)
@@ -2690,6 +2691,58 @@ class 스모크앱(main.DnfMobileApp):
         결과["단계"].append(
             "인형: 전투 [아이템] 28호(행동 없음) -> 아군 칸 5개, 맨 오른쪽에 이름/HP(MP 없음), 그림 칸 비움"
         )
+
+    def _단계_란마(self, 상태, 매니저):
+        """란마 1/2(사용자 지정 2026-10-19): 수속성 공격에 맞으면 전투 화면 그림이 여성 그림(011m -> 011f)으로,
+        화속성에 맞으면 남성 그림으로 돌아온다. 반대 성별 그림이 없는 캐릭터는 그림만 그대로다."""
+        from game.data.ability.job_ability_0000 import 특성목록 as 공용특성
+        from game.system import effect_engine
+        from game.system.combat import damage
+
+        귀검사 = next(c for c in 상태["파티"]["파티원"] if c["직업"] == "귀검사")
+        원래 = (list(귀검사["보유특성"]), 귀검사.get("성별"))
+        try:
+            귀검사["성별"] = "m"
+            for 이름 in ("낭익천", "남익천"):
+                effect_engine.특성_부여(귀검사, 이름, 공용특성[이름])
+            gf.전투_시작(상태, ["고블린"], 레벨=2, 차수=1)
+            support.반응_처리(상태)
+            전투상태 = 상태["전투상태"]
+            p = next(x for x in 전투상태["참가자"] if x.get("원본") is 귀검사)
+            적 = next(x for x in 전투상태["참가자"] if x["진영"] == "적")
+            전투 = 매니저.get_screen("전투")
+            전투.갱신(신규=True)
+            매니저.current = "전투"
+            yield 0.5
+            _팝업_닫기()
+
+            def 그림():
+                return next(
+                    w.source
+                    for w in 전투._그림칸[p["id"]].walk(restrict=True)
+                    if "asset_sd_character" in (getattr(w, "source", "") or "")
+                )
+
+            assert 그림().endswith("011m.webp"), 그림()
+            판정 = {"성공": True, "자연눈": 10, "치명타": False, "자동실패": False}
+            damage.피격_처리(전투상태, 적, p, 판정, 속성="수속성")
+            전투.갱신()
+            yield 0.4
+            assert 귀검사["란마성별"] == "f" and 그림().endswith("011f.webp"), 그림()
+            _찍기("battle_ranma_female")
+            damage.피격_처리(전투상태, 적, p, 판정, 속성="화속성")
+            전투.갱신()
+            yield 0.3
+            assert 그림().endswith("011m.webp"), 그림()
+            결과["단계"].append(
+                "란마 1/2: 수속성에 맞으면 전투 그림 011m -> 011f, 화속성에 맞으면 011m"
+            )
+        finally:
+            귀검사["보유특성"][:] = 원래[0]
+            귀검사["성별"] = 원래[1]
+            귀검사.pop("란마성별", None)
+            상태["전투상태"] = None
+            매니저.current = "마을"
 
     def _단계_공격연출(self, 상태, 매니저):
         """공격하면 대상 그림 칸 위에 공격 종류 그림이 떴다가 0.5초 뒤 사라진다(아군/적 모두)"""
