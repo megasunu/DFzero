@@ -147,6 +147,7 @@ from game.system.skill.skill_attack import (
     공격스킬_실행,
     분할공격_실행,
     지속공격_등록,
+    귀신공격_구성,
 )
 from game.system.skill.skill_run import (
     다음_턴,
@@ -178,6 +179,7 @@ __all__ = [
     "공격스킬_실행",
     "분할공격_실행",
     "지속공격_등록",
+    "귀신공격_구성",
     "다음_턴",
     "버프자원소환_스킬_실행",
     "해제스킬_실행",

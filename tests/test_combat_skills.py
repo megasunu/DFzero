@@ -177,11 +177,11 @@ def test_스킬_전수(직업, golden):
     golden(f"combat_skills_{직업}", 결과)
 
 
-def test_스킬은_직업_82개와_공용_4개이고_직업_스킬은_모두_소유직업이_있다():
+def test_스킬은_직업_84개와_공용_4개이고_직업_스킬은_모두_소유직업이_있다():
     from game.data.job_skill.job_skill_0000 import 스킬목록 as 공용스킬
 
     반응 = [n for n, d in 스킬데이터.items() if d["분류"] == "반응스킬"]
-    assert (len(스킬데이터), len(반응)) == (86, 11)
+    assert (len(스킬데이터), len(반응)) == (88, 11)
     assert set(공용스킬) == {
         "도발",
         "탈",
@@ -191,8 +191,8 @@ def test_스킬은_직업_82개와_공용_4개이고_직업_스킬은_모두_소
     assert set(스킬_소유) == set(스킬데이터) - set(공용스킬)
 
 
-def test_귀참은_귀신_태그_스킬_수만큼_d8을_더한다():
-    """job_skill_format.py: (귀신보유수)d8 - 시전자가 보유한 "귀신" 태그 스킬 개수."""
+def test_귀신보유수는_귀신_태그_스킬_개수다():
+    """job_skill_format.py: (귀신보유수) - 시전자가 보유한 "귀신" 태그 스킬 개수."""
     기록 = 스킬_시나리오("귀참", 준비=False)
     assert "예외" not in 기록 and 기록["결과"]["스킬"] == "귀참"
     상태 = 전장_준비("귀검사", 시드=11)

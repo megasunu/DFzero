@@ -18,6 +18,7 @@ paths:
 | `test_combat_skills.py` | 스킬 전수(기본/준비됨) | 골든 |
 | `test_combat_monsters.py` | 몬스터 고유 패턴 전수 + 보스 칭호 | 골든 |
 | `test_perks_common.py` | 공용 퍽 전투 특성(만독불침/심안/웨펀·아머브레이커) | 정확한 값 |
+| `test_job_soul_bender.py` | 귀검사 달빛베기, 소울브링어 전직 특성(어둠의 친화/사슬 해제)과 잔영의 케이가 | 정확한 값 |
 | `test_dungeon_skills.py` | 던전 화면 스킬(던전스킬 - 유루캠 던전 캠핑, 봉절): 목록/사용/휴식당 횟수/전투·마을에서 막힘, 봉절 걸음·풀기·저장 | 정확한 값 |
 | `test_combat_effects.py` | 상태이상/버프/디버프 전수, 반응스킬 전투 | 골든 |
 | `test_battle_log.py` | 골든 로그의 화면 문장 기준(`battle_log_sentences`), 로그 `"종류"` 규칙(conftest가 모든 테스트에서 검사) | 골든 + 규칙 |
