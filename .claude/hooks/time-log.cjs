@@ -167,7 +167,10 @@ function record(input, now) {
     return { t: now, ev, tool, cat, ...(also.length ? { also } : {}), id: input.tool_use_id };
   }
   if (ev === "PostToolUse" || ev === "PostToolUseFailure") {
-    return { t: now, ev: "PostToolUse", id: input.tool_use_id, ok: ev === "PostToolUse" };
+    const line = { t: now, ev: "PostToolUse", id: input.tool_use_id, ok: ev === "PostToolUse" };
+    // how much the call put into the context - to see whether long thinking follows big outputs
+    if (input.tool_response !== undefined) line.size = JSON.stringify(input.tool_response).length;
+    return line;
   }
   if (ev === "UserPromptSubmit" || ev === "Stop") return { t: now, ev };
   return null;
@@ -181,18 +184,20 @@ function parseMark(args) {
 const ms = (iso) => Date.parse(iso);
 const r1 = (sec) => Math.round(sec * 10) / 10;
 
+// A set of [start, end] intervals merged where they overlap, in order.
+function merge(intervals) {
+  const merged = [];
+  for (const [s, e] of [...intervals].sort((a, b) => a[0] - b[0])) {
+    const cur = merged[merged.length - 1];
+    if (cur && s <= cur[1]) cur[1] = Math.max(cur[1], e);
+    else merged.push([s, e]);
+  }
+  return merged;
+}
+
 // Total length of a set of [start, end] intervals, overlaps counted once.
 function unionMs(intervals) {
-  const sorted = [...intervals].sort((a, b) => a[0] - b[0]);
-  let total = 0;
-  let cur = null;
-  for (const [s, e] of sorted) {
-    if (!cur || s > cur[1]) {
-      if (cur) total += cur[1] - cur[0];
-      cur = [s, e];
-    } else cur[1] = Math.max(cur[1], e);
-  }
-  return cur ? total + cur[1] - cur[0] : total;
+  return merge(intervals).reduce((sum, [s, e]) => sum + e - s, 0);
 }
 
 function overlapMs(intervals, a, b) {
@@ -220,7 +225,7 @@ function summarize(events) {
   for (const e of events) {
     if (e.ev === "PreToolUse") pre[e.id] = e;
     else if (e.ev === "PostToolUse" && pre[e.id]) {
-      calls.push({ s: ms(pre[e.id].t), e: ms(e.t), cat: pre[e.id].cat, ok: e.ok !== false });
+      calls.push({ s: ms(pre[e.id].t), e: ms(e.t), cat: pre[e.id].cat, ok: e.ok !== false, size: e.size || 0 });
       delete pre[e.id];
     } else if (e.ev === "UserPromptSubmit") {
       if (open) closeTurn(e.t, e.prev || {}, true); // a message sent while Claude was still answering
@@ -247,26 +252,66 @@ function summarize(events) {
     return last ? last.name : "작업 없음";
   };
 
-  const turnRows = turns.map((turn, i) => {
-    const mine = calls.filter((c) => c.s >= turn.s && c.s <= turn.e);
-    const cats = {};
-    for (const c of mine) cats[c.cat] = r1((cats[c.cat] || 0) + (c.e - c.s) / 1000);
-    const sec = r1((turn.e - turn.s) / 1000);
-    const tools = r1(unionMs(mine.map((c) => [c.s, Math.min(c.e, turn.e)])) / 1000);
-    return {
-      n: i + 1,
-      start: turn.start,
-      sec,
-      tools,
-      think: r1(sec - tools),
-      output: turn.output,
-      context: turn.context,
-      task: taskAt(turn.e),
-      fails: mine.filter((c) => !c.ok).length,
-      cats,
-      cut: turn.cut,
-    };
+  const turnRows = [];
+  const gaps = {};
+  const addGap = (label, sec, size) => {
+    const g = (gaps[label] ||= { count: 0, sec: 0, max: 0, sizeSum: 0 });
+    g.count += 1;
+    g.sec = r1(g.sec + sec);
+    g.max = Math.max(g.max, r1(sec));
+    g.sizeSum += size;
+  };
+  turns.forEach((turn, i) => {
+    const inTurn = calls.filter((c) => c.s >= turn.s && c.s <= turn.e);
+    const clip = (a, b) => inTurn.map((c) => [Math.max(c.s, a), Math.min(c.e, b)]).filter(([s, e]) => e > s);
+    // A task mark splits the turn only once other work in the turn has finished before it -
+    // a mark at the start of a turn just names the turn's task.
+    const work = inTurn.filter((c) => c.cat !== "시간 기록");
+    const cuts = tasks
+      .map((k) => ms(k.t))
+      .filter((x) => x > turn.s && x < turn.e && work.some((c) => c.e <= x));
+    const bounds = [turn.s, ...cuts, turn.e];
+    for (let j = 0; j + 1 < bounds.length; j++) {
+      const [a, b] = [bounds[j], bounds[j + 1]];
+      const last = j + 2 === bounds.length;
+      const mine = inTurn.filter((c) => c.s >= a && (last ? c.s <= b : c.s < b));
+      const cats = {};
+      for (const c of mine) cats[c.cat] = r1((cats[c.cat] || 0) + (c.e - c.s) / 1000);
+      const sec = r1((b - a) / 1000);
+      const tools = r1(unionMs(clip(a, b)) / 1000);
+      turnRows.push({
+        n: bounds.length > 2 ? `${i + 1}-${j + 1}` : i + 1,
+        start: new Date(a).toISOString(),
+        sec,
+        tools,
+        think: r1(sec - tools),
+        output: last ? turn.output : 0,
+        context: last ? turn.context : 0,
+        task: taskAt(last ? b : b - 1),
+        fails: mine.filter((c) => !c.ok).length,
+        cats,
+        cut: last && turn.cut,
+      });
+    }
+    // Thinking and answering time, by what came just before it: the user's message, a tool's result, or
+    // (after the last tool) the final answer.
+    let cursor = turn.s;
+    const holes = [];
+    for (const [s, e] of merge(clip(turn.s, turn.e))) {
+      if (s > cursor) holes.push([cursor, s]);
+      cursor = Math.max(cursor, e);
+    }
+    if (turn.e > cursor) holes.push([cursor, turn.e]);
+    for (const [s, e] of holes) {
+      const before = inTurn.filter((c) => c.e <= s).sort((x, y) => x.e - y.e).pop();
+      const label = !before ? (e === turn.e ? "도구 없는 턴" : "턴 시작") : e === turn.e ? "마지막 답변" : `${before.cat} 뒤`;
+      addGap(label, (e - s) / 1000, before ? before.size : 0);
+    }
   });
+  for (const g of Object.values(gaps)) {
+    g.size = Math.round(g.sizeSum / g.count);
+    delete g.sizeSum;
+  }
 
   const categoryRows = {};
   for (const c of calls) {
@@ -306,6 +351,7 @@ function summarize(events) {
     categories: categoryRows,
     gate,
     phases,
+    gaps,
   };
 }
 
@@ -354,6 +400,19 @@ function format(s) {
       .sort((a, b) => b[1].sec - a[1].sec)
       .map(([cat, c]) => `| ${group(cat)} | ${cat} | ${c.count} | ${c.fails} | ${dur(c.sec)} | ${dur(r1(c.sec / c.count))} |`),
   ];
+  const gaps = Object.entries(s.gaps || {});
+  if (gaps.length) {
+    out.push(
+      "",
+      "**생각·답변 나눔** (도구가 돌지 않은 시간을 바로 앞의 일로 묶는다, 앞 출력 = 그 도구가 돌려준 글자 수 평균)",
+      "",
+      "| 바로 앞 | 횟수 | 합계 | 평균 | 가장 긴 | 앞 출력 |",
+      "|---|---|---|---|---|---|",
+      ...gaps
+        .sort((a, b) => b[1].sec - a[1].sec)
+        .map(([label, g]) => `| ${label} | ${g.count} | ${dur(g.sec)} | ${dur(r1(g.sec / g.count))} | ${dur(g.max)} | ${g.size} |`),
+    );
+  }
   const gate = Object.entries(s.gate);
   if (gate.length) {
     out.push("", "**게이트 단계별**", "", "| 단계 | 횟수 | 실패 | 합계 | 평균 |", "|---|---|---|---|---|");
@@ -398,9 +457,28 @@ function readFrom(file, offset) {
   }
 }
 
+const REMINDER =
+  "작업시간 기록: 작업 표시 없이 편집을 시작했다. 새 작업이면 먼저 " +
+  '`node .claude/hooks/time-log.cjs mark 작업 <유형> "#이슈 제목"`을 찍는다(time-log 스킬). 이어지는 작업이면 무시한다.';
+
+// After an edit: a reminder (once) when no task is open - none was marked yet, or the last one ended with
+// its merge request. Without it the time lands on "작업 없음" or on the previous task.
+function reminder(input, file) {
+  if (input.hook_event_name !== "PostToolUse" || group(classify(String(input.tool_name || ""), input.tool_input)) !== "편집")
+    return null;
+  const events = fs.existsSync(file) ? readLog(file) : [];
+  const lastIndex = (pred) => events.reduce((found, e, i) => (pred(e) ? i : found), -1);
+  const task = lastIndex((e) => e.ev === "Task");
+  const ended = lastIndex((e) => e.ev === "Mark" && e.phase === "병합요청");
+  const reminded = lastIndex((e) => e.ev === "Reminder");
+  if ((task >= 0 && ended < task) || reminded > Math.max(task, ended)) return null;
+  append(file, { t: new Date().toISOString(), ev: "Reminder" });
+  return { hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: REMINDER } };
+}
+
 function hook(input, dir) {
   const line = record(input, new Date().toISOString());
-  if (!line) return;
+  if (!line) return null;
   const file = logFile(dir, input.session_id);
   const transcript = input.transcript_path;
   if (line.ev === "UserPromptSubmit" && transcript && fs.existsSync(transcript)) {
@@ -419,6 +497,7 @@ function hook(input, dir) {
     if (prompt && typeof prompt.off === "number") Object.assign(line, turnTokens(readFrom(transcript, prompt.off)));
   }
   append(file, line);
+  return reminder(input, file);
 }
 
 function main(argv, env) {
@@ -437,7 +516,8 @@ function main(argv, env) {
   process.stdin.on("data", (chunk) => (raw += chunk));
   process.stdin.on("end", () => {
     try {
-      hook(JSON.parse(raw || "{}"), dir);
+      const output = hook(JSON.parse(raw || "{}"), dir);
+      if (output) process.stdout.write(JSON.stringify(output));
     } catch {
       /* never block a tool call or a prompt because of this hook */
     }
