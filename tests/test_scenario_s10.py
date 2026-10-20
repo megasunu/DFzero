@@ -8,10 +8,9 @@
 규칙은 test_combat_rules.py::test_속성_면역_강화_내성이 값으로 검사한다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -19,7 +18,7 @@ from game.system.combat import damage
 from tests.test_gameflow_scenarios import 구현된_전직
 
 선더랜드 = "dungeon_01A_D05_thunderland"
-시드 = 0
+시드 = 2  # 난수 흐름 분리(2026-10-20) 뒤 시드 0은 이 시나리오의 효과가 안 나온다
 파티구성 = [("", "귀검사"), ("", "마법사"), ("", "거너"), ("", "프리스트")]
 속성들 = ["화속성", "수속성", "명속성", "암속성"]
 
@@ -58,7 +57,7 @@ def _전투(상태, 사용기록):
 
 @pytest.mark.scenario("S10")
 def test_S10_엘레멘탈_번_속성강화_실전(golden):
-    random.seed(시드)
+    rng.시드(시드)
     상태 = support.새게임(파티구성)
     파티 = 상태["파티"]["파티원"]
     for c in 파티:

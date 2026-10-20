@@ -1,7 +1,7 @@
 # 전투 시스템 - 명중 판정, 피해 계산/속성 배율/피해 적용, 피격 부가효과, 지속피해.
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
-import random
+from game.system import rng
 
 from game.data.buff.status_effects import 상태이상목록
 from game.system import dice_utils
@@ -682,7 +682,7 @@ def 무기_명중시효과(전투상태, 공격자, 대상, 판정, 데미지식
     if not 효과 or not ("보정공격력" in 식 or "무기공격력" in 식):
         return
     if 효과.get("종류") == "무작위상태이상" and 효과.get("목록"):
-        이름 = random.choice(효과["목록"])
+        이름 = rng.대상.choice(효과["목록"])
         분류 = 상태이상목록.get(이름, {}).get("분류")
         traits.상태이상_효과_적용(
             전투상태,
@@ -715,7 +715,7 @@ def 마봉_명중시효과(전투상태, 공격자, 대상, 판정):
     for 아이템, 원소 in stats.마봉_발동목록(공격자, "명중", 대상):
         if not 대상.get("생존", True):
             return
-        if "확률" in 원소 and random.random() >= 원소["확률"]:
+        if "확률" in 원소 and rng.확률.random() >= 원소["확률"]:
             continue
         출처 = f"'{아이템.get('이름')}'"
         if 원소.get("상태이상"):
@@ -789,7 +789,7 @@ def _마봉_버프제거(전투상태, 공격자, 대상, 개수, 출처):
     for _ in range(개수):
         if not 대상["버프"]:
             return
-        항목 = random.choice(대상["버프"])
+        항목 = rng.대상.choice(대상["버프"])
         대상["버프"].remove(항목)
         core.로그(
             전투상태,

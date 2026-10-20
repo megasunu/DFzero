@@ -13,7 +13,7 @@
 # 받은 아이템은 소지품에 넣고 도감에도 등록한다. 줄 수 없는 보상(카탈로그에 없는 이름, 후보가 없는
 # 랜덤장비)은 받음으로 적기 전에 ValueError - 보상이 조용히 사라지지 않게.
 
-import random
+from game.system import rng
 
 from game.data.achievement.achievement_list import 이름있는_보상
 from game.system import collection_system, player_system, shop_system
@@ -143,7 +143,7 @@ def _줄_아이템(상점카탈로그, 보상):
         후보 = 랜덤장비_후보(상점카탈로그, 보상["랜덤장비"])
         if not 후보:
             raise ValueError("보상으로 줄 장비가 아직 없습니다.")
-        아이템.append((random.choice(후보), 1))
+        아이템.append((rng.보상.choice(후보), 1))
     결과 = []
     for 이름, 개수 in 아이템:
         칸 = 소지품_칸(상점카탈로그, 이름)

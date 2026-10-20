@@ -6,13 +6,14 @@ import하지 않기 때문이다. game/screens/와 main.py는 여기서 다루�
 
 import json
 import os
-import random
 
 import pytest
 
+from game.system import rng
 from game.controller import ctl_battle
 from game.system import save_system
 from game.system.combat import core
+from tests import support
 
 GOLDEN_DIR = os.path.join(os.path.dirname(__file__), "golden")
 
@@ -34,7 +35,7 @@ def 기기_설정_기본값():
 @pytest.fixture(autouse=True)
 def 전역_난수_시드():
     """테스트마다 전역 random을 0으로 시작한다 - 테스트를 하나만 돌려도, 순서를 바꿔도 결과가 같게."""
-    random.seed(0)
+    rng.시드(0)
 
 
 @pytest.fixture(autouse=True)
@@ -66,11 +67,7 @@ def golden():
         경로 = os.path.join(GOLDEN_DIR, f"{이름}.json")
         실제값 = _정규화(실제값)
         if os.environ.get("UPDATE_GOLDEN") == "1" or not os.path.exists(경로):
-            with open(
-                경로, "w", encoding="utf-8", newline="\n"
-            ) as f:  # LF 규칙(Windows에서도)
-                json.dump(실제값, f, ensure_ascii=False, indent=1, sort_keys=True)
-                f.write("\n")
+            support.골든_쓰기(경로, 실제값)
             if os.environ.get("UPDATE_GOLDEN") != "1":
                 pytest.fail(
                     f"골든 파일이 없어 새로 만들었다: {경로} - 내용을 확인하고 커밋할 것"
@@ -83,3 +80,18 @@ def golden():
         )
 
     return _비교
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """골든을 갱신했으면(UPDATE_GOLDEN=1) 문장 골든을 다른 골든이 다 쓰인 뒤에 한 번 더 쓴다.
+
+    문장 골든은 다른 골든의 로그에서 만들어지므로, 그 테스트가 먼저 돌면 바뀌기 전 골든을 읽는다.
+    세션 끝에 다시 쓰면 테스트 순서(병렬 실행 포함)와 상관없이 갱신 한 번으로 맞는다.
+    병렬 실행의 작업자는 건너뛰고 주 프로세스만 쓴다.
+    """
+    if os.environ.get("UPDATE_GOLDEN") != "1" or hasattr(session.config, "workerinput"):
+        return
+    support.골든_쓰기(
+        os.path.join(GOLDEN_DIR, f"{support.문장_골든}.json"),
+        support.골든_문장들(GOLDEN_DIR),
+    )

@@ -5,6 +5,9 @@
 확정하려고 쓰며, 전투 규칙은 test_combat_*.py가 따로 검사한다.
 """
 
+import glob
+import json
+import os
 from collections import deque
 
 import gameflow as gf
@@ -255,3 +258,91 @@ def 스냅샷(상태, 캐릭터, 선택=None):
         "보유퍽": list(gf.캐릭터_보유퍽(캐릭터)),
         "초상화": gf.초상화_코드(캐릭터),
     }
+
+
+# ------------------------------------------------------------------ 골든
+
+문장_골든 = (
+    "battle_log_sentences"  # 다른 골든의 로그에서 만들어지는 골든(test_battle_log.py)
+)
+
+
+def 골든_쓰기(경로, 값):
+    """골든 파일 한 개를 쓴다 - 모든 골든이 같은 모양(LF, 키 정렬, 한 칸 들여쓰기)."""
+    with open(경로, "w", encoding="utf-8", newline="\n") as f:  # LF 규칙(Windows에서도)
+        json.dump(값, f, ensure_ascii=False, indent=1, sort_keys=True)
+        f.write("\n")
+
+
+def 골든_로그들(폴더):
+    """골든 파일마다 그 안의 "로그" 목록에 든 항목들(파일 순서, 항목 순서 그대로)."""
+    모음 = {}
+    for 경로 in sorted(glob.glob(os.path.join(폴더, "*.json"))):
+        이름 = os.path.splitext(os.path.basename(경로))[0]
+        if 이름 == 문장_골든:
+            continue
+        with open(경로, encoding="utf-8") as f:
+            값 = json.load(f)
+        항목들 = []
+
+        def 훑기(x):
+            if isinstance(x, dict):
+                for 키 in sorted(x):
+                    if 키 == "로그" and isinstance(x[키], list):
+                        # 로그 항목 안의 "로그"(효과 문장 목록)까지는 내려가지 않는다
+                        항목들.extend(x[키])
+                    else:
+                        훑기(x[키])
+            elif isinstance(x, list):
+                for 원소 in x:
+                    훑기(원소)
+
+        훑기(값)
+        if 항목들:
+            모음[이름] = 항목들
+    return 모음
+
+
+def 골든_문장들(폴더):
+    """골든 로그 항목 전부를 화면 문장으로 바꾼 것 - 문장 골든의 내용."""
+    return {
+        이름: [gf.로그_문장들(항목) for 항목 in 항목들]
+        for 이름, 항목들 in 골든_로그들(폴더).items()
+    }
+
+
+def 핵심_로그(전투상태, 로그):
+    """로그에서 적의 공격(타격/일반공격) 줄만 뺀다 - 효과·스킬 스윕이 뒤 라운드를 돌릴 때 쌓이는 몬스터 공격은
+    그 스윕이 보려는 것이 아니고(몬스터 패턴은 test_combat_monsters가 본다) 굴림이 바뀔 때마다 골든을 흔든다.
+    지속피해·만료·반응·비고 같은 줄과, 반응이 걸린 적의 공격은 남긴다."""
+    적 = {p["이름"] for p in 전투상태["참가자"] if p["진영"] == "적"}
+    return [
+        항목
+        for 항목 in 로그
+        if not (
+            isinstance(항목, dict)
+            and 항목.get("종류") in ("타격", "일반공격")
+            and 항목.get("공격자") in 적
+            and not _반응이_걸렸나(항목)
+        )
+    ]
+
+
+def _반응이_걸렸나(항목):
+    판정들 = [항목.get("판정") or {}] + [
+        t.get("판정") or {} for t in 항목.get("타격", [])
+    ]
+    return "반응" in 항목 or any("반응회피" in 판정 for 판정 in 판정들)
+
+
+def 수치_변화(전, 후, 경로=""):
+    """두 수치 묶음에서 바뀐 칸만 {"점.경로": [전, 후]}로 - 모든 효과에 같은 전 스냅샷을 통째로 싣지 않는다."""
+    변화 = {}
+    for 키 in sorted(set(전) | set(후)):
+        a, b = 전.get(키), 후.get(키)
+        이름 = f"{경로}.{키}" if 경로 else 키
+        if isinstance(a, dict) and isinstance(b, dict):
+            변화.update(수치_변화(a, b, 이름))
+        elif a != b:
+            변화[이름] = [a, b]
+    return 변화

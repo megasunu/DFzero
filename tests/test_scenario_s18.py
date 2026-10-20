@@ -7,10 +7,9 @@
 들어가면 끝나는 것도 본다. 규칙의 값은 tests/test_dungeon_skills.py가 본다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -52,7 +51,7 @@ def _싸우기(상태):
 
 @pytest.mark.scenario("S18")
 def test_S18_봉절_실전(golden, 임시_세이브폴더):
-    random.seed(시드)
+    rng.시드(시드)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     for 캐릭터 in 파티:

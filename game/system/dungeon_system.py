@@ -22,7 +22,7 @@
 # - "클리어시":"연결지역화" 오브젝트는 해당 좌표가 맵정보 "연결지역"에도
 #   등록돼 있어야 한다(안 그러면 이동_시도()가 KeyError).
 
-import random
+from game.system import rng
 
 from game.system import town_system
 
@@ -138,21 +138,21 @@ def 인카운트_판정(던전상태):
         return None
 
     확률 = min(1.0, 초과걸음 * 걸음당증가율)
-    if random.random() >= 확률:
+    if rng.던전.random() >= 확률:
         return None
 
     최소, 최대 = 인카운트["출현마리수"]
-    마리수 = random.randint(최소, 최대)
+    마리수 = rng.던전.randint(최소, 최대)
 
     출현그룹들 = 인카운트["출현그룹"]
     그룹가중치들 = [그룹["그룹확률"] for 그룹 in 출현그룹들]
-    그룹 = random.choices(출현그룹들, weights=그룹가중치들, k=1)[0]
+    그룹 = rng.던전.choices(출현그룹들, weights=그룹가중치들, k=1)[0]
 
     이름들 = list(그룹["출현몬스터"].keys())
     확률들 = list(그룹["출현몬스터"].values())
-    등장몬스터 = random.choices(이름들, weights=확률들, k=마리수)
-    if random.random() < 인카운트_교체확률:
-        등장몬스터[random.randrange(len(등장몬스터))] = 인카운트_교체몬스터
+    등장몬스터 = rng.던전.choices(이름들, weights=확률들, k=마리수)
+    if rng.던전.random() < 인카운트_교체확률:
+        등장몬스터[rng.던전.randrange(len(등장몬스터))] = 인카운트_교체몬스터
 
     return {"등장몬스터": 등장몬스터}
 

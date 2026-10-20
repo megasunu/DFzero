@@ -182,6 +182,7 @@
     # game/system/
     "equipment_system": "game.system.equipment_system",
     "dice_utils": "game.system.dice_utils",
+    "rng": "game.system.rng",
     "effect_engine": "game.system.effect_engine",
     "monster_ai": "game.system.monster_ai",
     "dungeon_system": "game.system.dungeon_system",

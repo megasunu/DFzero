@@ -7,10 +7,10 @@
 """
 
 import json
-import random
 
 import pytest
 
+from game.system import rng
 import gameflow as gf
 from game.system import save_system, state_schema as 스키마
 from tests import support
@@ -27,7 +27,7 @@ from tests import support
 @pytest.mark.parametrize("직업", list(전직))
 @pytest.mark.parametrize("레벨", [1, 6, 10])
 def test_성장한_캐릭터는_표준_모양이다(직업, 레벨):
-    random.seed(1)
+    rng.시드(1)
     상태 = support.새게임([("", 직업)])
     캐릭터 = 상태["파티"]["파티원"][0]
     if 레벨 > 1:
@@ -76,7 +76,7 @@ def test_옛_세이브를_불러와도_표준_모양으로_돌아온다(임시_�
 
 
 def test_전투_참가자는_표준_모양이다():
-    random.seed(2)
+    rng.시드(2)
     상태 = support.새게임(
         [("", "귀검사"), ("", "마법사"), ("", "거너"), ("", "프리스트")]
     )

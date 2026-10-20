@@ -2,7 +2,7 @@
 
 패키지 설명과 구현 범위는 game/system/skill_system.py 머리 주석을 본다(밖에서는 skill_system을 통해 쓴다)."""
 
-import random
+from game.system import rng
 
 from game.system.combat import (
     formula,
@@ -78,7 +78,7 @@ def 타겟_확장(전투상태, 시전자, 타겟종류, 중심대상=None):
     if 타겟종류 == "적전체":
         return 적생존 + [p for p in 참가자들 if p.get("감옥") and p["생존"]]
     if 타겟종류 == "적랜덤":
-        return [random.choice(적생존)] if 적생존 else []
+        return [rng.대상.choice(적생존)] if 적생존 else []
     if 타겟종류 == "적3체":
         # "구석이면 2체" - 적 전체(생존 여부 무관)를 "대형위치" 순으로
         # 나열한 뒤, 중심 대상의 바로 앞/뒤 칸만 포함한다. 죽은 적이 빠져도

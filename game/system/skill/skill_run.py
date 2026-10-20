@@ -2,7 +2,7 @@
 
 패키지 설명과 구현 범위는 game/system/skill_system.py 머리 주석을 본다(밖에서는 skill_system을 통해 쓴다)."""
 
-import random
+from game.system import rng
 
 from game.system import dice_utils, effect_engine
 from game.system.combat import (
@@ -187,7 +187,7 @@ def _소환수_한번_행동(전투상태, 시전자, 소환수이름, 행동표
         후보 = 지정가능 or 후보
         if not 후보:
             return
-        중심 = random.choice(후보)
+        중심 = rng.대상.choice(후보)
         if not 지정가능:
             스킬데이터["타겟"] = "적3체" if 스킬데이터["타겟"] == "적3체" else "적랜덤"
     공격스킬_실행(전투상태, 시전자, 스킬데이터, 중심)

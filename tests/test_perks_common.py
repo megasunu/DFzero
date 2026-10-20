@@ -1,20 +1,20 @@
 # 공용 퍽(perks_class_0000.py) 중 전투 특성 퍽 - 만독불침/심안/웨펀브레이커/아머브레이커
 # (2026-10-19 사용자 결정). 규칙은 docs/game-rules.md "공용 퍽 - 전투 특성".
 
-import random
 
 import pytest
 
+from game.system import rng
 import gameflow as gf
 from game.data.ability.job_ability_0000 import 특성목록
 from game.data.perks.perks_class_0000 import 퍽목록
-from game.system import dice_utils, effect_engine
+from game.system import effect_engine
 from game.system.combat import attacks, damage, stats, status, traits
 from tests import support
 
 
 def _전장(특성이름=None):
-    random.seed(5)
+    rng.시드(5)
     상태 = support.새게임([("", "귀검사"), ("", "격투가")])
     gf.전투_시작(상태, ["고블린"], 레벨=2, 차수=1)
     support.반응_처리(상태)
@@ -114,7 +114,7 @@ def test_심안이_없으면_이점도_불리점도_없다(monkeypatch):
 
 def _명중시키기(monkeypatch, 고블린):
     고블린["원본"]["AC보너스"] = -99
-    monkeypatch.setattr(dice_utils.random, "randint", lambda a, b: min(max(10, a), b))
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: min(max(10, a), b))
 
 
 @pytest.mark.parametrize(
@@ -142,7 +142,7 @@ def test_브레이커는_명중마다_1씩_최대_10중첩(monkeypatch, 퍽이�
 def test_브레이커는_빗나가면_걸지_않는다(monkeypatch):
     전투상태, 고블린, 귀검사 = _전장("웨펀브레이커")
     고블린["원본"]["AC보너스"] = 99
-    monkeypatch.setattr(dice_utils.random, "randint", lambda a, b: min(max(10, a), b))
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: min(max(10, a), b))
     결과 = attacks.일반공격_실행(전투상태, 귀검사, 고블린)
     assert not 결과["판정"]["성공"]
     assert not 고블린["디버프"]

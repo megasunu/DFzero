@@ -8,10 +8,9 @@
 효과 하나하나의 수치 규칙은 tests/test_magic_seal.py "전투 반영" 절이 값으로 검사한다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -19,7 +18,7 @@ from game.data.equipment.eq_00_magic_seal import 마봉능력
 from game.system.combat import stats
 
 로리엔 = "dungeon_01A_D01_Lorien"
-시드 = 0
+시드 = 2  # 난수 흐름 분리(2026-10-20) 뒤 시드 0은 이 시나리오의 효과가 안 나온다
 귀걸이 = "마법으로 봉인된 귀걸이"
 상의 = "마법으로 봉인된 천갑 상의"
 
@@ -52,7 +51,7 @@ def _풀고_바꾸기(상태, 캐릭터, 슬롯, 탭, 맞나):
 
 @pytest.mark.scenario("S13")
 def test_S13_마봉효과_실전(golden):
-    random.seed(시드)
+    rng.시드(시드)
     상태 = support.새게임()
     귀검사 = next(c for c in 상태["파티"]["파티원"] if c["직업"] == "귀검사")
     소지품 = 상태["소지품"]

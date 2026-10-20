@@ -41,14 +41,16 @@ function latestLog(dir) {
 }
 
 const git = (sub) => new RegExp(`\\bgit\\s+(?:-[cC]\\s+\\S+\\s+)*(?:${sub})\\b`);
+// A repository script run by python - reading or searching the file is not running it (#271).
+const pyRun = (script) => new RegExp(`\\bpython[\\d.]*\\s+(?:-\\S+\\s+)*\\S*\\b${script}\\.py\\b`);
 
 // Shell categories, heaviest first: a mixed command is timed under the first that matches.
 const BASH = [
   ["저장소 저장 - 올리기", git("push")],
   ["저장소 저장 - 커밋", git("commit")],
   ["깃 - 병합", git("merge")],
-  ["화면 확인", /ui_smoke/],
-  ["전체 게이트", /check\.py/],
+  ["화면 확인", pyRun("ui_smoke")],
+  ["전체 게이트", pyRun("check")],
   ["골든 갱신", /UPDATE_GOLDEN=1/],
   ["게임 테스트", /(?<!install\b[^\n;&|]*)\bpytest\b/],
   ["서식 자동 수정", /ruff\s+format(?![^\n;&|]*--check)/],
@@ -167,10 +169,57 @@ function record(input, now) {
     return { t: now, ev, tool, cat, ...(also.length ? { also } : {}), id: input.tool_use_id };
   }
   if (ev === "PostToolUse" || ev === "PostToolUseFailure") {
-    return { t: now, ev: "PostToolUse", id: input.tool_use_id, ok: ev === "PostToolUse" };
+    const line = { t: now, ev: "PostToolUse", id: input.tool_use_id, ok: ev === "PostToolUse" };
+    // how much the call put into the context - to see whether long thinking follows big outputs
+    if (input.tool_response !== undefined) line.size = JSON.stringify(input.tool_response).length;
+    return line;
   }
-  if (ev === "UserPromptSubmit" || ev === "Stop") return { t: now, ev };
+  if (ev === "UserPromptSubmit") return { t: now, ev, kind: promptKind(input.prompt) };
+  if (ev === "Stop") return { t: now, ev };
   return null;
+}
+
+// What started a turn: a person's message, a background task's notification, the queued remote
+// notifications (PR activity, other sessions - same wrapper, no task id, #276), or a hook's feedback.
+// Only the kind is kept - the log never holds message text (the repository is public).
+function promptKind(prompt) {
+  const p = String(prompt || "").trimStart();
+  if (p.startsWith("<task-notification>")) {
+    return /<task-type>queued-remote-notifications<\/task-type>/.test(p) ? "원격알림" : "알림";
+  }
+  if (/^\w+ hook feedback:/i.test(p)) return "훅피드백";
+  return "사람";
+}
+
+const BG_STATUS = ["completed", "failed", "killed"];
+
+// The task id and status of each notification in a prompt - nothing else of it.
+function notifications(prompt) {
+  return String(prompt || "")
+    .split("<task-notification>")
+    .slice(1)
+    .flatMap((part) => {
+      const id = (part.match(/<task-id>([A-Za-z0-9_-]{1,64})<\/task-id>/) || [])[1];
+      const status = (part.match(/<status>(\w+)<\/status>/) || [])[1];
+      return id ? [{ id, status: BG_STATUS.includes(status) ? status : "기타" }] : [];
+    });
+}
+
+// Extra log lines for background tasks: a start when a call answers with a background task id, an end
+// when its notification comes in or when TaskStop stops it (a stopped task sends no notification).
+function backgroundLines(input, now) {
+  const ev = input.hook_event_name;
+  if (ev === "UserPromptSubmit") {
+    if (promptKind(input.prompt) !== "알림") return [];
+    return notifications(input.prompt).map((n) => ({ t: now, ev: "BgEnd", ...n }));
+  }
+  if (ev !== "PostToolUse") return [];
+  const response = input.tool_response;
+  const id = response && typeof response === "object" && response.backgroundTaskId;
+  if (id) return [{ t: now, ev: "BgStart", id: String(id), call: input.tool_use_id }];
+  const stop = input.tool_name === "TaskStop" && (input.tool_input || {});
+  const stopped = stop && (stop.task_id || stop.shell_id);
+  return stopped ? [{ t: now, ev: "BgEnd", id: String(stopped), status: "stopped" }] : [];
 }
 
 function parseMark(args) {
@@ -181,18 +230,20 @@ function parseMark(args) {
 const ms = (iso) => Date.parse(iso);
 const r1 = (sec) => Math.round(sec * 10) / 10;
 
+// A set of [start, end] intervals merged where they overlap, in order.
+function merge(intervals) {
+  const merged = [];
+  for (const [s, e] of [...intervals].sort((a, b) => a[0] - b[0])) {
+    const cur = merged[merged.length - 1];
+    if (cur && s <= cur[1]) cur[1] = Math.max(cur[1], e);
+    else merged.push([s, e]);
+  }
+  return merged;
+}
+
 // Total length of a set of [start, end] intervals, overlaps counted once.
 function unionMs(intervals) {
-  const sorted = [...intervals].sort((a, b) => a[0] - b[0]);
-  let total = 0;
-  let cur = null;
-  for (const [s, e] of sorted) {
-    if (!cur || s > cur[1]) {
-      if (cur) total += cur[1] - cur[0];
-      cur = [s, e];
-    } else cur[1] = Math.max(cur[1], e);
-  }
-  return cur ? total + cur[1] - cur[0] : total;
+  return merge(intervals).reduce((sum, [s, e]) => sum + e - s, 0);
 }
 
 function overlapMs(intervals, a, b) {
@@ -207,12 +258,27 @@ function summarize(events) {
   const marks = [];
   const tasks = [];
   const gate = {};
+  const steps = [];
+  const bgStarts = [];
+  const bgEnds = {};
   let open = null;
+  let openKind = null;
   let stopAt = null;
+  let lastStop = null;
   let waiting = 0;
+  let bgWaiting = 0;
+  let remoteWaiting = 0;
 
   const closeTurn = (end, stop, cut) => {
-    turns.push({ s: ms(open), e: ms(end), start: open, output: stop.output || 0, context: stop.context || 0, cut });
+    turns.push({
+      s: ms(open),
+      e: ms(end),
+      start: open,
+      output: stop.output || 0,
+      context: stop.context || 0,
+      cut,
+      kind: openKind,
+    });
     working.push([ms(open), ms(end)]);
     open = null;
   };
@@ -220,19 +286,40 @@ function summarize(events) {
   for (const e of events) {
     if (e.ev === "PreToolUse") pre[e.id] = e;
     else if (e.ev === "PostToolUse" && pre[e.id]) {
-      calls.push({ s: ms(pre[e.id].t), e: ms(e.t), cat: pre[e.id].cat, ok: e.ok !== false });
+      const p = pre[e.id];
+      calls.push({ id: e.id, s: ms(p.t), e: ms(e.t), cat: p.cat, also: p.also || [], ok: e.ok !== false, size: e.size || 0 });
       delete pre[e.id];
     } else if (e.ev === "UserPromptSubmit") {
+      const kind = e.kind || "사람"; // lines written before kinds were kept are people's messages
       if (open) closeTurn(e.t, e.prev || {}, true); // a message sent while Claude was still answering
-      if (stopAt) waiting += (ms(e.t) - ms(stopAt)) / 1000;
+      // A gap ended by a person is waiting on the user, one ended by a notification is waiting on a
+      // background task, one ended by a remote notification is mostly waiting on CI or review; hook
+      // feedback follows the turn at once.
+      if (stopAt && kind === "사람") waiting += (ms(e.t) - ms(stopAt)) / 1000;
+      if (stopAt && kind === "알림") bgWaiting += (ms(e.t) - ms(stopAt)) / 1000;
+      if (stopAt && kind === "원격알림") remoteWaiting += (ms(e.t) - ms(stopAt)) / 1000;
       open = e.t;
+      openKind = kind;
       stopAt = null;
     } else if (e.ev === "Stop" && open) {
       closeTurn(e.t, e, false);
       stopAt = e.t;
+      lastStop = e;
+    } else if (e.ev === "Stop" && stopAt) {
+      // A Stop hook's feedback: Claude went on from the last Stop with no new prompt (#272). This Stop's
+      // tokens count from the same prompt as the last one, so the output is the difference.
+      open = stopAt;
+      openKind = "훅피드백";
+      const output = typeof lastStop.output === "number" ? (e.output || 0) - lastStop.output : e.output;
+      closeTurn(e.t, { output: Math.max(0, output || 0), context: e.context }, false);
+      stopAt = e.t;
+      lastStop = e;
     } else if (e.ev === "Mark") marks.push(e);
     else if (e.ev === "Task") tasks.push(e);
+    else if (e.ev === "BgStart") bgStarts.push(e);
+    else if (e.ev === "BgEnd") bgEnds[e.id] ||= e;
     else if (e.ev === "GateStep") {
+      steps.push(e);
       const g = (gate[e.step] ||= { count: 0, fails: 0, sec: 0 });
       g.count += 1;
       g.fails += e.ok === false ? 1 : 0;
@@ -241,32 +328,91 @@ function summarize(events) {
   }
   const end = events.length ? events[events.length - 1].t : null;
   if (open) closeTurn(end, {}, false);
+  const endMs = end ? ms(end) : 0;
+
+  // A mark before any other work in its turn counts from the turn's start, as the turn table does for tasks.
+  const snap = (x) => {
+    const turn = turns.find((u) => x >= u.s && x <= u.e);
+    if (!turn) return x;
+    return calls.some((c) => c.s >= turn.s && c.e <= x && c.cat !== "시간 기록") ? x : turn.s;
+  };
+  const taskStarts = tasks.map((task) => ({ name: task.name, at: snap(ms(task.t)) }));
+  const taskOf = (x) => {
+    const last = taskStarts.filter((task) => task.at <= x).pop();
+    return last ? last.name : "작업 없음";
+  };
+  const catsIn = (a, b) => {
+    const cats = {};
+    for (const c of calls.filter((c) => c.s >= a && c.s < b)) cats[c.cat] = r1((cats[c.cat] || 0) + (c.e - c.s) / 1000);
+    return cats;
+  };
 
   const taskAt = (t) => {
     const last = tasks.filter((k) => ms(k.t) <= t).pop();
     return last ? last.name : "작업 없음";
   };
 
-  const turnRows = turns.map((turn, i) => {
-    const mine = calls.filter((c) => c.s >= turn.s && c.s <= turn.e);
-    const cats = {};
-    for (const c of mine) cats[c.cat] = r1((cats[c.cat] || 0) + (c.e - c.s) / 1000);
-    const sec = r1((turn.e - turn.s) / 1000);
-    const tools = r1(unionMs(mine.map((c) => [c.s, Math.min(c.e, turn.e)])) / 1000);
-    return {
-      n: i + 1,
-      start: turn.start,
-      sec,
-      tools,
-      think: r1(sec - tools),
-      output: turn.output,
-      context: turn.context,
-      task: taskAt(turn.e),
-      fails: mine.filter((c) => !c.ok).length,
-      cats,
-      cut: turn.cut,
-    };
+  const turnRows = [];
+  const gaps = {};
+  const addGap = (label, sec, size) => {
+    const g = (gaps[label] ||= { count: 0, sec: 0, max: 0, sizeSum: 0 });
+    g.count += 1;
+    g.sec = r1(g.sec + sec);
+    g.max = Math.max(g.max, r1(sec));
+    g.sizeSum += size;
+  };
+  turns.forEach((turn, i) => {
+    const inTurn = calls.filter((c) => c.s >= turn.s && c.s <= turn.e);
+    const clip = (a, b) => inTurn.map((c) => [Math.max(c.s, a), Math.min(c.e, b)]).filter(([s, e]) => e > s);
+    // A task mark splits the turn only once other work in the turn has finished before it -
+    // a mark at the start of a turn just names the turn's task.
+    const work = inTurn.filter((c) => c.cat !== "시간 기록");
+    const cuts = tasks
+      .map((k) => ms(k.t))
+      .filter((x) => x > turn.s && x < turn.e && work.some((c) => c.e <= x));
+    const bounds = [turn.s, ...cuts, turn.e];
+    for (let j = 0; j + 1 < bounds.length; j++) {
+      const [a, b] = [bounds[j], bounds[j + 1]];
+      const last = j + 2 === bounds.length;
+      const mine = inTurn.filter((c) => c.s >= a && (last ? c.s <= b : c.s < b));
+      const cats = {};
+      for (const c of mine) cats[c.cat] = r1((cats[c.cat] || 0) + (c.e - c.s) / 1000);
+      const sec = r1((b - a) / 1000);
+      const tools = r1(unionMs(clip(a, b)) / 1000);
+      turnRows.push({
+        n: bounds.length > 2 ? `${i + 1}-${j + 1}` : i + 1,
+        start: new Date(a).toISOString(),
+        sec,
+        tools,
+        think: r1(sec - tools),
+        output: last ? turn.output : 0,
+        context: last ? turn.context : 0,
+        task: taskAt(last ? b : b - 1),
+        fails: mine.filter((c) => !c.ok).length,
+        cats,
+        cut: last && turn.cut,
+        kind: turn.kind,
+      });
+    }
+    // Thinking and answering time, by what came just before it: the user's message, a tool's result, or
+    // (after the last tool) the final answer.
+    let cursor = turn.s;
+    const holes = [];
+    for (const [s, e] of merge(clip(turn.s, turn.e))) {
+      if (s > cursor) holes.push([cursor, s]);
+      cursor = Math.max(cursor, e);
+    }
+    if (turn.e > cursor) holes.push([cursor, turn.e]);
+    for (const [s, e] of holes) {
+      const before = inTurn.filter((c) => c.e <= s).sort((x, y) => x.e - y.e).pop();
+      const label = !before ? (e === turn.e ? "도구 없는 턴" : "턴 시작") : e === turn.e ? "마지막 답변" : `${before.cat} 뒤`;
+      addGap(label, (e - s) / 1000, before ? before.size : 0);
+    }
   });
+  for (const g of Object.values(gaps)) {
+    g.size = Math.round(g.sizeSum / g.count);
+    delete g.sizeSum;
+  }
 
   const categoryRows = {};
   for (const c of calls) {
@@ -291,21 +437,108 @@ function summarize(events) {
     row.fails += turn.fails;
   }
 
-  const phases = marks.map((m, i) => ({
-    phase: m.phase,
-    sec: r1(overlapMs(working, ms(m.t), ms(i + 1 < marks.length ? marks[i + 1].t : end)) / 1000),
-  }));
+  // Phases per task: a task mark starts its phases over, and its time before the first phase mark is
+  // "단계 없음". Only working time counts, as everywhere else.
+  const phases = [];
+  const spans = [{ name: "작업 없음", at: events.length ? ms(events[0].t) : 0 }, ...taskStarts];
+  spans.forEach((span, i) => {
+    const b = i + 1 < spans.length ? spans[i + 1].at : endMs;
+    const own = marks.map((m) => ({ phase: m.phase, at: snap(ms(m.t)) })).filter((m) => m.at >= span.at && m.at < b);
+    const points = [{ phase: "단계 없음", at: span.at }, ...own];
+    points.forEach((p, j) => {
+      const q = j + 1 < points.length ? points[j + 1].at : b;
+      const sec = r1(overlapMs(working, p.at, q) / 1000);
+      if (j === 0 && sec === 0) return;
+      phases.push({ task: span.name, phase: p.phase, sec, cats: catsIn(p.at, q) });
+    });
+  });
+
+  // Background tasks run from their call until their notification (or TaskStop, or the end of the log).
+  const bgRange = (b) => {
+    const call = calls.find((c) => c.id === b.call);
+    return [call ? call.s : ms(b.t), bgEnds[b.id] ? ms(bgEnds[b.id].t) : endMs];
+  };
+  const background = {};
+  for (const b of bgStarts) {
+    const [a, z] = bgRange(b);
+    const busy = overlapMs(working, a, z) / 1000;
+    const row = (background[b.cat || "기타 명령"] ||= { count: 0, sec: 0, busy: 0, idle: 0 });
+    row.count += 1;
+    row.sec = r1(row.sec + (z - a) / 1000);
+    row.busy = r1(row.busy + busy);
+    row.idle = r1(row.idle + (z - a) / 1000 - busy);
+  }
+
+  // Gate runs: each gate call (until its background task ends, if it ran in the background) with the
+  // steps check.py wrote meanwhile; steps outside any call are grouped into runs of their own.
+  const bgEndOf = {};
+  for (const b of bgStarts) bgEndOf[b.call] = bgRange(b)[1];
+  const callRuns = calls
+    .filter((c) => c.cat === "전체 게이트")
+    .map((c) => ({ s: c.s, e: Math.max(c.e, bgEndOf[c.id] || 0), ok: c.ok, call: c, steps: [] }));
+  const runs = [...callRuns];
+  let loose = null;
+  for (const st of steps) {
+    const x = ms(st.t);
+    const run = callRuns.find((r) => x >= r.s && x <= r.e);
+    if (run) {
+      run.steps.push(st);
+      continue;
+    }
+    const from = x - st.sec * 1000;
+    if (!loose || loose.steps.some((p) => p.step === st.step) || from - loose.e > 120000) {
+      loose = { s: from, e: x, ok: true, call: null, steps: [] };
+      runs.push(loose);
+    }
+    loose.steps.push(st);
+    loose.e = x;
+  }
+  // check.py always writes its steps, so a "gate" call without any never got to run it.
+  const realRuns = runs.filter((run) => run.steps.length).sort((a, b) => a.s - b.s);
+
+  const SINCE = ["골든 갱신", "서식 자동 수정", "편집"];
+  const sinceLabels = (cats) =>
+    new Set(cats.map((cat) => (SINCE.includes(cat) ? cat : group(cat) === "편집" ? "편집" : null)).filter(Boolean));
+  const result = (run) => {
+    const failed = run.steps.filter((st) => st.ok === false).map((st) => st.step);
+    const ok = run.steps.length ? !failed.length : run.ok;
+    const text = ok ? "통과" : failed.length ? `실패(${failed.join(", ")})` : "실패";
+    return run.kind === "빠른" ? `빠른 ${text}` : text;
+  };
+  const gateRuns = [];
+  const seen = {};
+  realRuns.forEach((run, i) => {
+    run.kind = run.steps.some((st) => st.step === "pytest(빠른)") ? "빠른" : "전체";
+    run.task = taskOf(run.s);
+    const prev = realRuns.slice(0, i).filter((r) => r.task === run.task).pop();
+    let since = "-";
+    if (prev) {
+      const counts = {};
+      const between = calls.filter((c) => c.s >= prev.e && c.s < run.s && c !== run.call);
+      const lists = [...between.map((c) => [c.cat, ...c.also]), run.call ? run.call.also : []];
+      for (const cats of lists) for (const label of sinceLabels(cats)) counts[label] = (counts[label] || 0) + 1;
+      since = SINCE.filter((label) => counts[label]).map((label) => `${label} ${counts[label]}`).join(", ") || "없음";
+    }
+    const key = `${run.task}\n${run.kind}`;
+    seen[key] = (seen[key] || 0) + 1;
+    gateRuns.push({ task: run.task, kind: run.kind, n: seen[key], sec: r1((run.e - run.s) / 1000), prev: prev ? result(prev) : "-", since });
+  });
 
   return {
     start: events.length ? events[0].t : null,
     end,
     waiting: r1(waiting),
+    bgWaiting: r1(bgWaiting),
+    remoteWaiting: r1(remoteWaiting),
+    background,
+    gateRuns,
     unfinished: Object.keys(pre).length,
     turns: turnRows,
     tasks: taskRows,
     categories: categoryRows,
     gate,
     phases,
+    gaps,
   };
 }
 
@@ -317,10 +550,21 @@ function dur(sec) {
 
 const k = (n) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
 
+const top = (cats) =>
+  Object.entries(cats)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([cat, sec]) => `${cat} ${dur(sec)}`)
+    .join(", ") || "-";
+
+const STARTED_BY = { 알림: " (알림)", 원격알림: " (원격)", 훅피드백: " (훅)" };
+
 function format(s) {
   const out = [
     `기간: ${s.start} ~ ${s.end} (UTC)`,
-    `사용자 대기: ${dur(s.waiting)} / 끝나지 않은 도구 호출(거부·중단): ${s.unfinished}`,
+    `사용자 대기: ${dur(s.waiting)} / 백그라운드 대기: ${dur(s.bgWaiting || 0)} / ` +
+      `원격 알림 대기: ${dur(s.remoteWaiting || 0)} / ` +
+      `끝나지 않은 도구 호출(거부·중단): ${s.unfinished}`,
     "",
     "**작업별**",
     "",
@@ -329,22 +573,29 @@ function format(s) {
     ...s.tasks.map(
       (r) => `| ${r.name} | ${r.kind} | ${r.turns} | ${dur(r.sec)} | ${dur(r.think)} | ${dur(r.tools)} | ${r.fails} |`,
     ),
+  ];
+  if (s.phases.length) {
+    out.push(
+      "",
+      '**작업별 단계** (사용자 대기 제외, 작업의 첫 단계 표시 전은 "단계 없음")',
+      "",
+      "| 작업 | 단계 | 시간 | 주요 도구 |",
+      "|---|---|---|---|",
+      ...s.phases.map((p) => `| ${p.task} | ${p.phase} | ${dur(p.sec)} | ${top(p.cats)} |`),
+    );
+  }
+  out.push(
     "",
-    "**턴별** (사용자 메시지부터 답을 마칠 때까지, `+`는 답하는 도중 새 메시지가 와서 나뉜 턴)",
+    "**턴별** (사용자 메시지부터 답을 마칠 때까지, `+`는 답하는 도중 새 메시지가 와서 나뉜 턴, " +
+      "(알림)은 백그라운드 작업의 알림, (원격)은 PR 활동 같은 원격 알림, (훅)은 정지 훅 피드백으로 시작한 턴)",
     "",
     "| 턴 | 작업 | 시작(UTC) | 걸린 시간 | 생각·답변 | 도구 | 실패 | 맥락 | 출력 토큰 | 주요 도구 |",
     "|---|---|---|---|---|---|---|---|---|---|",
-    ...s.turns.map((r) => {
-      const top = Object.entries(r.cats)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
-        .map(([cat, sec]) => `${cat} ${dur(sec)}`)
-        .join(", ");
-      return (
-        `| ${r.n}${r.cut ? "+" : ""} | ${r.task} | ${r.start.slice(11, 19)} | ${dur(r.sec)} | ${dur(r.think)} | ${dur(r.tools)} | ` +
-        `${r.fails} | ${k(r.context)} | ${r.output} | ${top || "-"} |`
-      );
-    }),
+    ...s.turns.map(
+      (r) =>
+        `| ${r.n}${r.cut ? "+" : ""}${STARTED_BY[r.kind] || ""} | ${r.task} | ${r.start.slice(11, 19)} | ${dur(r.sec)} | ` +
+        `${dur(r.think)} | ${dur(r.tools)} | ${r.fails} | ${k(r.context)} | ${r.output} | ${top(r.cats)} |`,
+    ),
     "",
     "**분류별**",
     "",
@@ -353,15 +604,46 @@ function format(s) {
     ...Object.entries(s.categories)
       .sort((a, b) => b[1].sec - a[1].sec)
       .map(([cat, c]) => `| ${group(cat)} | ${cat} | ${c.count} | ${c.fails} | ${dur(c.sec)} | ${dur(r1(c.sec / c.count))} |`),
-  ];
+  );
+  const gaps = Object.entries(s.gaps || {});
+  if (gaps.length) {
+    out.push(
+      "",
+      "**생각·답변 나눔** (도구가 돌지 않은 시간을 바로 앞의 일로 묶는다, 앞 출력 = 그 도구가 돌려준 글자 수 평균)",
+      "",
+      "| 바로 앞 | 횟수 | 합계 | 평균 | 가장 긴 | 앞 출력 |",
+      "|---|---|---|---|---|---|",
+      ...gaps
+        .sort((a, b) => b[1].sec - a[1].sec)
+        .map(([label, g]) => `| ${label} | ${g.count} | ${dur(g.sec)} | ${dur(r1(g.sec / g.count))} | ${dur(g.max)} | ${g.size} |`),
+    );
+  }
   const gate = Object.entries(s.gate);
   if (gate.length) {
     out.push("", "**게이트 단계별**", "", "| 단계 | 횟수 | 실패 | 합계 | 평균 |", "|---|---|---|---|---|");
     out.push(...gate.map(([step, g]) => `| ${step} | ${g.count} | ${g.fails} | ${dur(g.sec)} | ${dur(r1(g.sec / g.count))} |`));
   }
-  if (s.phases.length) {
-    out.push("", "**단계별** (사용자 대기 제외)", "", "| 단계 | 작업 시간 |", "|---|---|");
-    out.push(...s.phases.map((p) => `| ${p.phase} | ${dur(p.sec)} |`));
+  const runs = s.gateRuns || [];
+  if (runs.length) {
+    out.push(
+      "",
+      "**게이트 회차** (회차는 그 작업 안에서 전체/빠른 따로, 그 사이 = 직전 게이트가 끝난 뒤 이 게이트까지)",
+      "",
+      "| 작업 | 회차 | 시간 | 직전 결과 | 그 사이 있었던 일 |",
+      "|---|---|---|---|---|",
+      ...runs.map((g) => `| ${g.task} | ${g.kind} ${g.n} | ${dur(g.sec)} | ${g.prev} | ${g.since} |`),
+    );
+  }
+  const bg = Object.entries(s.background || {});
+  if (bg.length) {
+    out.push(
+      "",
+      "**백그라운드** (호출부터 알림·멈춤까지, 다른 일 = 그동안 Claude가 턴 안에 있던 시간)",
+      "",
+      "| 분류 | 횟수 | 실제로 돈 시간 | 그동안 다른 일 | 기다리기만 |",
+      "|---|---|---|---|---|",
+      ...bg.map(([cat, b]) => `| ${cat} | ${b.count} | ${dur(b.sec)} | ${dur(b.busy)} | ${dur(b.idle)} |`),
+    );
   }
   return out.join("\n") + "\n";
 }
@@ -398,9 +680,28 @@ function readFrom(file, offset) {
   }
 }
 
+const REMINDER =
+  "작업시간 기록: 작업 표시 없이 편집을 시작했다. 새 작업이면 먼저 " +
+  '`node .claude/hooks/time-log.cjs mark 작업 <유형> "#이슈 제목"`을 찍는다(time-log 스킬). 이어지는 작업이면 무시한다.';
+
+// After an edit: a reminder (once) when no task is open - none was marked yet, or the last one ended with
+// its merge request. Without it the time lands on "작업 없음" or on the previous task.
+function reminder(input, file) {
+  if (input.hook_event_name !== "PostToolUse" || group(classify(String(input.tool_name || ""), input.tool_input)) !== "편집")
+    return null;
+  const events = fs.existsSync(file) ? readLog(file) : [];
+  const lastIndex = (pred) => events.reduce((found, e, i) => (pred(e) ? i : found), -1);
+  const task = lastIndex((e) => e.ev === "Task");
+  const ended = lastIndex((e) => e.ev === "Mark" && e.phase === "병합요청");
+  const reminded = lastIndex((e) => e.ev === "Reminder");
+  if ((task >= 0 && ended < task) || reminded > Math.max(task, ended)) return null;
+  append(file, { t: new Date().toISOString(), ev: "Reminder" });
+  return { hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: REMINDER } };
+}
+
 function hook(input, dir) {
   const line = record(input, new Date().toISOString());
-  if (!line) return;
+  if (!line) return null;
   const file = logFile(dir, input.session_id);
   const transcript = input.transcript_path;
   if (line.ev === "UserPromptSubmit" && transcript && fs.existsSync(transcript)) {
@@ -419,6 +720,14 @@ function hook(input, dir) {
     if (prompt && typeof prompt.off === "number") Object.assign(line, turnTokens(readFrom(transcript, prompt.off)));
   }
   append(file, line);
+  for (const extra of backgroundLines(input, line.t)) {
+    if (extra.ev === "BgStart") {
+      const call = readLog(file).find((e) => e.ev === "PreToolUse" && e.id === extra.call);
+      extra.cat = call ? call.cat : "기타 명령";
+    }
+    append(file, extra);
+  }
+  return reminder(input, file);
 }
 
 function main(argv, env) {
@@ -437,7 +746,8 @@ function main(argv, env) {
   process.stdin.on("data", (chunk) => (raw += chunk));
   process.stdin.on("end", () => {
     try {
-      hook(JSON.parse(raw || "{}"), dir);
+      const output = hook(JSON.parse(raw || "{}"), dir);
+      if (output) process.stdout.write(JSON.stringify(output));
     } catch {
       /* never block a tool call or a prompt because of this hook */
     }
@@ -452,6 +762,8 @@ module.exports = {
   group,
   turnTokens,
   record,
+  promptKind,
+  backgroundLines,
   parseMark,
   summarize,
   format,

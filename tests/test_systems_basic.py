@@ -1,14 +1,14 @@
 """game/system의 작은 모듈 단위 테스트 - 규칙을 정확한 값으로 고정한다.
 
 주사위/효과/파티/소지품/캐릭터 데이터/마을/지도/몬스터AI. 무작위가 끼는 곳은
-random.seed()로 고정하거나 random 함수를 바꿔치기해서 경계값을 직접 검사한다.
+rng.시드()로 고정하거나 random 함수를 바꿔치기해서 경계값을 직접 검사한다.
 """
 
 import importlib
-import random
 
 import pytest
 
+from game.system import rng
 from game.system import (
     character_creation_system as 생성,
     character_data_system as 데이터,
@@ -26,13 +26,13 @@ from game.system import (
 
 
 def test_주사위_범위와_합():
-    random.seed(0)
+    rng.시드(0)
     굴림 = dice_utils.주사위_굴림(50, 6)
     assert len(굴림) == 50 and set(굴림) <= set(range(1, 7))
     assert set(굴림) == set(range(1, 7))  # 50번이면 모든 눈이 나온다(시드 0)
-    random.seed(1)
+    rng.시드(1)
     합 = dice_utils.주사위_합(3, 8)
-    random.seed(1)
+    rng.시드(1)
     assert 합 == sum(dice_utils.주사위_굴림(3, 8))
     assert dice_utils.주사위_굴림(0, 6) == []
 
@@ -48,12 +48,12 @@ def test_주사위_범위와_합():
 )
 def test_d20_이점_불리(monkeypatch, 이점, 불리, 기대):
     값들 = iter([3, 17])
-    monkeypatch.setattr(dice_utils.random, "randint", lambda a, b: next(값들))
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: next(값들))
     assert dice_utils.d20_굴림(이점, 불리) == 기대
 
 
 def test_판정과_내성(monkeypatch):
-    monkeypatch.setattr(dice_utils.random, "randint", lambda a, b: 10)
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: 10)
     assert dice_utils.판정_굴림(3) == (13, 10)
     assert dice_utils.내성_성공(2, 12) is True  # 12 >= 12
     assert dice_utils.내성_성공(1, 12) is False  # 11 < 12
@@ -180,7 +180,7 @@ def test_보정치_차수_HP():
 
 
 def test_기술판정_숙련_숙달(monkeypatch):
-    monkeypatch.setattr(dice_utils.random, "randint", lambda a, b: 10)
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: 10)
     c = _빈캐릭터(근력=14)  # 보정치 +2
     assert 데이터.기술판정(c, "운동", "근력") == (None, 12)
     c["숙련"].append("운동")
@@ -573,9 +573,9 @@ def test_인카운트_확률_경계(monkeypatch):
     상태["걸음수"] = 2
     assert dungeon_system.인카운트_판정(상태) is None  # 안전걸음 이내
     상태["걸음수"] = 4  # 초과 2걸음 -> 확률 0.5
-    monkeypatch.setattr(dungeon_system.random, "random", lambda: 0.5)
+    monkeypatch.setattr(rng.던전, "random", lambda: 0.5)
     assert dungeon_system.인카운트_판정(상태) is None  # 0.5 >= 0.5 -> 안 뜸
-    monkeypatch.setattr(dungeon_system.random, "random", lambda: 0.49)
+    monkeypatch.setattr(rng.던전, "random", lambda: 0.49)
     assert dungeon_system.인카운트_판정(상태) == {"등장몬스터": ["고블린", "고블린"]}
     # 이동 중 인카운트가 뜨면 걸음수가 0으로 돌아간다
     상태["걸음수"] = 10
@@ -634,7 +634,7 @@ def test_타겟선택_어그로_표적고정():
     a = {"원본": {"어그로": 10}, "상태이상": []}
     b = {"원본": {"어그로": 0}, "상태이상": [{"이름": "도발당함"}]}
     assert monster_ai.타겟_선택([]) is None
-    random.seed(0)
+    rng.시드(0)
     assert {id(monster_ai.타겟_선택([a, b])) for _ in range(20)} == {
         id(a)
     }  # b 가중치 0

@@ -12,13 +12,13 @@ import importlib
 import os
 import pathlib
 import pkgutil
-import random
 import re
 import sys
 
 import pytest
 
 import game.data as 데이터패키지
+from game.system import rng
 import gameflow as gf
 from game.data.collection.collection_monster import 도감_출현장소
 from game.data.monster.monster_defaults import 몬스터_기본값
@@ -147,7 +147,7 @@ def test_데이터의_모든_수식이_엄격하게_평가된다():
         for 변수, 숫자 in 호출쪽_치환.items():
             식 = 식.replace(변수, 숫자)
         try:
-            random.seed(0)
+            rng.시드(0)
             결과 = formula.수식_평가(식, dict(수식_컨텍스트))
         except Exception as 오류:  # noqa: BLE001 - 어떤 실패든 데이터 문제로 보고한다
             실패.append(

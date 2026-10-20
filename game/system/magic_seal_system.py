@@ -17,7 +17,7 @@
 #   뺀 무작위 하나. 둘 다 100골드 + 레어 소울 1개. 소지품의 것이든 장착 중인 것이든 된다.
 
 import copy
-import random
+from game.system import rng
 
 from game.data.equipment.eq_00_magic_seal import 마봉능력, 봉인장비_해제이름
 
@@ -183,7 +183,7 @@ def _능력_고르고_바꾸기(플레이어, 항목, 후보, 봉인이름):
     if not 후보:
         raise ValueError("붙일 수 있는 마봉능력이 없습니다.")
     _비용_확인(플레이어)
-    새이름 = 마법의_이름(봉인이름, random.choice(후보))
+    새이름 = 마법의_이름(봉인이름, rng.보상.choice(후보))
     _비용_치르기(플레이어)
     _바꾸기(플레이어, 항목, 새이름)
     return 새이름

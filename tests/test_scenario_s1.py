@@ -5,10 +5,9 @@
 HP가 전투를 건너 이어지는지가 검사 대상이다. 전투 규칙 자체는 test_combat_*.py가 검사한다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -84,7 +83,7 @@ def _팔_수_있는_장비(상태):
 
 @pytest.mark.scenario("S1")
 def test_S1_첫_던전_실전(golden):
-    random.seed(시드)
+    rng.시드(시드)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     assert [c["직업"] for c in 파티] == ["귀검사", "격투가", "거너", "프리스트"]

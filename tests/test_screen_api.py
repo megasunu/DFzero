@@ -7,11 +7,11 @@
 
 import json
 import os
-import random
 import re
 
 import pytest
 
+from game.system import rng
 import gameflow as gf
 from game.system.combat import flow, stats
 from game.system import skill_system as ss
@@ -44,7 +44,7 @@ def test_화면은_game_system을_직접_쓰지_않는다():
 def _전투(
     구성=(("", "귀검사"), ("", "거너"), ("", "마법사"), ("", "프리스트")), 레벨=10
 ):
-    random.seed(3)
+    rng.시드(3)
     상태 = support.새게임(list(구성))
     전직 = {
         "귀검사": "웨펀마스터",
@@ -304,9 +304,8 @@ def test_공격연출은_한번_가져오면_비워지고_종류마다_그림이
 
 
 def _주사위(monkeypatch, 값):
-    from game.system import dice_utils
 
-    monkeypatch.setattr(dice_utils.random, "randint", lambda a, b: min(max(값, a), b))
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: min(max(값, a), b))
 
 
 def _새로그(상태):
@@ -567,6 +566,10 @@ def test_전력전투_다친_아군이_있으면_회복부터(전력전투):
     상태 = _전투()
     다친 = next(p for p in gf.아군_목록(상태) if p["원본"]["직업"] == "귀검사")
     다친["현재HP"] = 1
+    for a in gf.아군_목록(
+        상태
+    ):  # 해제가 회복보다 먼저다 - 회복 순서만 보도록 상태이상·디버프를 비운다
+        a["상태이상"], a["디버프"] = [], []
     _, 로그 = _한_차례(상태, "프리스트")
     assert 로그[0].get("스킬") == "치유의 기도", 로그
     assert 로그[0]["대상"] == [다친["이름"]]
@@ -613,7 +616,7 @@ def test_전력전투_MP가_없으면_MP_드는_스킬_없이(전력전투):
 
 
 def test_전력전투로_이어_누르면_전투가_끝난다(전력전투):
-    random.seed(5)
+    rng.시드(5)
     상태 = _전투()
     for _ in range(300):
         if gf.전투_종료됨(상태):
@@ -731,7 +734,12 @@ def test_간략하게면_계산줄이_없다():
 # 한 줄에 이름 | 남은 횟수 | MP | 행동(2026-10-16 사용자 지정). 행동은 지금 실제로 낼 행동으로 쓴다.
 
 
+# 타우 아미가 아군을 기절시키지 않아 아군 차례에 행동이 남는 시드
+_팝업_시드 = 1
+
+
 def _팝업_전장(직업, 전직, 추가스킬=()):
+    rng.시드(_팝업_시드)
     상태 = support.새게임([("", 직업)])
     c = 상태["파티"]["파티원"][0]
     support.성장(상태, c, 6, 전직=전직)

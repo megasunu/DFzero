@@ -1,8 +1,8 @@
 # 던전 화면 스킬("분류":"던전스킬") - 던전에서 전투 밖에 쓰는 스킬. 유루캠 퍽의 "던전 캠핑"
 # (2026-10-19 사용자 결정). 규칙은 docs/game-rules.md "던전 화면 스킬".
 
-import random
 
+from game.system import rng
 import gameflow as gf
 from game.data.job_skill.job_skill_0000 import 스킬목록 as 공용스킬
 from game.data.perks.perks_class_0000 import 퍽목록
@@ -12,7 +12,7 @@ from tests import support
 
 
 def _파티(퍽보유=True):
-    random.seed(0)
+    rng.시드(0)
     상태 = support.새게임()
     캠퍼 = 상태["파티"]["파티원"][0]
     if 퍽보유:

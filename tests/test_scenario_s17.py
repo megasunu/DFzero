@@ -6,10 +6,9 @@
 남은 횟수가 0인지, 마을 휴식 뒤 다시 쓸 수 있는지 본다. 규칙의 값은 tests/test_dungeon_skills.py가 본다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -30,7 +29,7 @@ def _캠핑줄(상태):
 
 @pytest.mark.scenario("S17")
 def test_S17_유루캠_던전_캠핑_실전(golden):
-    random.seed(시드)
+    rng.시드(시드)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     for 캐릭터 in 파티:

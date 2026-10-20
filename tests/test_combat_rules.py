@@ -8,6 +8,7 @@ import random
 
 import pytest
 
+from game.system import rng
 import gameflow as gf
 from game.data.buff.debuff import 디버프목록
 from game.data.buff.buff import 버프목록
@@ -33,7 +34,7 @@ from tests import support
 
 @pytest.fixture
 def 전장():
-    random.seed(7)
+    rng.시드(7)
     상태 = support.새게임(
         [("", "귀검사"), ("", "격투가"), ("", "거너"), ("", "마법사")]
     )
@@ -52,7 +53,7 @@ def 전장():
 
 
 def _주사위고정(monkeypatch, 값):
-    monkeypatch.setattr(dice_utils.random, "randint", lambda a, b: min(max(값, a), b))
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: min(max(값, a), b))
 
 
 # ------------------------------------------------------------------ 수식
@@ -99,7 +100,7 @@ def test_수식_평가_문법(monkeypatch):
 def test_수식_평균은_주사위를_굴리지_않고_기대값으로(monkeypatch):
     # 전력전투가 스킬의 기대 피해를 비교할 때 쓴다 - 무작위 수를 쓰지 않아야 전투 순서가 안 바뀐다
     monkeypatch.setattr(
-        dice_utils.random, "randint", lambda a, b: pytest.fail("굴리면 안 된다")
+        rng.주사위, "randint", lambda a, b: pytest.fail("굴리면 안 된다")
     )
     평 = formula.수식_평가
     assert 평("2d6+3", {}, 평균=True) == 2 * 3.5 + 3
@@ -511,7 +512,7 @@ def test_몬스터_적랜덤_대상수는_서로_다른_대상을_고른다(전�
     _주사위고정(monkeypatch, 20)
     패턴 = _시험_공격패턴(타겟="적랜덤", 대상수=2)
     for 시드 in range(5):
-        random.seed(시드)
+        rng.시드(시드)
         맞은 = _몬스터_패턴_시험(monkeypatch, 전투상태, 적[0], 패턴)
         assert len(맞은) == 2 and len(set(맞은)) == 2
         assert set(맞은) <= {p["id"] for p in 아군}
@@ -992,7 +993,7 @@ def test_1레벨_공중에뜸_스킬_명중하면_건강내성_DC10_실패시_�
     # 직업마다 두 번째 레벨 1 스킬. MP 5, 명중 후 건강 내성굴림(DC 10 고정 - 차수와
     # 무관), 실패하면 공중에뜸 1턴. 모두 보정공격력x1이고, 잭스파이크만 "태권"
     # 타입에 일반공격취급이 아니다. 나머지는 일반공격취급.
-    random.seed(7)
+    rng.시드(7)
     상태 = support.새게임([("", 직업)])
     gf.전투_시작(상태, ["고블린", "고블린"], 레벨=2, 차수=1)
     support.반응_처리(상태)
@@ -1051,7 +1052,7 @@ def test_단죄의_십자가는_무속성_무기공격력x2를_각각_명중굴�
     flow.턴_시작_처리(전투상태, 시전자)
     시전자["현재MP"] = 50
     명중굴림 = []
-    원래 = dice_utils.random.randint
+    원래 = rng.주사위.randint
 
     def 굴림(a, b):
         if (a, b) == (1, 20):
@@ -1059,7 +1060,7 @@ def test_단죄의_십자가는_무속성_무기공격력x2를_각각_명중굴�
             return 19  # 명중(치명타 아님)
         return 원래(a, b)
 
-    monkeypatch.setattr(dice_utils.random, "randint", 굴림)
+    monkeypatch.setattr(rng.주사위, "randint", 굴림)
     결과 = ss.스킬_실행(전투상태, 시전자, "단죄의 십자가", 스킬, 중심대상=적[0])
     assert len(결과["타격"]) == 2 and all(t["판정"]["성공"] for t in 결과["타격"])
     assert len(명중굴림) >= 2  # 타격마다 따로 굴린다
@@ -1235,7 +1236,7 @@ def test_선공_몬스터는_첫_턴에_행동한다():
     # B2: 참가자 0번이 몬스터면 화면이 턴_넘기기를 부르는데, 턴_넘기기가 먼저
     # 다음_턴()으로 그 몬스터의 턴을 끝내 버려 첫 턴을 행동 없이 잃던 버그.
     for 시드 in range(200):
-        random.seed(시드)
+        rng.시드(시드)
         상태 = support.새게임([("", "귀검사")])
         gf.전투_시작(상태, ["고블린", "고블린", "고블린"], 레벨=2, 차수=1)
         support.반응_처리(상태)
@@ -1615,7 +1616,7 @@ def test_전투_시작_정의모음은_정해진_칸만_받는다():
 @pytest.fixture
 def 키놀전장(monkeypatch):
     """키놀 1마리 대 4인 파티. 모두 HP를 넉넉히 두고, 키놀 원본(지능 12, 보정 +1)을 돌려준다."""
-    random.seed(5)
+    rng.시드(5)
     상태 = support.새게임(
         [("", "귀검사"), ("", "격투가"), ("", "거너"), ("", "마법사")]
     )
@@ -1767,7 +1768,7 @@ def test_연쇄_번개는_1d4_지능보정치_데미지보너스_마이너스1(�
     monkeypatch.setattr(
         dice_utils, "내성_굴림", lambda 보정치, 난이도, **kw: (True, 난이도)
     )
-    monkeypatch.setattr(random, "choice", lambda 목록: 목록[0])
+    monkeypatch.setattr(rng.대상, "choice", lambda 목록: 목록[0])
     시작 = len(전투상태["로그"])
     _키놀_턴(전투상태, 키놀, monkeypatch, gf.몬스터목록["전격의 키놀"]["패턴"][4])
     [기록] = [
@@ -1884,7 +1885,7 @@ def test_알비노_고블린은_넘어짐이_끝나도_공격하지_않는다(�
 def _한명전장():
     from game.system.combat import traits
 
-    random.seed(3)
+    rng.시드(3)
     상태 = support.새게임()
     gf.전투_시작(상태, ["포레스트 좀비"], 레벨=5, 차수=1)
     support.반응_처리(상태)
@@ -1996,7 +1997,7 @@ def test_공중에뜸에서_떨어진_키놀은_그_차례에_기상번개를_�
 
 def test_굴_구위시의_기상_충격파는_넘어짐이_풀릴_때만_터진다():
     # 사용자 지정 2026-10-15: 공중에뜸 해제시는 뺐다 - 공중에뜸 -> 넘어짐 -> 넘어짐 해제에 한 번
-    random.seed(5)
+    rng.시드(5)
     상태 = support.새게임()
     gf.전투_시작(상태, ["굴 구위시"], 레벨=5, 차수=1)
     support.반응_처리(상태)
@@ -2024,7 +2025,7 @@ def test_굴_구위시의_기상_충격파는_넘어짐이_풀릴_때만_터진�
 @pytest.fixture
 def 펜릴전장():
     """펜릴 1마리 대 4인 파티, 모두 HP 넉넉히."""
-    random.seed(5)
+    rng.시드(5)
     상태 = support.새게임(
         [("", "귀검사"), ("", "격투가"), ("", "거너"), ("", "마법사")]
     )
@@ -2124,7 +2125,7 @@ def test_좀비_패턴에는_출혈이_없다():
 
 
 def _좀비전장(몬스터="포레스트 좀비"):
-    random.seed(4)
+    rng.시드(4)
     상태 = support.새게임()
     gf.전투_시작(상태, [몬스터], 레벨=5, 차수=1)
     support.반응_처리(상태)
@@ -2181,7 +2182,7 @@ def test_좀비는_출혈인_아군을_어그로_비중으로_우선_노린다(m
         본것.append([p["이름"] for p in 목록])
         return 원래(목록, weights=weights, k=k)
 
-    monkeypatch.setattr(monster_ai.random, "choices", 기록)
+    monkeypatch.setattr(rng.대상, "choices", 기록)
     할퀴기 = gf.몬스터목록["포레스트 좀비"]["패턴"][1]
     monkeypatch.setattr(monster_ai, "행동_선택", lambda p: 할퀴기)
     monster_actions.몬스터_턴_실행(전투상태, 좀비)
@@ -2344,7 +2345,7 @@ def test_펜릴이_행동불가면_피니쉬_없이_들러붙음만_사라진다
 
 
 def test_루가루의_달려들기는_명중해도_물어뜯지_않는다(monkeypatch):
-    random.seed(5)
+    rng.시드(5)
     상태 = support.새게임()
     gf.전투_시작(상태, ["루가루"], 레벨=2, 차수=1)
     support.반응_처리(상태)
@@ -2394,7 +2395,7 @@ def test_독샘의_주인_펜릴의_공격이_명중하면_내성_없이_3턴_�
 
 
 def _펜릴_때리기(전투상태, 아군, 펜릴, monkeypatch, 굴림):
-    monkeypatch.setattr(traits.random, "random", lambda: 굴림)
+    monkeypatch.setattr(rng.확률, "random", lambda: 굴림)
     전투상태["현재턴"] = 전투상태["참가자"].index(아군[0])
     시작 = len(전투상태["로그"])
     attacks.일반공격_실행(전투상태, 아군[0], 펜릴)
@@ -2432,7 +2433,7 @@ def test_독샘의_주인_피격시_20퍼센트_독구름_50퍼센트_포이즌_
 
 def test_독샘의_주인은_지속피해로는_발동하지_않는다(펜릴전장, monkeypatch):
     전투상태, 펜릴, 아군 = 펜릴전장
-    monkeypatch.setattr(traits.random, "random", lambda: 0.0)
+    monkeypatch.setattr(rng.확률, "random", lambda: 0.0)
     펜릴["상태이상"].append({"이름": "출혈", "지속턴": 3})
     시작 = len(전투상태["로그"])
     flow.턴_종료_처리(전투상태, 펜릴)
@@ -2523,7 +2524,7 @@ def test_몬스터_타입은_사용자가_정한_대로다():
 @pytest.fixture
 def 샤우타전장():
     """샤우타 1마리 대 4인 파티. 모두 HP를 넉넉히 둔다."""
-    random.seed(5)
+    rng.시드(5)
     상태 = support.새게임(
         [("", "귀검사"), ("", "격투가"), ("", "거너"), ("", "마법사")]
     )
@@ -2607,7 +2608,7 @@ def test_몬스터_공격_데미지의_근력보정치는_버프_디버프를_�
     from game.system import monster_ai
     from game.system.combat import monster_actions
 
-    random.seed(1)
+    rng.시드(1)
     상태 = support.새게임([("", "귀검사")])
     gf.전투_시작(상태, ["타우 아미"], 레벨=2, 차수=1)
     support.반응_처리(상태)
@@ -2676,7 +2677,7 @@ def test_타우_능력치와_특성은_사용자가_정한_대로다():
 
 
 def _비스트전장():
-    random.seed(3)
+    rng.시드(3)
     상태 = support.새게임([("", "귀검사")])
     gf.전투_시작(상태, ["타우 비스트"], 레벨=2, 차수=1)
     support.반응_처리(상태)
@@ -2735,7 +2736,7 @@ def test_기절은_행동불가만_있고_피격시_확정치명타가_없다(mo
     assert 상태이상목록["기절"]["효과"] == {"행동불가": True}
     assert 상태이상목록["수면"]["효과"]["피격시강제치명타"] is True
 
-    random.seed(1)
+    rng.시드(1)
     상태 = support.새게임([("", "귀검사")])
     gf.전투_시작(상태, ["타우 아미"], 레벨=2, 차수=1)
     support.반응_처리(상태)
@@ -2787,7 +2788,7 @@ def test_기절한_적이_있으면_샤우타는_그중_한_명에게_점프_도
     샤우타전장, 시드
 ):
     전투상태, 샤우타, 아군 = 샤우타전장
-    random.seed(시드)
+    rng.시드(시드)
     기절 = {아군[1]["이름"], 아군[3]["이름"]}
     for p in (아군[1], 아군[3]):
         p.setdefault("상태이상", []).append({"이름": "기절", "지속턴": 3})
@@ -2828,7 +2829,7 @@ def test_타우의_왕은_샤우타의_방어력과_데미지보너스를_1씩_�
 
 def _차수전장(몬스터들, 차수):
     """몬스터들 대 4인 파티, 모두 HP 넉넉히(반응으로 몬스터가 쓰러지지 않게 몬스터도)."""
-    random.seed(5)
+    rng.시드(5)
     상태 = support.새게임(
         [("", "귀검사"), ("", "격투가"), ("", "거너"), ("", "마법사")]
     )
@@ -3373,7 +3374,7 @@ def test_갇힌_아군의_감옥_그림은_뒤와_앞이고_부서지면_없다(
 
 
 def _전장(몬스터들):
-    random.seed(5)
+    rng.시드(5)
     상태 = support.새게임(
         [("", "귀검사"), ("", "격투가"), ("", "거너"), ("", "마법사")]
     )
@@ -3765,7 +3766,7 @@ def _가시_무기_전장(monkeypatch, 고를_상태이상):
     격투가 = next(p for p in 아군 if p["원본"]["직업"] == "격투가")
     카탈로그 = gf.새_게임_시작([("", "격투가")])["상점카탈로그"]["장비"]["무기"]
     격투가["장비데이터"]["무기"] = 카탈로그["크로쿠타의 가시"]
-    monkeypatch.setattr(damage.random, "choice", lambda 목록: 고를_상태이상)
+    monkeypatch.setattr(rng.대상, "choice", lambda 목록: 고를_상태이상)
     # 내성굴림은 늘 실패
     monkeypatch.setattr(
         dice_utils, "내성_굴림", lambda 보정치, 난이도, **kw: (False, 난이도 - 1)
@@ -3808,7 +3809,12 @@ def test_무기_주사위를_안_쓰는_피해는_명중시효과가_없다(monk
 # 일반공격취급 스킬을 쓰면 그 턴에 추가행동이 열린다(2026-10-16 사용자 결정, game-rules "추가행동").
 
 
+# 타우 아미가 아군을 기절시키지 않아 아군 차례마다 행동이 남는 시드(0은 첫 차례를 기절로 잃는다)
+_추가행동_시드 = 2
+
+
 def _추가행동_전장(직업="귀검사", 전직="웨펀마스터", 레벨=6):
+    rng.시드(_추가행동_시드)
     상태 = support.새게임([("", 직업)])
     c = 상태["파티"]["파티원"][0]
     support.성장(상태, c, 레벨, 전직=전직)

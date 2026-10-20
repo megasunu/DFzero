@@ -7,17 +7,16 @@
 (내아내몬), 저장/불러오기 왕복 뒤에도 같은지 본다. 수치 규칙은 tests/test_combat_rules.py 각 절이 값으로 본다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import scenario
 import support
 from tests.test_gameflow_scenarios import 구현된_전직
 
 로리엔 = "dungeon_01A_D01_Lorien"
-시드 = 0
+시드 = 2  # 난수 흐름 분리(2026-10-20) 뒤 시드 0은 이 시나리오의 효과가 안 나온다
 고를퍽 = {"귀검사": "원펀맨", "프리스트": "내아내몬"}
 
 
@@ -28,7 +27,7 @@ def _퍽고르기(캐릭터, 후보):
 
 @pytest.mark.scenario("S15")
 def test_S15_원펀맨_인형사_내아내몬_실전(golden):
-    random.seed(시드)
+    rng.시드(시드)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     for 캐릭터 in 파티:

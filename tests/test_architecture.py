@@ -196,3 +196,22 @@ def test_게임_코드는_eval_exec_compile을_쓰지_않는다():
             ):
                 위반.append(f"{경로.relative_to(루트)}:{노드.lineno} {노드.func.id}()")
     assert not 위반, "eval/exec/compile 사용:\n" + "\n".join(위반)
+
+
+def test_게임_코드는_random을_rng로만_쓴다():
+    """무작위는 game/system/rng.py의 용도별 흐름에서만 나온다 - 전역 random을 쓰면 흐름 분리가 깨져
+    굴림 하나에 모든 골든이 다시 밀린다."""
+    위반 = []
+    대상 = [루트 / "gameflow.py", 루트 / "main.py", *(루트 / "game").rglob("*.py")]
+    for 경로 in 대상:
+        if 경로 == 루트 / "game" / "system" / "rng.py":
+            continue
+        for 노드 in ast.walk(ast.parse(경로.read_text(encoding="utf-8"))):
+            이름들 = []
+            if isinstance(노드, ast.Import):
+                이름들 = [a.name for a in 노드.names]
+            elif isinstance(노드, ast.ImportFrom):
+                이름들 = [노드.module or ""]
+            if any(n == "random" or n.startswith("random.") for n in 이름들):
+                위반.append(f"{경로.relative_to(루트)}:{노드.lineno}")
+    assert not 위반, "random을 직접 import:\n" + "\n".join(위반)

@@ -17,7 +17,6 @@ tests/는 kivy 없이 gameflow 이하만 검사한다. 화면(game/screens) 코�
 import json
 import re
 import os
-import random
 import shutil
 import sys
 import tempfile
@@ -51,7 +50,8 @@ from kivy.uix.togglebutton import ToggleButton  # noqa: E402
 
 import gameflow as gf  # noqa: E402
 from game.screens import screens_common, screens_party  # noqa: E402
-from game.system import dice_utils, save_system, skill_system  # noqa: E402
+from game.system import rng  # noqa: E402
+from game.system import save_system, skill_system  # noqa: E402
 from game.system.combat import flow  # noqa: E402
 from tests import support  # noqa: E402
 
@@ -211,7 +211,9 @@ class 스모크앱(main.DnfMobileApp):
         self._다음(0)
 
     def _단계들(self):
-        random.seed(3)
+        rng.시드(
+            0
+        )  # 난수 흐름 분리(2026-10-20) 뒤 3은 메모라이즈 단계에서 팝업이 남는다
         상태 = support.새게임(
             [("", "귀검사"), ("", "거너"), ("", "마법사"), ("", "프리스트")]
         )
@@ -688,11 +690,11 @@ class 스모크앱(main.DnfMobileApp):
 
         # 전직 선택 팝업(레벨 5): 1차 전직이 전부 구현돼 모든 버튼을 누를 수 있다.
         # 따로 만든 게임에서 키우고 난수 상태를 되돌려 뒤 단계에 영향을 주지 않는다
-        난수 = random.getstate()
+        난수 = rng.상태()
         전직상태 = support.새게임([("", "귀검사")])
         전직귀검 = 전직상태["파티"]["파티원"][0]
         support.성장(전직상태, 전직귀검, 5)
-        random.setstate(난수)
+        rng.상태_복원(난수)
         매니저.get_screen("파티관리")._전직선택_팝업(전직귀검)
         yield 0.5
         팝업 = Window.children[0]
@@ -964,7 +966,7 @@ class 스모크앱(main.DnfMobileApp):
 
         # 같은 팝업의 주류: 마시면 취기가 쌓이고 스탯창에 [취기 N]이 보인다
         # (회복 굴림이 난수를 쓰므로 앞뒤로 난수 상태를 되돌려 뒤 단계의 굴림을 그대로 둔다)
-        난수상태 = random.getstate()
+        난수상태 = rng.상태()
         상태["소지품"]["소모품"]["맥주"] = 2
         귀검사["현재HP"] = 1
         파티원._포션_팝업(상태, 귀검사)
@@ -985,7 +987,7 @@ class 스모크앱(main.DnfMobileApp):
         assert any("[취기 1]" in t for t in 라벨들), 라벨들
         귀검사["상태이상"] = []
         gf.파티_최대치로_회복(상태)
-        random.setstate(난수상태)
+        rng.상태_복원(난수상태)
         결과["단계"].append("파티원 주류 사용(취기 1, 스탯창 [취기 1] 표시)")
         yield 0.3
 
@@ -1146,7 +1148,7 @@ class 스모크앱(main.DnfMobileApp):
         결과["단계"].append("전투 [아이템] 포션 팝업(보조행동 1, 자신 회복, 로그)")
 
         # [아이템]의 주류: 보조행동 1개, 취기가 쌓이고 아군 칸에 (취기 1)이 보인다
-        난수상태 = random.getstate()
+        난수상태 = rng.상태()
         p = _차례(전투상태, "귀검사")
         상태["소지품"]["소모품"]["맥주"] = 1
         전투._아이템_클릭()
@@ -1163,7 +1165,7 @@ class 스모크앱(main.DnfMobileApp):
         assert any("(취기 1)" in t for t in 라벨들), 라벨들
         _찍기("battle_drink")
         p["상태이상"] = []
-        random.setstate(난수상태)
+        rng.상태_복원(난수상태)
         결과["단계"].append("전투 [아이템] 주류(보조행동 1, 취기 1, 아군 칸 표시)")
 
         # [아이템]의 버프포션: 가속 포션은 보조행동 1개로 마신 턴에 바로 일반행동 +1
@@ -1211,7 +1213,7 @@ class 스모크앱(main.DnfMobileApp):
 
         # [아이템]의 투척 아이템: 폭탄 - 일반행동 1개, 중심 대상 팝업에서 고르면 양옆까지 맞는다
         p = _차례(전투상태, "귀검사")
-        난수상태 = random.getstate()  # 뒤 단계의 굴림이 달라지지 않게
+        난수상태 = rng.상태()  # 뒤 단계의 굴림이 달라지지 않게
         상태["소지품"]["소모품"]["폭탄"] = 1
         # 폭탄에 적이 쓰러져 전투가 끝나지 않게 HP를 넉넉히 올렸다가 되돌린다(뒤 단계가 쓴다)
         적HP = {
@@ -1243,7 +1245,7 @@ class 스모크앱(main.DnfMobileApp):
         for x in 전투상태["참가자"]:
             if id(x) in 적HP:
                 x["현재HP"] = 적HP[id(x)]
-        random.setstate(난수상태)
+        rng.상태_복원(난수상태)
         결과["단계"].append(
             "전투 [아이템] 투척 아이템(폭탄 - 일반행동 1, 중심 대상 팝업, 범위 공격)"
         )
@@ -1353,13 +1355,13 @@ class 스모크앱(main.DnfMobileApp):
             for w in 팝업.walk(restrict=True)
             if getattr(w, "text", None) == "예"
         )
-        원래 = dice_utils.random.randint
-        dice_utils.random.randint = lambda a, b: 1
+        원래 = rng.주사위.randint
+        rng.주사위.randint = lambda a, b: 1
         try:
             예버튼.dispatch("on_release")
             yield 1.0
         finally:
-            dice_utils.random.randint = 원래
+            rng.주사위.randint = 원래
         assert (
             전투상태["종료"] is not None
             or 전투상태["참가자"][전투상태["현재턴"]] is not 현재
@@ -1454,12 +1456,12 @@ class 스모크앱(main.DnfMobileApp):
             # 체력 1 몬스터(힐가브)는 전투시작 반응에 쓰러져 이미 팝업이 떠 있을 수 있다
             if 상태["전투상태"] is not None:
                 if 첫줄 == "도망쳤다!":
-                    원래 = dice_utils.random.randint
-                    dice_utils.random.randint = lambda a, b: 20
+                    원래 = rng.주사위.randint
+                    rng.주사위.randint = lambda a, b: 20
                     try:
                         끝내기(상태)
                     finally:
-                        dice_utils.random.randint = 원래
+                        rng.주사위.randint = 원래
                 else:
                     끝내기(상태)
                 전투.갱신()

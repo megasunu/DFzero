@@ -1,18 +1,17 @@
 """귀검사 달빛베기와 소울브링어(012m) 전직 특성/스킬 규칙 (#244, 2026-10-20 사용자 결정)."""
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
-from game.system import dice_utils, skill_system as ss
+from game.system import skill_system as ss
 from game.system.combat import attacks, damage, flow, stats
 from tests import support
 
 
 @pytest.fixture
 def 전장():
-    random.seed(7)
+    rng.시드(7)
     상태 = support.새게임([("", "귀검사"), ("", "격투가")])
     gf.전투_시작(상태, ["고블린", "고블린", "고블린"], 레벨=2, 차수=1)
     support.반응_처리(상태)
@@ -28,7 +27,7 @@ def 전장():
 
 
 def _주사위고정(monkeypatch, 값):
-    monkeypatch.setattr(dice_utils.random, "randint", lambda a, b: min(max(값, a), b))
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: min(max(값, a), b))
 
 
 def _스킬(이름):
@@ -75,7 +74,7 @@ def test_공중에뜸은_다시_걸려도_1턴에서_늘지_않는다(전장, mo
 @pytest.fixture
 def 소울브링어전장():
     """귀검사 -> 소울브링어 레벨 8(스킬 전부 습득)과 격투가, 고블린 셋."""
-    random.seed(7)
+    rng.시드(7)
     상태 = support.새게임([("", "귀검사"), ("", "격투가")])
     c = 상태["파티"]["파티원"][0]
     support.성장(상태, c, 8, 전직="소울브링어", 스킬습득=True)
@@ -579,7 +578,7 @@ def _귀영보_고르기(캐릭터, 후보):
 
 @pytest.fixture
 def 귀영보전장():
-    random.seed(7)
+    rng.시드(7)
     상태 = support.새게임([("", "귀검사"), ("", "격투가")])
     c = 상태["파티"]["파티원"][0]
     support.성장(상태, c, 8, 전직="소울브링어")
@@ -598,12 +597,12 @@ def 귀영보전장():
 def _눈들(monkeypatch, *눈):
     남은 = list(눈)
     monkeypatch.setattr(
-        dice_utils.random, "randint", lambda a, b: 남은.pop(0) if b == 20 else a
+        rng.주사위, "randint", lambda a, b: 남은.pop(0) if b == 20 else a
     )
 
 
 def test_귀영보는_소울브링어만_고르는_2차수_퍽이고_반응스킬을_준다():
-    random.seed(7)
+    rng.시드(7)
     상태 = support.새게임([("", "귀검사"), ("", "귀검사")])
     sb, bs = 상태["파티"]["파티원"]
     support.성장(상태, sb, 8, 전직="소울브링어")

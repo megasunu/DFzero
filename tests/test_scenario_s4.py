@@ -7,10 +7,9 @@
 종족은 던전을 걷지 않고 전투를 직접 연다 - 던전마다 종족이 무작위로 섞여 나와서 특정 종족을 고를 수 없기 때문이다.
 """
 
-import random
-
 import pytest
 
+from game.system import rng
 import gameflow as gf
 import support
 from tests.test_gameflow_scenarios import 구현된_전직
@@ -52,7 +51,7 @@ def _판정_검사(항목):
 
 
 def _싸움(직업, 무기타입, 무기이름, 몬스터, 종족이름):
-    random.seed(f"S4-{직업}-{무기타입}-{종족이름}")
+    rng.시드(f"S4-{직업}-{무기타입}-{종족이름}")
     상태 = support.새게임([("", 직업)])
     캐릭터 = 상태["파티"]["파티원"][0]
     support.성장(상태, 캐릭터, 6, 전직=구현된_전직[직업])

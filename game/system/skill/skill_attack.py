@@ -2,7 +2,7 @@
 
 패키지 설명과 구현 범위는 game/system/skill_system.py 머리 주석을 본다(밖에서는 skill_system을 통해 쓴다)."""
 
-import random
+from game.system import rng
 from dataclasses import dataclass, field, replace
 
 from game.system import dice_utils
@@ -474,7 +474,7 @@ def _반복_대상_고르기(후보풀, 타겟종류, 지정대상목록, 번호
             # 앞선 타격으로 지정 대상이 쓰러지면 남은 적 중 무작위로
             # 대신 맞힌다(가정 - 헛치지 않게).
             남은적 = [p for p in 후보풀 if p["생존"]]
-            대상 = random.choice(남은적) if 남은적 else None
+            대상 = rng.대상.choice(남은적) if 남은적 else None
         return 대상
     유효후보 = [
         p
@@ -483,7 +483,7 @@ def _반복_대상_고르기(후보풀, 타겟종류, 지정대상목록, 번호
     ]
     if not 유효후보:
         유효후보 = [p for p in 후보풀 if p["생존"]]
-    return random.choice(유효후보) if 유효후보 else None
+    return rng.대상.choice(유효후보) if 유효후보 else None
 
 
 @dataclass
