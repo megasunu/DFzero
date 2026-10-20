@@ -991,3 +991,22 @@ def test_레벨8_버프스킬은_모든_직업에서_휴식당_1회다():
                 검사한것.append(이름)
                 assert 스킬정의[이름].get("휴식당횟수") == 1, 이름
     assert {"오버드라이브", "잔영의 케이가", "강권"} <= set(검사한것)
+
+
+def test_퍽은_분류가_퍽이고_타입에_처리종류가_하나다():
+    """퍽 구조(#289): "분류"는 모두 "퍽", 처리 종류(특성획득/스킬획득/스탯획득/일반퍽)는 "타입" 리스트에
+    정확히 하나 - 레벨업 처리(character_levelup_system.퍽_처리타입)가 그것으로 갈라진다."""
+    from game.system.character_levelup_system import 퍽_처리타입목록
+
+    틀림 = []
+    for 모듈이름 in ("0000", "010m", "020f", "030f", "040f", "050f"):
+        모듈 = importlib.import_module(f"game.data.perks.perks_class_{모듈이름}")
+        for 이름, 정의 in 모듈.퍽목록.items():
+            타입 = 정의.get("타입")
+            if (
+                정의.get("분류") != "퍽"
+                or not isinstance(타입, list)
+                or sum(t in 퍽_처리타입목록 for t in 타입) != 1
+            ):
+                틀림.append((모듈이름, 이름, 정의.get("분류"), 타입))
+    assert 틀림 == []
