@@ -37,7 +37,8 @@ paths:
 | `test_tools_console.py` | `tools/*.py` CLI가 cp1252 콘솔에서도 한글을 찍고 끝나는지(#200) | 값 |
 | `test_imports.py`, `test_repo_hygiene.py` | 모듈 import, file_path.py, LF 줄끝, 비밀값 금지, 시나리오 장부 대조, 게이트(싼 검사 실패 시 멈춤, `--빠른`) | 규칙 |
 
-- 공용 도우미는 `tests/support.py`(자동 전투, 강제 승리/패배, 경로 걷기, 결정적 성장, 골든 쓰기·골든 로그 모으기).
+- 공용 도우미는 `tests/support.py`(자동 전투, 강제 승리/패배, 경로 걷기, 결정적 성장, 골든 쓰기·골든 로그 모으기,
+  `핵심_로그`·`수치_변화` - 스윕 골든에는 적의 공격 줄과 바뀌지 않은 수치를 싣지 않는다).
 - 문장 골든(`battle_log_sentences`)은 `UPDATE_GOLDEN=1`일 때 세션 끝에 다시 쓴다(`conftest.pytest_sessionfinish`) - 갱신은 한 번이면 된다.
 - 무작위는 전부 `game/system/rng.py`의 용도별 흐름(주사위/확률/대상/던전/보상)이고 `rng.시드()` 하나로 재현된다(전역 `random`도 같이 - 테스트의
   플레이어 정책용). 테스트마다 0으로 시작한다(`conftest.전역_난수_시드`). 굴림을 바꿔치기할 때는 그 흐름을 바꾼다(`monkeypatch.setattr(rng.주사위, "randint", ...)`).
