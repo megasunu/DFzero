@@ -5,7 +5,6 @@
 from game.system import rng
 from dataclasses import dataclass
 
-from game.system import dice_utils
 from game.system.combat import (
     core,
     damage,
@@ -13,7 +12,6 @@ from game.system.combat import (
     resources,
     stats,
     status,
-    traits,
 )
 from game.system.skill.skill_grant import (
     상태이상_부여,
@@ -57,14 +55,13 @@ def _내성_실패인가(문맥, 항목, 이점검사):
         난이도 = formula.수식_평가(
             난이도, stats.기본_컨텍스트(문맥.전투상태, 문맥.시전자)
         )
-    내성보정치 = stats.내성굴림_보정치(문맥.전투상태, 문맥.대상, 항목["내성"])
-    불리 = status.상태이상_플래그(문맥.전투상태, 문맥.대상, "내성굴림불리점")
-    이점 = (
-        traits.상태이상_내성이점(문맥.전투상태, 문맥.대상, 항목["이름"])
-        if 이점검사
-        else False
+    성공, 값, 내성보정치 = stats.대상_내성굴림(
+        문맥.전투상태,
+        문맥.대상,
+        항목["내성"],
+        난이도,
+        항목["이름"] if 이점검사 else None,
     )
-    성공, 값 = dice_utils.내성_굴림(내성보정치, 난이도, 이점=이점, 불리=불리)
     계산 = []
     if stats.상세로그(문맥.전투상태):
         계산 = [
