@@ -636,3 +636,38 @@ test("the hook never fails a tool call: bad input prints nothing and exits 0", (
   }).toString();
   assert.strictEqual(out, "");
 });
+
+// Expected green: a task's kind gives its usual length, then CI (#287).
+test("eta: the kind's usual length plus CI, none for an investigation", () => {
+  assert.deepStrictEqual(t.eta("기능", at(0)), { sec: 720 + 190, green: at(910) });
+  assert.deepStrictEqual(t.eta("버그", at(0)), { sec: 240 + 190, green: at(430) });
+  assert.strictEqual(t.eta("모르는유형", at(0)).sec, 720 + 190);
+  assert.strictEqual(t.eta("조사", at(0)), null);
+});
+
+test("parseMark: CI marks the result and when it ended", () => {
+  assert.deepStrictEqual(t.parseMark(["CI", "초록"]), { ev: "CI", result: "초록" });
+  assert.deepStrictEqual(t.parseMark(["CI", "빨강", at(5)]), { ev: "CI", result: "빨강", at: at(5) });
+  assert.deepStrictEqual(t.parseMark(["CI"]), { ev: "Mark", phase: "CI" });
+});
+
+test("summarize/format: expected green against the CI result that followed the task", () => {
+  const s = t.summarize([
+    { t: at(0), ev: "Task", kind: "버그", name: "#1 버그", eta: at(430) },
+    { t: at(600), ev: "CI", result: "초록", at: at(500) },
+    { t: at(700), ev: "Task", kind: "조사", name: "#2 조사" },
+  ]);
+  assert.deepStrictEqual(s.etas, [{ task: "#1 버그", kind: "버그", eta: at(430), actual: at(500), diff: 70, result: "초록" }]);
+  assert.match(t.format(s), /\| #1 버그 \| 버그 \| 00:07:10 \| 00:08:20 \| \+1분 10초 \| 초록 \|/);
+});
+
+test("mark 작업 prints and keeps the expected green", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "time-log-eta-"));
+  const env = { ...process.env, CLAUDE_PROJECT_DIR: dir };
+  const out = execFileSync("node", [HOOK, "mark", "작업", "기능", "#3 상점"], { env }).toString();
+  assert.match(out, /^예상 초록 \d\d:\d\d:\d\d UTC \(작업 12분 0초 \+ CI 3분 10초\)\n$/);
+  const [line] = fs.readdirSync(path.join(dir, ".claude", "time-log")).map((f) =>
+    JSON.parse(fs.readFileSync(path.join(dir, ".claude", "time-log", f), "utf8")),
+  );
+  assert.strictEqual(Date.parse(line.eta) - Date.parse(line.t), 910 * 1000);
+});
