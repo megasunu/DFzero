@@ -46,6 +46,16 @@ test("classify: checks and runs", () => {
   assert.strictEqual(bash("sed -n 1,9p .claude/hooks/time-log.cjs"), "파일 읽기"); // only mark/report
 });
 
+test("classify: the gate and the smoke only when they run, not when the file is read (#271)", () => {
+  assert.strictEqual(bash("python3 -I tools/check.py --빠른 tests/test_a.py"), "전체 게이트");
+  assert.strictEqual(bash("cd /x && python3.11 tools/check.py"), "전체 게이트");
+  assert.strictEqual(bash("python tools/ui_smoke.py"), "화면 확인");
+  assert.strictEqual(bash("sed -n 80,150p tools/check.py"), "파일 읽기");
+  assert.strictEqual(bash("grep -n GateStep tools/check.py"), "코드 검색");
+  assert.strictEqual(bash("cat tools/ui_smoke.py | head"), "파일 읽기");
+  assert.strictEqual(bash("grep -n _단계_ tools/ui_smoke.py"), "코드 검색");
+});
+
 test("classify: reading, searching and editing from the shell", () => {
   assert.strictEqual(bash("cat a.py"), "파일 읽기");
   assert.strictEqual(bash("sed -n 1,80p a.py"), "파일 읽기");

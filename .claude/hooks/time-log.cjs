@@ -41,14 +41,16 @@ function latestLog(dir) {
 }
 
 const git = (sub) => new RegExp(`\\bgit\\s+(?:-[cC]\\s+\\S+\\s+)*(?:${sub})\\b`);
+// A repository script run by python - reading or searching the file is not running it (#271).
+const pyRun = (script) => new RegExp(`\\bpython[\\d.]*\\s+(?:-\\S+\\s+)*\\S*\\b${script}\\.py\\b`);
 
 // Shell categories, heaviest first: a mixed command is timed under the first that matches.
 const BASH = [
   ["저장소 저장 - 올리기", git("push")],
   ["저장소 저장 - 커밋", git("commit")],
   ["깃 - 병합", git("merge")],
-  ["화면 확인", /ui_smoke/],
-  ["전체 게이트", /check\.py/],
+  ["화면 확인", pyRun("ui_smoke")],
+  ["전체 게이트", pyRun("check")],
   ["골든 갱신", /UPDATE_GOLDEN=1/],
   ["게임 테스트", /(?<!install\b[^\n;&|]*)\bpytest\b/],
   ["서식 자동 수정", /ruff\s+format(?![^\n;&|]*--check)/],
@@ -474,7 +476,7 @@ function summarize(events) {
     loose.steps.push(st);
     loose.e = x;
   }
-  // check.py always writes its steps, so a "gate" call without any only named the file (sed, grep).
+  // check.py always writes its steps, so a "gate" call without any never got to run it.
   const realRuns = runs.filter((run) => run.steps.length).sort((a, b) => a.s - b.s);
 
   const SINCE = ["골든 갱신", "서식 자동 수정", "편집"];
