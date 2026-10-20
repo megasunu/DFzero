@@ -31,7 +31,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install tools
-        run: pip install pytest pytest-cov ruff==0.16.9  # ruff 버전 고정: 서식 결과가 버전마다 다르다
+        run: pip install pytest pytest-cov pytest-xdist==3.8.0 ruff==0.16.9  # ruff 버전 고정: 서식 결과가 버전마다 다르다. xdist: 테스트 병렬(-n auto)
 
       - name: DoD gate
         run: python tools/check.py

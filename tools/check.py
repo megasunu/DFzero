@@ -1,4 +1,4 @@
-"""완료 기준(DoD) 게이트 - 커밋 전에 이것 하나만 돌린다.
+"""완료 기준(DoD) 게이트 - push(와 PR) 전에 이것 하나만 돌린다. 작업 중 커밋은 --빠른으로 확인한다.
 
     python tools/check.py
     python tools/check.py --빠른 [테스트 파일 ...]   # 작업 중 빠른 확인 - 완료 기준 아님
@@ -13,9 +13,9 @@
                 NOT VERIFIED라고 찍는다(CI 러너에는 node가 있다).
 
 앞의 싼 검사(1, 2)가 실패하면 테스트로 넘어가지 않고 멈춘다 - 고친 뒤 어차피 다시 돌린다.
-`--빠른`은 커버리지 없이 테스트(파일을 주면 그 파일만)를 돌린다. 작업 중 확인용이고, 커밋 전에는 전체를 돌린다.
+`--빠른`은 커버리지 없이 테스트(파일을 주면 그 파일만)를 돌린다. 작업 중 확인용이고, push 전에는 전체를 돌린다.
 하나라도 실패하면 0이 아닌 코드로 끝난다. Windows/리눅스 어디서나 돈다.
-필요한 도구: pip install pytest pytest-cov ruff==0.16.9 (CI와 같은 버전 - 서식 결과가 버전마다 다르다)
+필요한 도구: pip install pytest pytest-cov pytest-xdist==3.8.0 ruff==0.16.9 (CI와 같은 버전 - 서식 결과가 버전마다 다르다)
 """
 
 import datetime
@@ -34,16 +34,29 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 COVERAGE_FLOOR = 92
 
 PYTEST_BASE = [sys.executable, "-m", "pytest"]
-PYTEST = list(PYTEST_BASE)
-if importlib.util.find_spec("pytest_cov") is not None:
-    PYTEST += [
-        "--cov=game.system",
-        "--cov=game.controller",
-        "--cov=gameflow",
-        "--cov-branch",
-        "--cov-report=term:skip-covered",
-        f"--cov-fail-under={COVERAGE_FLOOR}",
-    ]
+커버리지_있음 = importlib.util.find_spec("pytest_cov") is not None
+병렬_있음 = importlib.util.find_spec("xdist") is not None  # pytest-xdist
+
+
+def pytest_명령(빠른, 파일, 병렬, 커버리지):
+    """게이트의 pytest 명령. 병렬이면 -n auto(4코어에서 약 124초 -> 57초) - 빠른 확인에서 파일을 고르면
+    직렬이다(작업자를 띄우는 데 더 걸린다). 커버리지 하한은 전체 게이트에만 붙는다."""
+    명령 = list(PYTEST_BASE)
+    if 병렬 and not (빠른 and 파일):
+        명령 += ["-n", "auto"]
+    if 커버리지 and not 빠른:
+        명령 += [
+            "--cov=game.system",
+            "--cov=game.controller",
+            "--cov=gameflow",
+            "--cov-branch",
+            "--cov-report=term:skip-covered",
+            f"--cov-fail-under={COVERAGE_FLOOR}",
+        ]
+    return 명령 + list(파일)
+
+
+PYTEST = pytest_명령(빠른=False, 파일=[], 병렬=병렬_있음, 커버리지=커버리지_있음)
 
 STEPS = [
     (
@@ -118,7 +131,10 @@ def main(argv=None):
             print(f"== {name}: tests/ 없음, 건너뜀")
             continue
         if name == "pytest" and 빠른:
-            name, cmd = "pytest(빠른)", PYTEST_BASE + 테스트_파일
+            name, cmd = (
+                "pytest(빠른)",
+                pytest_명령(True, 테스트_파일, 병렬_있음, 커버리지_있음),
+            )
         if name == "node --test" and shutil.which("node") is None:
             print(
                 f"== {name}: node 없음, 건너뜀 - NOT VERIFIED: context-guard·time-log 훅 테스트"
@@ -129,6 +145,8 @@ def main(argv=None):
             print(
                 "   (pytest-cov 없음 - 커버리지 하한 검사를 건너뜀: pip install pytest-cov)"
             )
+        if name == "pytest" and "-n" not in cmd:
+            print("   (pytest-xdist 없음 - 직렬로 돈다: pip install pytest-xdist)")
         시작 = time.monotonic()
         result = subprocess.run(cmd, cwd=ROOT)
         초 = time.monotonic() - 시작
@@ -142,7 +160,7 @@ def main(argv=None):
         return 1
     if 빠른:
         print(
-            "PASS: 빠른 확인 통과 - 커버리지 없음, 완료 기준이 아니다(커밋 전에 python tools/check.py)"
+            "PASS: 빠른 확인 통과 - 커버리지 없음, 완료 기준이 아니다(push 전에 python tools/check.py)"
         )
         return 0
     print("PASS: 모든 검사 통과")

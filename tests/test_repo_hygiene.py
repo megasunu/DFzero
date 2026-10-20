@@ -672,3 +672,18 @@ def test_게이트는_빠른_확인_없이_테스트를_고르면_거절한다(m
     )
     assert 코드 == 2
     assert 돈_명령 == []
+
+
+def test_게이트는_병렬_도구가_있으면_테스트를_나눠_돌린다():
+    """pytest-xdist가 있으면 -n auto(4코어에서 약 124초 -> 57초). 없으면 직렬로 돌고 그 사실을 알린다."""
+    from tools import check
+
+    전체 = check.pytest_명령(빠른=False, 파일=[], 병렬=True, 커버리지=True)
+    assert "-n" in 전체 and 전체[전체.index("-n") + 1] == "auto"
+    assert "--cov-branch" in 전체
+    assert "-n" not in check.pytest_명령(빠른=False, 파일=[], 병렬=False, 커버리지=True)
+    # 빠른 확인: 파일을 고르면 직렬(병렬 준비가 더 오래 걸린다), 전부면 병렬, 커버리지는 늘 없다
+    고름 = check.pytest_명령(빠른=True, 파일=["tests/a.py"], 병렬=True, 커버리지=True)
+    assert "-n" not in 고름 and 고름[-1] == "tests/a.py"
+    assert not [a for a in 고름 if a.startswith("--cov")]
+    assert "-n" in check.pytest_명령(빠른=True, 파일=[], 병렬=True, 커버리지=True)
