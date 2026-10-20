@@ -685,6 +685,29 @@ class 스모크앱(main.DnfMobileApp):
         _팝업_닫기()
         결과["단계"].append("능력치 배분 팝업")
 
+        # 전직 선택 팝업(레벨 5): 1차 전직이 전부 구현돼 모든 버튼을 누를 수 있다.
+        # 따로 만든 게임에서 키우고 난수 상태를 되돌려 뒤 단계에 영향을 주지 않는다
+        난수 = random.getstate()
+        전직상태 = support.새게임([("", "귀검사")])
+        전직귀검 = 전직상태["파티"]["파티원"][0]
+        support.성장(전직상태, 전직귀검, 5)
+        random.setstate(난수)
+        매니저.get_screen("파티관리")._전직선택_팝업(전직귀검)
+        yield 0.5
+        팝업 = Window.children[0]
+        assert 팝업.title == "전직 선택"
+        전직버튼 = [
+            w
+            for w in 팝업.walk(restrict=True)
+            if isinstance(w, Button) and w.text in gf.전직_레지스트리["귀검사"]
+        ]
+        assert [b.text for b in 전직버튼] == list(gf.전직_레지스트리["귀검사"])
+        assert len(전직버튼) == 5 and not any(b.disabled for b in 전직버튼)
+        _찍기("advancement_popup")
+        _팝업_닫기()
+        yield 0.3
+        결과["단계"].append("전직 선택 팝업(귀검사 전직 5개 모두 선택 가능)")
+
         # 마스터리 선택 팝업: 줄마다 이름 토글 + [상세보기](설명은 상세보기 창에만)
         from kivy.uix.togglebutton import ToggleButton
 
