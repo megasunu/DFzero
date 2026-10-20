@@ -134,7 +134,7 @@ def 스킬_기대피해(게임상태, 참가자, 스킬이름, 적수=None):
         한번 = sum(formula.수식_평가(str(식), 컨텍스트, 평균=True) for 식 in 식들)
         횟수 = 상세.get("공격횟수", 1)
         if not isinstance(횟수, int):
-            횟수 = int(formula.수식_평가(str(횟수), 컨텍스트, 평균=True))
+            횟수 = formula.올림(formula.수식_평가(str(횟수), 컨텍스트, 평균=True))
     except (ValueError, ZeroDivisionError, SyntaxError, TypeError):
         return 0
     if isinstance(데미지, list):  # 타격마다 다른 식이면 리스트 합이 이미 전체 타수
@@ -213,8 +213,8 @@ def _다친_아군(게임상태):
     )
 
 
-def _전력전투_인수(게임상태, 데이터):
-    """스킬을 낼 인수(중심대상). 낼 수 없으면 None."""
+def _전력전투_인수(게임상태, 데이터, 참가자=None):
+    """스킬을 낼 인수(중심대상). 낼 수 없으면 None. "타겟제한" "자신제외"(새크리파이스)면 참가자는 빼고 고른다."""
     타겟 = 스킬_실제_타겟(게임상태, 데이터)
     if 타겟 in _전력전투_제외타겟:
         return None
@@ -223,6 +223,8 @@ def _전력전투_인수(게임상태, 데이터):
         return {"중심대상": 적들[0]} if 적들 else None
     if 타겟 == "아군단일":
         다친 = _다친_아군(게임상태)
+        if 데이터.get("타겟제한") == "자신제외":
+            다친 = [a for a in 다친 if a is not 참가자]
         return {"중심대상": 다친[0]} if 다친 else None
     return {}
 
@@ -239,7 +241,7 @@ def 전력전투_고르기(게임상태, 참가자):
                 continue
             if not _전력전투_쓸만한가(게임상태, 참가자, 이름, 데이터):
                 continue
-            인수 = _전력전투_인수(게임상태, 데이터)
+            인수 = _전력전투_인수(게임상태, 데이터, 참가자)
             if 인수 is not None:
                 후보.append((이름, 인수))
         if 후보:

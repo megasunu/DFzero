@@ -16,7 +16,7 @@ from game.system import (
     loot_system,
     magic_seal_system,
 )
-from game.system.combat import attacks, damage, flow, stats
+from game.system.combat import attacks, damage, flow, formula, stats
 from game.system.skill import skill_attack
 from tests import support
 
@@ -305,7 +305,7 @@ def test_강타는_최종_데미지를_10퍼센트_올린다(마봉전장, monke
     _착용(상태, 귀검사, "무기", None)
     기준 = _일반공격_피해(전투상태, 귀검사, 적[0])
     _착용(상태, 귀검사, "무기", "강타")
-    assert _일반공격_피해(전투상태, 귀검사, 적[0]) == round(기준 * 1.1)
+    assert _일반공격_피해(전투상태, 귀검사, 적[0]) == formula.올림(기준 * 1.1)
     # 투척 아이템(장비보너스제외)에는 안 붙는다
     옵션 = skill_attack.공격옵션(장비보너스=False)
     적[0]["현재HP"] = 999

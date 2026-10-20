@@ -2450,9 +2450,29 @@ class 스모크앱(main.DnfMobileApp):
             yield 0.4
             assert "봉절" not in 던전.상태라벨.text, 던전.상태라벨.text
             assert "풀렸다" in 던전.메시지라벨.text, 던전.메시지라벨.text
+            # 전환스킬 프렌지(버서커 퍽 광기 #247): 줄 끝이 (꺼짐) -> 누르면 켜지고 다시 열면 (켜짐)
+            귀검사["보유스킬"].append("프렌지")
+            스킬버튼.trigger_action(duration=0)
+            yield 0.3
+            줄 = [b for b in _대상버튼들() if " - 프렌지" in b.text]
+            assert len(줄) == 1 and "(꺼짐)" in 줄[0].text, [
+                b.text for b in _대상버튼들()
+            ]
+            줄[0].trigger_action(duration=0)
+            yield 0.4
+            assert 귀검사.get("켜진특성") == ["프렌지"], 귀검사.get("켜진특성")
+            assert "켰다" in 던전.메시지라벨.text, 던전.메시지라벨.text
+            스킬버튼.trigger_action(duration=0)
+            yield 0.3
+            줄 = [b for b in _대상버튼들() if " - 프렌지" in b.text]
+            assert "(켜짐)" in 줄[0].text, 줄[0].text
+            _찍기("dungeon_skill_toggle")
+            _팝업_닫기()
+            yield 0.2
             결과["단계"].append(
                 "던전 [스킬]: 던전 캠핑 줄(1/1, MP 0) -> 파티 HP 최대(쓰러진 파티원 포함), 다시 열면 0/1 비활성. "
-                "봉절(MP 5) -> 상태줄 '봉절 N' -> 다시 열면 (풀기) -> 풀림"
+                "봉절(MP 5) -> 상태줄 '봉절 N' -> 다시 열면 (풀기) -> 풀림. "
+                "프렌지 (꺼짐) -> 누르면 켜짐, 다시 열면 (켜짐)"
             )
         finally:
             상태["던전상태"] = 원래[0]
@@ -2460,6 +2480,7 @@ class 스모크앱(main.DnfMobileApp):
             귀검사.get("횟수제한스킬", {}).get("휴식제한스킬", {}).pop(
                 "던전 캠핑", None
             )
+            귀검사.pop("켜진특성", None)
             gf.파티_최대치로_회복(상태)
             매니저.current = "마을"
 
