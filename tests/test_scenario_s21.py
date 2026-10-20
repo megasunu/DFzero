@@ -7,11 +7,10 @@
 남는지 본다. 규칙의 값은 tests/test_perks_common.py가 본다.
 """
 
-import random
-
 import pytest
 
 import gameflow as gf
+from game.system import rng
 import scenario
 import support
 from tests.test_gameflow_scenarios import 구현된_전직
@@ -30,7 +29,7 @@ def _형태들(상태):
 
 @pytest.mark.scenario("S21")
 def test_S21_란마_실전(golden, 임시_세이브폴더):
-    random.seed(시드)
+    rng.시드(시드)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     for 캐릭터 in 파티:
