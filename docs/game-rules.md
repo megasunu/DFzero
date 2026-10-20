@@ -491,7 +491,7 @@
 |---|---|---|
 | `loot_system` 골드/드랍 (`_미정인가` = None 또는 "미정") | 획득골드 0, 그 드랍 항목(아이템이름/확률/비율) 건너뜀, 적등급은 일반(1배) | `test_골드_굴림_고정값과_미정`, `test_보상_후보_독립형과_아이템조건과_미정` |
 | `monster_actions` 패턴 | 데미지 식에 "미정"이 **들어 있으면**(부분 문자열) 공격 대신 "데이터 미비(미정)로 스킵" 로그 | 코드 |
-| `participants` 몬스터 수식(최대HP/AC) | 평가 못 하면 기본값 | `test_combat_rules` 123줄 |
+| `participants` 몬스터 수식(최대HP/AC) | 평가 못 하면 기본값 | `test_combat_rules.test_몬스터_수식_평가_대체값` |
 | `potion_system`/`ctl_potion` 음식 | 회복값이 "N%"가 아니면 "데이터 없음", 소모 안 함 | `test_회복값이_미정인_음식은_데이터_없음이고_소모하지_않는다` |
 | `drink_system` 주류 | 회복값이 dict가 아니면 회복 대상 없음(빈 목록) | 코드 |
 | `character_levelup_system` | 레벨업 타입 "미정"은 레벨만 오른다 | `test_systems_items` 758줄 |
