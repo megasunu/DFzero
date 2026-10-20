@@ -198,6 +198,7 @@ test("summarize: turns with their task, tool time and thinking time", () => {
       fails: 1,
       cats: { "파일 읽기": 3, "코드 검색": 4, "전체 게이트": 20 },
       cut: false,
+      kind: "사람",
     },
     {
       n: 2,
@@ -211,6 +212,7 @@ test("summarize: turns with their task, tool time and thinking time", () => {
       fails: 0,
       cats: { "저장소 저장 - 커밋": 2 },
       cut: false,
+      kind: "사람",
     },
   ]);
   assert.strictEqual(s.waiting, 60);
@@ -225,10 +227,162 @@ test("summarize: categories, tasks, gate steps and phases", () => {
     { name: "#2 전투", kind: "버그", turns: 1, sec: 10, think: 8, tools: 2, fails: 0 },
   ]);
   assert.deepStrictEqual(s.gate, { pytest: { count: 1, fails: 1, sec: 7.5 } });
+});
+
+test("summarize: phases are counted per task, a task mark starts its phases over", () => {
+  const s = t.summarize(EVENTS);
+  // The task and 조사 marks come before any work in turn 1, so they start at the turn's start. 게이트 ends
+  // where #2 starts, so the second turn is not 게이트 time; #2 has no phase mark at all.
   assert.deepStrictEqual(s.phases, [
-    { phase: "조사", sec: 9 },
-    { phase: "게이트", sec: 30 + 10 },
+    { task: "#1 상점", phase: "조사", sec: 10, cats: { "파일 읽기": 3, "코드 검색": 4 } },
+    { task: "#1 상점", phase: "게이트", sec: 30, cats: { "전체 게이트": 20 } },
+    { task: "#2 전투", phase: "단계 없음", sec: 10, cats: { "저장소 저장 - 커밋": 2 } },
   ]);
+  const text = t.format(s);
+  assert.match(text, /\*\*작업별 단계\*\*/);
+  assert.match(text, /\| #1 상점 \| 게이트 \| 30초 \| 전체 게이트 20초 \|/);
+  assert.match(text, /\| #2 전투 \| 단계 없음 \| 10초 \| 저장소 저장 - 커밋 2초 \|/);
+});
+
+test("summarize: time before a task's first phase mark is 단계 없음, an empty one is left out", () => {
+  const s = t.summarize([
+    { t: at(0), ev: "UserPromptSubmit" },
+    { t: at(1), ev: "Task", kind: "기능", name: "#1" },
+    { t: at(2), ev: "PreToolUse", tool: "Read", cat: "파일 읽기", id: "r" },
+    { t: at(5), ev: "PostToolUse", id: "r", ok: true },
+    { t: at(8), ev: "Mark", phase: "구현" },
+    { t: at(20), ev: "Stop" },
+  ]);
+  assert.deepStrictEqual(
+    s.phases.map((p) => [p.task, p.phase, p.sec]),
+    [
+      ["#1", "단계 없음", 8],
+      ["#1", "구현", 12],
+    ],
+  );
+});
+
+// Gate runs: two full ones with fixes in between, a quick one, and steps written without a hook call
+// (check.py run outside Claude's tools).
+const GATES = [
+  { t: at(0), ev: "UserPromptSubmit" },
+  { t: at(0), ev: "Task", kind: "기능", name: "#1" },
+  { t: at(1), ev: "PreToolUse", tool: "Bash", cat: "전체 게이트", id: "g1" },
+  { t: at(2), ev: "GateStep", step: "compileall", sec: 1, ok: true },
+  { t: at(3), ev: "GateStep", step: "ruff format", sec: 1, ok: false },
+  { t: at(4), ev: "PostToolUse", id: "g1", ok: false },
+  { t: at(5), ev: "PreToolUse", tool: "Bash", cat: "서식 자동 수정", id: "f" },
+  { t: at(6), ev: "PostToolUse", id: "f", ok: true },
+  { t: at(7), ev: "PreToolUse", tool: "Edit", cat: "파일 편집 - 도구", id: "e" },
+  { t: at(8), ev: "PostToolUse", id: "e", ok: true },
+  // `UPDATE_GOLDEN=1 python -m pytest && python tools/check.py`: the golden update rides on the gate call
+  { t: at(9), ev: "PreToolUse", tool: "Bash", cat: "전체 게이트", also: ["골든 갱신", "게임 테스트"], id: "g2" },
+  { t: at(20), ev: "GateStep", step: "pytest", sec: 10, ok: true },
+  { t: at(21), ev: "PostToolUse", id: "g2", ok: true },
+  { t: at(22), ev: "PreToolUse", tool: "Bash", cat: "전체 게이트", id: "q" },
+  { t: at(25), ev: "GateStep", step: "pytest(빠른)", sec: 2, ok: true },
+  { t: at(26), ev: "PostToolUse", id: "q", ok: true },
+  { t: at(30), ev: "GateStep", step: "compileall", sec: 1, ok: true },
+  { t: at(40), ev: "GateStep", step: "pytest", sec: 5, ok: false },
+  // `sed -n 1,9p tools/check.py` is classified as a gate but writes no steps: not a gate run
+  { t: at(41), ev: "PreToolUse", tool: "Bash", cat: "전체 게이트", id: "read" },
+  { t: at(42), ev: "PostToolUse", id: "read", ok: true },
+  { t: at(50), ev: "Stop" },
+];
+
+test("summarize: each gate run with its round in the task, the last result and what happened since", () => {
+  const s = t.summarize(GATES);
+  assert.deepStrictEqual(s.gateRuns, [
+    { task: "#1", kind: "전체", n: 1, sec: 3, prev: "-", since: "-" },
+    { task: "#1", kind: "전체", n: 2, sec: 12, prev: "실패(ruff format)", since: "골든 갱신 1, 서식 자동 수정 1, 편집 1" },
+    { task: "#1", kind: "빠른", n: 1, sec: 4, prev: "통과", since: "없음" },
+    { task: "#1", kind: "전체", n: 3, sec: 11, prev: "빠른 통과", since: "없음" },
+  ]);
+  const text = t.format(s);
+  assert.match(text, /\*\*게이트 회차\*\*/);
+  assert.match(text, /\| #1 \| 전체 2 \| 12초 \| 실패\(ruff format\) \| 골든 갱신 1, 서식 자동 수정 1, 편집 1 \|/);
+  assert.match(text, /\| #1 \| 빠른 1 \| 4초 \| 통과 \| 없음 \|/);
+});
+
+test("prompt kinds: a person, a background task's notification, hook feedback", () => {
+  assert.strictEqual(t.promptKind("고쳐줘"), "사람");
+  assert.strictEqual(t.promptKind("  <task-notification>\n<task-id>b1</task-id>"), "알림");
+  assert.strictEqual(t.promptKind("Stop hook feedback:\nx"), "훅피드백");
+  assert.strictEqual(t.promptKind(undefined), "사람");
+  const line = t.record({ hook_event_name: "UserPromptSubmit", prompt: "<task-notification>..." }, at(1));
+  assert.deepStrictEqual(line, { t: at(1), ev: "UserPromptSubmit", kind: "알림" }); // no prompt text kept
+});
+
+test("background lines: start from the tool's response, end from a notification or TaskStop", () => {
+  const post = { hook_event_name: "PostToolUse", tool_name: "Bash", tool_use_id: "u1" };
+  assert.deepStrictEqual(t.backgroundLines({ ...post, tool_response: { backgroundTaskId: "b7" } }, at(1)), [
+    { t: at(1), ev: "BgStart", id: "b7", call: "u1" },
+  ]);
+  assert.deepStrictEqual(t.backgroundLines({ ...post, tool_response: { stdout: "x" } }, at(1)), []);
+  assert.deepStrictEqual(
+    t.backgroundLines({ ...post, tool_name: "TaskStop", tool_input: { task_id: "b7" }, tool_response: {} }, at(2)),
+    [{ t: at(2), ev: "BgEnd", id: "b7", status: "stopped" }],
+  );
+  const prompt =
+    "<task-notification>\n<task-id>b1</task-id>\n<status>completed</status>\n<summary>secret</summary>\n</task-notification>\n" +
+    "<task-notification><task-id>b2</task-id><status>failed</status></task-notification>" +
+    "<task-notification><task-id>bad id!</task-id><status>whatever</status></task-notification>";
+  assert.deepStrictEqual(t.backgroundLines({ hook_event_name: "UserPromptSubmit", prompt }, at(3)), [
+    { t: at(3), ev: "BgEnd", id: "b1", status: "completed" },
+    { t: at(3), ev: "BgEnd", id: "b2", status: "failed" },
+  ]);
+  assert.deepStrictEqual(t.backgroundLines({ hook_event_name: "UserPromptSubmit", prompt: "hi" }, at(3)), []);
+});
+
+// A gate in the background: Claude reads meanwhile, then stops and waits for the notification.
+const BG = [
+  { t: at(0), ev: "UserPromptSubmit", kind: "사람" },
+  { t: at(1), ev: "PreToolUse", tool: "Bash", cat: "전체 게이트", id: "b1" },
+  { t: at(2), ev: "PostToolUse", id: "b1", ok: true },
+  { t: at(2), ev: "BgStart", id: "x1", call: "b1", cat: "전체 게이트" },
+  { t: at(3), ev: "PreToolUse", tool: "Read", cat: "파일 읽기", id: "r" },
+  { t: at(13), ev: "PostToolUse", id: "r", ok: true },
+  { t: at(20), ev: "Stop" },
+  { t: at(30), ev: "GateStep", step: "pytest", sec: 25, ok: true },
+  { t: at(60), ev: "UserPromptSubmit", kind: "알림" },
+  { t: at(60), ev: "BgEnd", id: "x1", status: "completed" },
+  { t: at(71), ev: "PreToolUse", tool: "Bash", cat: "게임 테스트", id: "b2" },
+  { t: at(72), ev: "PostToolUse", id: "b2", ok: true },
+  { t: at(72), ev: "BgStart", id: "x2", call: "b2", cat: "게임 테스트" },
+  { t: at(80), ev: "PreToolUse", tool: "TaskStop", cat: "기타 도구", id: "s" },
+  { t: at(81), ev: "PostToolUse", id: "s", ok: true },
+  { t: at(81), ev: "BgEnd", id: "x2", status: "stopped" },
+  { t: at(90), ev: "Stop" },
+  { t: at(200), ev: "UserPromptSubmit" }, // an old log line: no kind is a person
+  { t: at(210), ev: "Stop" },
+];
+
+test("summarize: background tasks, waiting on them apart from waiting on the user", () => {
+  const s = t.summarize(BG);
+  assert.strictEqual(s.waiting, 110);
+  assert.strictEqual(s.bgWaiting, 40);
+  assert.deepStrictEqual(s.background, {
+    "전체 게이트": { count: 1, sec: 59, busy: 19, idle: 40 },
+    "게임 테스트": { count: 1, sec: 10, busy: 10, idle: 0 },
+  });
+  assert.deepStrictEqual(
+    s.turns.map((r) => [r.n, r.kind]),
+    [
+      [1, "사람"],
+      [2, "알림"],
+      [3, "사람"],
+    ],
+  );
+  // the background gate runs until its notification, so its steps belong to that call
+  assert.deepStrictEqual(
+    s.gateRuns.map((g) => [g.n, g.sec]),
+    [[1, 59]],
+  );
+  const text = t.format(s);
+  assert.match(text, /사용자 대기: 1분 50초 \/ 백그라운드 대기: 40초/);
+  assert.match(text, /\| 2 \(알림\) \|/);
+  assert.match(text, /\*\*백그라운드\*\*/);
+  assert.match(text, /\| 전체 게이트 \| 1 \| 59초 \| 19초 \| 40초 \|/);
 });
 
 test("format: markdown tables in seconds", () => {
@@ -370,6 +524,41 @@ test("end to end: hook writes the session log with tokens, mark and report read 
   run([], { ...base, hook_event_name: "UserPromptSubmit" });
   const last = JSON.parse(fs.readFileSync(file, "utf8").trim().split("\n").pop());
   assert.deepStrictEqual(last.prev, { output: 4, context: 9 });
+});
+
+test("end to end: the hook records the prompt kind and background starts and ends, never the prompt text", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "time-log-"));
+  const env = { ...process.env, CLAUDE_PROJECT_DIR: dir };
+  const run = (input) => execFileSync("node", [HOOK], { env, input: JSON.stringify(input) }).toString();
+  const base = { session_id: "bg" };
+  const bash = { ...base, tool_name: "Bash", tool_use_id: "u", tool_input: { command: "python tools/check.py" } };
+
+  run({ ...base, hook_event_name: "UserPromptSubmit", prompt: "비밀 메시지" });
+  run({ ...bash, hook_event_name: "PreToolUse" });
+  run({ ...bash, hook_event_name: "PostToolUse", tool_response: { backgroundTaskId: "bx" } });
+  run({ ...base, hook_event_name: "Stop" });
+  run({
+    ...base,
+    hook_event_name: "UserPromptSubmit",
+    prompt: "<task-notification><task-id>bx</task-id><status>completed</status><summary>비밀</summary></task-notification>",
+  });
+
+  const text = fs.readFileSync(path.join(dir, ".claude", "time-log", "bg.jsonl"), "utf8");
+  assert.doesNotMatch(text, /비밀/);
+  const lines = text.trim().split("\n").map((l) => JSON.parse(l));
+  assert.deepStrictEqual(
+    lines.map((l) => [l.ev, l.kind || l.cat || l.status || ""]),
+    [
+      ["UserPromptSubmit", "사람"],
+      ["PreToolUse", "전체 게이트"],
+      ["PostToolUse", ""],
+      ["BgStart", "전체 게이트"],
+      ["Stop", ""],
+      ["UserPromptSubmit", "알림"],
+      ["BgEnd", "completed"],
+    ],
+  );
+  assert.deepStrictEqual([lines[3].id, lines[3].call, lines[6].id], ["bx", "u", "bx"]);
 });
 
 test("the hook never fails a tool call: bad input prints nothing and exits 0", () => {
