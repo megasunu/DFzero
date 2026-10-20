@@ -3,6 +3,7 @@
 import os
 import re
 import subprocess
+import sys
 
 from tools import fix_eol, scenario_registry
 
@@ -615,3 +616,59 @@ def test_게이트는_단계별_시간을_작업시간_기록에_남긴다(tmp_p
         False,
     )
     assert (tmp_path / "옛.jsonl").read_text(encoding="utf-8") == ""
+
+
+def _게이트_실행(monkeypatch, tmp_path, 단계들, 인자=()):
+    """check.main을 가짜 단계로 돌리고 (종료 코드, 실제로 돈 명령들)을 돌려준다."""
+    import subprocess
+    from types import SimpleNamespace
+
+    from tools import check
+
+    돈_명령 = []
+
+    def 가짜_실행(cmd, cwd=None):
+        돈_명령.append(cmd)
+        return SimpleNamespace(returncode=1 if "실패" in cmd else 0)
+
+    monkeypatch.setattr(check, "STEPS", 단계들)
+    monkeypatch.setattr(check, "TIME_LOG", str(tmp_path))  # 세션 기록을 더럽히지 않는다
+    monkeypatch.setattr(subprocess, "run", 가짜_실행)
+    return check.main(list(인자)), 돈_명령
+
+
+def test_게이트는_싼_검사가_실패하면_테스트로_넘어가지_않는다(monkeypatch, tmp_path):
+    """서식 하나 틀려도 1분 넘는 테스트를 다 돌고 다시 돌리던 낭비를 막는다."""
+    단계들 = [
+        ("compileall", ["컴파일"]),
+        ("ruff check", ["린트"]),
+        ("ruff format", ["서식", "실패"]),
+        ("pytest", ["테스트"]),
+        ("node --test", ["훅"]),
+    ]
+    코드, 돈_명령 = _게이트_실행(monkeypatch, tmp_path, 단계들)
+    assert 코드 == 1
+    assert 돈_명령 == [["컴파일"], ["린트"], ["서식", "실패"]]
+
+
+def test_게이트_빠른_확인은_커버리지_없이_고른_테스트만_돌린다(monkeypatch, tmp_path):
+    from tools import check
+
+    단계들 = [("ruff check", ["린트"]), ("pytest", check.PYTEST)]
+    코드, 돈_명령 = _게이트_실행(
+        monkeypatch, tmp_path, 단계들, ["--빠른", "tests/test_battle_log.py"]
+    )
+    assert 코드 == 0
+    테스트_명령 = 돈_명령[-1]
+    assert 테스트_명령[:3] == [sys.executable, "-m", "pytest"]
+    assert not [a for a in 테스트_명령 if a.startswith("--cov")]
+    assert 테스트_명령[-1] == "tests/test_battle_log.py"
+
+
+def test_게이트는_빠른_확인_없이_테스트를_고르면_거절한다(monkeypatch, tmp_path):
+    """전체 게이트에서 테스트 일부만 돌면 커버리지 하한이 거짓으로 깨진다."""
+    코드, 돈_명령 = _게이트_실행(
+        monkeypatch, tmp_path, [("pytest", ["테스트"])], ["tests/test_x.py"]
+    )
+    assert 코드 == 2
+    assert 돈_명령 == []

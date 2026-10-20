@@ -33,9 +33,10 @@ paths:
 | `test_scenario_*.py` | 풀 시나리오(실제 전투로 처음부터 끝까지, scenarios.md) | 요약 골든 + 값 |
 | `test_auto_merge_gate.py`, `test_project_bridge.py` | 자동 병합 판정, 보드 브리지(명령 라벨·사건별 상태·STATUS.md) | 값 |
 | `test_tools_console.py` | `tools/*.py` CLI가 cp1252 콘솔에서도 한글을 찍고 끝나는지(#200) | 값 |
-| `test_imports.py`, `test_repo_hygiene.py` | 모듈 import, file_path.py, LF 줄끝, 비밀값 금지, 시나리오 장부 대조 | 규칙 |
+| `test_imports.py`, `test_repo_hygiene.py` | 모듈 import, file_path.py, LF 줄끝, 비밀값 금지, 시나리오 장부 대조, 게이트(싼 검사 실패 시 멈춤, `--빠른`) | 규칙 |
 
-- 공용 도우미는 `tests/support.py`(자동 전투, 강제 승리/패배, 경로 걷기, 결정적 성장).
+- 공용 도우미는 `tests/support.py`(자동 전투, 강제 승리/패배, 경로 걷기, 결정적 성장, 골든 쓰기·골든 로그 모으기).
+- 문장 골든(`battle_log_sentences`)은 `UPDATE_GOLDEN=1`일 때 세션 끝에 다시 쓴다(`conftest.pytest_sessionfinish`) - 갱신은 한 번이면 된다.
 - 무작위는 전부 전역 `random`이라 `random.seed()`로 재현된다. 테스트마다 0으로 시작한다(`conftest.전역_난수_시드`). 골든은 시드를 고정해 만든다.
 - **데이터를 추가/수정하면** `test_data_integrity.py`가 오타(수식 변수, 특성/버프 이름, 그림 파일, 던전 연결)를 잡는다. 런타임은 평가할 수 없는
   수식을 0으로, 정의 없는 특성을 건너뛰어 조용히 넘어가므로 이 테스트가 유일한 안전망이다. 새 변수/예외는 허용 목록에 이유와 함께 더한다.

@@ -6,51 +6,19 @@
   `전투_로그_종류_검사`가 모든 테스트에서 core.로그를 지켜보고, 여기서는 골든에 든 항목을 본다).
 """
 
-import glob
 import json
 import os
 
 import gameflow as gf
 from game.system.combat import core
+from tests import support
 
 GOLDEN_DIR = os.path.join(os.path.dirname(__file__), "golden")
-문장_골든 = "battle_log_sentences"
-
-
-def _골든_로그들():
-    """골든 파일마다 그 안의 "로그" 목록에 든 항목들(파일 순서, 항목 순서 그대로)."""
-    모음 = {}
-    for 경로 in sorted(glob.glob(os.path.join(GOLDEN_DIR, "*.json"))):
-        이름 = os.path.splitext(os.path.basename(경로))[0]
-        if 이름 == 문장_골든:
-            continue
-        with open(경로, encoding="utf-8") as f:
-            값 = json.load(f)
-        항목들 = []
-
-        def 훑기(x):
-            if isinstance(x, dict):
-                for 키 in sorted(x):
-                    if 키 == "로그" and isinstance(x[키], list):
-                        # 로그 항목 안의 "로그"(효과 문장 목록)까지는 내려가지 않는다
-                        항목들.extend(x[키])
-                    else:
-                        훑기(x[키])
-            elif isinstance(x, list):
-                for 원소 in x:
-                    훑기(원소)
-
-        훑기(값)
-        if 항목들:
-            모음[이름] = 항목들
-    return 모음
+문장_골든 = support.문장_골든
 
 
 def test_골든_로그의_화면_문장이_기준과_같다(golden):
-    문장들 = {
-        이름: [gf.로그_문장들(항목) for 항목 in 항목들]
-        for 이름, 항목들 in _골든_로그들().items()
-    }
+    문장들 = support.골든_문장들(GOLDEN_DIR)
     assert sum(len(v) for v in 문장들.values()) > 1000  # 골든에서 로그를 실제로 찾았나
     golden(문장_골든, 문장들)
 
@@ -58,7 +26,7 @@ def test_골든_로그의_화면_문장이_기준과_같다(golden):
 def test_골든_로그의_dict_항목은_전부_아는_종류를_갖는다():
     모름 = [
         (이름, 항목)
-        for 이름, 항목들 in _골든_로그들().items()
+        for 이름, 항목들 in support.골든_로그들(GOLDEN_DIR).items()
         for 항목 in 항목들
         if isinstance(항목, dict) and 항목.get("종류") not in gf.로그_종류_목록
     ]
@@ -74,7 +42,6 @@ def test_거대화로_쉬는_차례는_은는을_맞춰_쉬고있다로_보인�
     import random
 
     from game.system.combat import flow, monster_actions
-    from tests import support
 
     random.seed(3)
     상태 = support.새게임([("", "귀검사")])
@@ -108,3 +75,48 @@ def test_집요함은_집요한_공격으로_데미지를_입었다로_보인다
         "집요한 공격으로 2의 데미지를 입었다.",
         "레인저는 쓰러졌다!",
     ]
+
+
+def _세션(*, 작업자=False):
+    """pytest_sessionfinish에 넘길 가짜 세션. 병렬 실행(xdist)의 작업자는 config에 workerinput이 있다."""
+    from types import SimpleNamespace
+
+    설정 = SimpleNamespace(workerinput={}) if 작업자 else SimpleNamespace()
+    return SimpleNamespace(config=설정)
+
+
+def test_골든을_갱신하면_세션_끝에_문장_골든을_다른_골든에서_다시_쓴다(
+    tmp_path, monkeypatch
+):
+    """문장 골든은 다른 골든에서 만들어진다 - 테스트 순서(병렬 포함)와 상관없이 갱신 한 번으로 맞아야 한다."""
+    from tests import conftest
+
+    항목 = {
+        "공격자": "타우 아미",
+        "대상": "레인저",
+        "피해": 2,
+        "비고": "집요함",
+        "종류": "비고",
+    }
+    (tmp_path / "가.json").write_text(
+        json.dumps({"로그": [항목]}, ensure_ascii=False), encoding="utf-8"
+    )
+    (tmp_path / f"{문장_골든}.json").write_text("{}\n", encoding="utf-8")
+    monkeypatch.setattr(conftest, "GOLDEN_DIR", str(tmp_path))
+    문장_파일 = tmp_path / f"{문장_골든}.json"
+
+    monkeypatch.delenv("UPDATE_GOLDEN", raising=False)
+    conftest.pytest_sessionfinish(_세션(), 0)
+    assert (
+        문장_파일.read_text(encoding="utf-8") == "{}\n"
+    )  # 갱신 모드가 아니면 건드리지 않는다
+
+    monkeypatch.setenv("UPDATE_GOLDEN", "1")
+    conftest.pytest_sessionfinish(_세션(작업자=True), 0)
+    assert (
+        문장_파일.read_text(encoding="utf-8") == "{}\n"
+    )  # 병렬 작업자는 쓰지 않는다(주 프로세스가 한 번)
+
+    conftest.pytest_sessionfinish(_세션(), 0)
+    with open(문장_파일, encoding="utf-8") as f:
+        assert json.load(f) == {"가": [gf.로그_문장들(항목)]}
