@@ -1,10 +1,9 @@
-"""전투 규칙 단위 테스트 - 수식, 피해, 속성, 사용 가능 여부, 타겟, 효과 적용, 조건.
+"""전투 규칙 단위 테스트 - 수식, 피해, 속성, 사용 가능 여부, 타겟, 효과 적용, 조건,
+지속피해형·기절, 집요함, 무기 명중시효과, 추가행동.
 
 전수 스윕(골든)이 "지금 이렇게 나온다"를 고정한다면, 여기는 규칙 하나하나를
 정확한 값으로 고정한다. 주사위는 필요한 곳에서 고정한다.
 """
-
-import random
 
 import pytest
 
@@ -51,15 +50,11 @@ def 전장():
     return 상태, 전투상태, 적, 아군
 
 
-def _주사위고정(monkeypatch, 값):
-    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: min(max(값, a), b))
-
-
 # ------------------------------------------------------------------ 수식
 
 
 def test_수식_평가_문법(monkeypatch):
-    _주사위고정(monkeypatch, 3)
+    support.주사위고정(monkeypatch, 3)
     ctx = {
         "차수": 2,
         "보정치": 4,
@@ -109,7 +104,7 @@ def test_수식_평균은_주사위를_굴리지_않고_기대값으로(monkeypa
 
 
 def test_무기공격력_굴림(monkeypatch):
-    _주사위고정(monkeypatch, 4)
+    support.주사위고정(monkeypatch, 4)
     assert (
         formula.무기공격력_굴림("2d6") == 8
         and formula.무기공격력_굴림("1d6", 치명타=True) == 8
@@ -163,7 +158,6 @@ def test_역할군_보너스는_탱커_데미지_명중_마이너스1_메이지_
 ):
     """monster_format.py 역할군공식: 탱커 -1/-1, 딜러 0/0, 메이지(서포터) 명중 +1.
     데이터 파일 값이 아니라 전투 계산(몬스터_데미지보너스, 명중_판정_계산)에서 더해진다."""
-    from game.system.combat import monster_actions
 
     기대 = {"탱커": (-1, -1), "딜러": (0, 0), "메이지": (0, 1)}
     for 역할군, 값 in 기대.items():
@@ -174,7 +168,7 @@ def test_역할군_보너스는_탱커_데미지_명중_마이너스1_메이지_
     assert participants.몬스터_역할군_보너스({}, "명중률보너스") == 0
 
     _상태, 전투상태, 적, 아군 = 전장
-    _주사위고정(monkeypatch, 10)
+    support.주사위고정(monkeypatch, 10)
     몬스터 = 적[0]
     결과 = {}
     for 역할군 in 기대:
@@ -301,7 +295,7 @@ def test_속성추가피해는_그_부분만_자기_속성이고_치명타_주�
         "속성": "암속성",
         "속성추가피해": [{"데미지": "(귀신보유수)d8", "속성": "암속성"}],
     }
-    _주사위고정(monkeypatch, 4)
+    support.주사위고정(monkeypatch, 4)
 
     def 피해(치명타=False, 저항=None):
         e["원본"] = dict(e["원본"], 저항=저항 or [])
@@ -329,7 +323,7 @@ def test_귀참은_귀신_수와_상관없이_피해가_같다(전장, monkeypat
     p, e = 아군[0], 적[0]
     귀참 = gf.스킬데이터모음_생성()["귀참"]
     assert "속성추가피해" not in 귀참
-    _주사위고정(monkeypatch, 4)
+    support.주사위고정(monkeypatch, 4)
 
     def 피해():
         e["현재HP"] = 999
@@ -456,10 +450,10 @@ def test_타격_공격타입은_무기_주사위면_무기_아니면_스킬(전�
 
 def test_일반공격은_명중하면_공격타입_빗나가면_실패_연출을_남긴다(전장, monkeypatch):
     _, 전투상태, 적, 아군 = 전장
-    _주사위고정(monkeypatch, 20)
+    support.주사위고정(monkeypatch, 20)
     attacks.일반공격_실행(전투상태, 아군[0], 적[0])
     assert 전투상태["공격연출"] == [{"대상id": 적[0]["id"], "종류": "참격:무"}]
-    _주사위고정(monkeypatch, 1)
+    support.주사위고정(monkeypatch, 1)
     attacks.일반공격_실행(전투상태, 아군[2], 적[1])  # 거너 - 빗나감
     assert 전투상태["공격연출"][-1] == {"대상id": 적[1]["id"], "종류": "실패"}
 
@@ -467,7 +461,6 @@ def test_일반공격은_명중하면_공격타입_빗나가면_실패_연출을
 def _몬스터_패턴_시험(monkeypatch, 전투상태, 몬스터, 패턴, 대상=None):
     """몬스터가 이 패턴을 고르고(대상을 주면 그 대상을 골라) 한 턴을 실행한다."""
     from game.system import monster_ai
-    from game.system.combat import monster_actions
 
     monkeypatch.setattr(monster_ai, "행동_선택", lambda p: 패턴)
     for p in 전투상태["참가자"]:  # 주사위 20 고정은 매번 치명타 - 아무도 죽지 않게
@@ -499,7 +492,7 @@ def _시험_공격패턴(**덧붙임):
 def test_몬스터_적랜덤_대상수는_서로_다른_대상을_고른다(전장, monkeypatch):
     # 루스 세리말리온 아이스 바운스 - 무작위 2명, 대상마다 명중굴림
     _, 전투상태, 적, 아군 = 전장
-    _주사위고정(monkeypatch, 20)
+    support.주사위고정(monkeypatch, 20)
     패턴 = _시험_공격패턴(타겟="적랜덤", 대상수=2)
     for 시드 in range(5):
         rng.시드(시드)
@@ -512,7 +505,7 @@ def test_몬스터_적전체범위는_적마다_범위공격을_겹쳐_맞힌다
     # 봄 카겔 다중 폭탄 던지기(사용자 지정 2026-10-13) - 적 한 명마다 그 적을 중심으로 범위
     # (좌우 1명씩) 폭탄을 던진다. 범위가 겹친 사람은 여러 번 맞고, 타격마다 명중굴림을 한다.
     _, 전투상태, 적, 아군 = 전장
-    _주사위고정(monkeypatch, 20)
+    support.주사위고정(monkeypatch, 20)
     패턴 = _시험_공격패턴(타겟="적전체범위")
     맞은 = _몬스터_패턴_시험(monkeypatch, 전투상태, 적[0], 패턴)
     # 대형위치 순 4명: 0번 [0,1], 1번 [0,1,2], 2번 [1,2,3], 3번 [2,3]
@@ -522,7 +515,7 @@ def test_몬스터_적전체범위는_적마다_범위공격을_겹쳐_맞힌다
 def test_몬스터_패턴의_자신버프_획득과_해제는_빗나가도_적용된다(전장, monkeypatch):
     # 하스 세리말리온 - 상승공격은 "상승"을 얻고 하강공격은 "상승"을 지운다
     _, 전투상태, 적, 아군 = 전장
-    _주사위고정(monkeypatch, 1)  # 자연 1 - 빗나감
+    support.주사위고정(monkeypatch, 1)  # 자연 1 - 빗나감
     _몬스터_패턴_시험(monkeypatch, 전투상태, 적[0], _시험_공격패턴(자신버프획득="상승"))
     assert [b["이름"] for b in 적[0]["버프"]] == ["상승"]
     _몬스터_패턴_시험(monkeypatch, 전투상태, 적[0], _시험_공격패턴(자신버프해제="상승"))
@@ -532,7 +525,7 @@ def test_몬스터_패턴의_자신버프_획득과_해제는_빗나가도_적�
 def test_몬스터_공격단계는_1단계_대상을_기준으로_2단계_범위를_친다(전장, monkeypatch):
     # 하스 세리말리온 하강공격 - 할로윈 버스터와 같은 공격단계1/2. 주대상은 두 번 맞는다
     _, 전투상태, 적, 아군 = 전장
-    _주사위고정(monkeypatch, 20)
+    support.주사위고정(monkeypatch, 20)
     줄 = sorted(
         (p for p in 전투상태["참가자"] if p["진영"] == "아군"),
         key=lambda p: p["대형위치"],
@@ -547,10 +540,9 @@ def test_몬스터_공격단계는_1단계_대상을_기준으로_2단계_범위
 
 
 def test_몬스터_공격도_타격마다_연출을_남긴다(전장, monkeypatch):
-    from game.system.combat import monster_actions
 
     _, 전투상태, 적, _ = 전장
-    _주사위고정(monkeypatch, 20)  # 고블린 패턴 6 두번때리기, 모두 명중
+    support.주사위고정(monkeypatch, 20)  # 고블린 패턴 6 두번때리기, 모두 명중
     전투상태["공격연출"].clear()
     monster_actions.몬스터_턴_실행(전투상태, 적[0])
     연출 = 전투상태["공격연출"]
@@ -561,7 +553,7 @@ def test_몬스터_공격도_타격마다_연출을_남긴다(전장, monkeypatc
 
 def test_스킬_공격도_속성_연출을_남긴다(전장, monkeypatch):
     _, 전투상태, 적, 아군 = 전장
-    _주사위고정(monkeypatch, 20)
+    support.주사위고정(monkeypatch, 20)
     전투상태["공격연출"].clear()
     스킬 = _스킬(
         타겟="적단일", 데미지="1d4", 공격타입="마법", 명중률="보정명중률", 속성="화속성"
@@ -572,7 +564,7 @@ def test_스킬_공격도_속성_연출을_남긴다(전장, monkeypatch):
 
 def test_몬스터_패턴의_공격타입이_연출_모양이_된다(전장, monkeypatch):
     _, 전투상태, 적, 아군 = 전장
-    _주사위고정(monkeypatch, 20)
+    support.주사위고정(monkeypatch, 20)
     패턴 = _시험_공격패턴(공격타입="관통", 속성="암속성")
     _몬스터_패턴_시험(monkeypatch, 전투상태, 적[0], 패턴, 대상=아군[0])
     assert [e["종류"] for e in 전투상태["공격연출"]] == ["관통:암"]
@@ -839,9 +831,9 @@ def test_효과_상태이상_내성(전장, monkeypatch):
             "지속턴": 1,
         }
     ]
-    _주사위고정(monkeypatch, 20)
+    support.주사위고정(monkeypatch, 20)
     assert "내성 성공!" in ss.효과_적용(전투상태, 아군[0], 적[0], 효과)[0]
-    _주사위고정(monkeypatch, 1)
+    support.주사위고정(monkeypatch, 1)
     assert "내성 실패!" in ss.효과_적용(전투상태, 아군[0], 적[0], 효과)[0]
     assert 적[0]["상태이상"][0]["이름"] == "기절"
     assert (
@@ -942,7 +934,7 @@ def test_내성증가_내성감소는_모든_내성굴림에_더해진다(전장
     resources.몬스터_버프_부여(전투상태, 대상, 이름, 3)
     assert stats.내성굴림_보정치(전투상태, 대상, "건강") == 보정 + 차이
     # 보너스가 없으면 DC에 꼭 맞는 눈 - 내성증가면 성공, 내성감소면 실패
-    _주사위고정(monkeypatch, 15 - 보정)
+    support.주사위고정(monkeypatch, 15 - 보정)
     효과 = [{"종류": "상태이상", "이름": "기절", "내성": "건강", "난이도": 15}]
     로그 = ss.효과_적용(전투상태, 아군[0], 대상, 효과)[0]
     assert ("내성 성공!" if 차이 > 0 else "내성 실패!") in 로그
@@ -1030,7 +1022,7 @@ def test_라이징샷_명중하면_건강내성_실패시_공중에뜸(전장, m
         return 결과, 10
 
     monkeypatch.setattr(dice_utils, "내성_굴림", 내성)
-    _주사위고정(monkeypatch, 19)  # 명중(치명타 아님)
+    support.주사위고정(monkeypatch, 19)  # 명중(치명타 아님)
     for 결과, 대상, 걸림 in ((True, 적[0], False), (False, 적[1], True)):
         flow.턴_시작_처리(전투상태, 거너)
         ss.스킬_실행(전투상태, 거너, "라이징 샷", 스킬, 중심대상=대상)
@@ -1065,7 +1057,7 @@ def test_1레벨_공중에뜸_스킬_명중하면_건강내성_DC10_실패시_�
         return 결과, 10
 
     monkeypatch.setattr(dice_utils, "내성_굴림", 내성)
-    _주사위고정(monkeypatch, 19)  # 명중(치명타 아님)
+    support.주사위고정(monkeypatch, 19)  # 명중(치명타 아님)
     for 결과, 대상, 걸림 in ((True, 적[0], False), (False, 적[1], True)):
         flow.턴_시작_처리(전투상태, 시전자)
         시전자["현재MP"] = 50
@@ -1117,7 +1109,7 @@ def test_효과_지속피해와_턴종료_발동(전장, monkeypatch):
     hp = 적[0]["현재HP"]
     flow.턴_종료_처리(전투상태, 적[0])
     assert 적[0]["현재HP"] < hp
-    _주사위고정(monkeypatch, 20)
+    support.주사위고정(monkeypatch, 20)
     효과[0]["난이도"] = 1
     assert "피함" in ss.효과_적용(전투상태, 아군[0], 적[1], 효과)[0]
 
@@ -1222,7 +1214,7 @@ def test_도망불가면_판정없이_실패(전장):
 
 def test_전투이탈은_이후_다음턴에도_유지(전장, monkeypatch):
     _, 전투상태, _, 아군 = 전장
-    _주사위고정(monkeypatch, 20)
+    support.주사위고정(monkeypatch, 20)
     assert flow.전투이탈_시도(전투상태, 아군[0])[0]
     flow.다음_턴(전투상태)
     assert 전투상태["종료"] == "전투이탈"
@@ -1346,7 +1338,7 @@ def test_마지막_적을_쓰러뜨리면_바로_전투가_끝난다(전장, mon
     for e in 적[1:]:
         e["현재HP"], e["생존"] = 0, False
     적[0]["현재HP"] = 1
-    _주사위고정(monkeypatch, 20)
+    support.주사위고정(monkeypatch, 20)
     gf.아군_일반공격(상태, 적[0])
     assert not 적[0]["생존"]
     assert gf.전투_종료됨(상태) and 전투상태["종료"] == "아군승리"
@@ -1366,7 +1358,7 @@ def test_같은_이름_몬스터는_A_B_C로_구분하고_번호로_찾는다(�
     # 분할공격: 2단계 기준 대상은 1단계에서 실제로 친 그 고블린이어야 한다.
     p = 아군[0]
     flow.턴_시작_처리(전투상태, p)
-    _주사위고정(monkeypatch, 15)
+    support.주사위고정(monkeypatch, 15)
     넥업 = dict(gf.직업_레지스트리["프리스트"]["스킬목록"]["넥 업 사이드"], MP소모=0)
     for e in 적:
         e["현재HP"] = 999
@@ -1382,12 +1374,12 @@ def test_펌블확률_버프_디버프는_펌블범위를_바꾼다(전장, monk
     assert damage.유효_펌블범위(전투상태, p) == 1
     ss.이름있는효과_부여(전투상태, p, "펌블확률증가", 2)
     assert damage.유효_펌블범위(전투상태, p) == 3
-    _주사위고정(monkeypatch, 3)  # 눈 3: 펌블
+    support.주사위고정(monkeypatch, 3)  # 눈 3: 펌블
     판정 = damage.명중_판정_계산(전투상태, p, e, "보정명중률")
     assert 판정["자동실패"] and not 판정["성공"]
     ss.이름있는효과_부여(전투상태, e, "펌블확률감소", 2)
     assert damage.유효_펌블범위(전투상태, e) == 0  # 0 아래로 안 내려감
-    _주사위고정(monkeypatch, 1)  # 자연 1이어도 펌블 아님
+    support.주사위고정(monkeypatch, 1)  # 자연 1이어도 펌블 아님
     assert not damage.명중_판정_계산(전투상태, e, p, "보정명중률")["자동실패"]
 
 
@@ -1397,7 +1389,7 @@ def test_피격펌블_증가_감소는_나를_공격하는_쪽의_펌블범위�
     ss.이름있는효과_부여(전투상태, p, "피격펌블증가", 2)
     assert damage.유효_펌블범위(전투상태, e, p) == 3  # 적이 나를 칠 때 1~3 펌블
     assert damage.유효_펌블범위(전투상태, p, e) == 1  # 내가 칠 때는 그대로
-    _주사위고정(monkeypatch, 3)
+    support.주사위고정(monkeypatch, 3)
     assert damage.명중_판정_계산(전투상태, e, p, "근력판정")["자동실패"]
     # 공격자의 펌블확률증가와 더해진다
     ss.이름있는효과_부여(전투상태, e, "펌블확률증가", 1)
@@ -1405,7 +1397,7 @@ def test_피격펌블_증가_감소는_나를_공격하는_쪽의_펌블범위�
     # 피격펌블감소: 나를 공격하는 쪽의 펌블이 줄어든다(최소 0)
     ss.이름있는효과_부여(전투상태, e, "피격펌블감소", 2)
     assert damage.유효_펌블범위(전투상태, p, e) == 0
-    _주사위고정(monkeypatch, 1)
+    support.주사위고정(monkeypatch, 1)
     assert not damage.명중_판정_계산(전투상태, p, e, "보정명중률")["자동실패"]
 
 
@@ -1438,7 +1430,7 @@ def test_치명타주사위_기본1과_버프_디버프_증감(전장, monkeypat
     assert stats.치명타_주사위수(전투상태, p) == 2
     ss.이름있는효과_부여(전투상태, 적[0], "치명타피해감소", 3)
     assert stats.치명타_주사위수(전투상태, 적[0]) == 0  # 0 아래로 안 내려감
-    _주사위고정(monkeypatch, 4)
+    support.주사위고정(monkeypatch, 4)
     assert stats.피해_굴림(전투상태, p, "1d6", {}, 치명타=True) == 4 * 3
     assert stats.피해_굴림(전투상태, 적[0], "1d6", {}, 치명타=True) == 4
 
@@ -1477,7 +1469,7 @@ def test_레벨8_직업버프(전장, monkeypatch):
     assert 수치() == (명중 - 1, 데미지 + 3, 근력 + 2, 3)
     assert damage.유효_치명타범위(전투상태, p) == 범위 - 1
     # 치명타 피해: 주사위 1 + 치명타주사위 2 = 3개 추가
-    _주사위고정(monkeypatch, 4)
+    support.주사위고정(monkeypatch, 4)
     피해 = stats.피해_굴림(전투상태, p, "1d6", {}, 치명타=True)
     assert 피해 == 4 * 4
     assert stats.피해_굴림(전투상태, p, "1d6", {}) == 4
@@ -1541,10 +1533,10 @@ def test_버프_수식은_건_사람_기준으로_걸_때_한번_굴린다(전�
     보정치 = stats.주문시전_보정치(전투상태, 마법사)
     # 귀검사는 주문시전능력치 미지정 -> 지능(약점 8, 보정치 -1)
     assert 보정치 > 0 and stats.주문시전_보정치(전투상태, 귀검사) == -1
-    _주사위고정(monkeypatch, 3)
+    support.주사위고정(monkeypatch, 3)
     ss.이름있는효과_부여(전투상태, 귀검사, "공격력증가", 시전자=마법사)
     ss.이름있는효과_부여(전투상태, 적[0], "공격력감소", 시전자=마법사)
-    _주사위고정(monkeypatch, 1)  # 조회 때 다시 굴리면 값이 바뀐다
+    support.주사위고정(monkeypatch, 1)  # 조회 때 다시 굴리면 값이 바뀐다
     for _ in range(3):
         assert stats.버프디버프_수치(전투상태, 귀검사, "데미지보너스") == 3 + 보정치
         assert stats.버프디버프_수치(전투상태, 적[0], "데미지보너스") == -(3 + 보정치)
@@ -1555,7 +1547,7 @@ def test_레벨12_스킬강화_MP2배_최종피해15배(전장, monkeypatch):
     _, 전투상태, 적, 아군 = 전장
     p = 아군[1]  # 격투가 - 넨탄(MP 5, (차수)d8+주문시전보정치, 적단일)
     대상 = 적[0]
-    _주사위고정(monkeypatch, 15)  # 명중(치명타 아님), 피해 주사위 8
+    support.주사위고정(monkeypatch, 15)  # 명중(치명타 아님), 피해 주사위 8
 
     def 넨탄():
         p["행동자원"]["일반행동"] = 1
@@ -1588,7 +1580,7 @@ def test_레벨12_스킬강화_MP2배_최종피해15배(전장, monkeypatch):
 def test_스킬강화_최종피해배율은_지속피해에도(전장, monkeypatch):
     _, 전투상태, 적, 아군 = 전장
     p, 대상 = 아군[0], 적[0]
-    _주사위고정(monkeypatch, 1)  # 내성 실패
+    support.주사위고정(monkeypatch, 1)  # 내성 실패
     지속 = [{"종류": "지속피해", "이름": "도트", "내성": "건강", "난이도": 30}]
     for 배율 in (1, 1.5):
         ss.효과_적용(
@@ -1616,230 +1608,6 @@ def test_전투_시작_정의모음은_정해진_칸만_받는다():
         flow.전투_시작(
             빈파티, [], {}, 정의모음={"버프정의모음": 버프목록}
         )  # 옛 이름 오타
-
-
-# ------------------------------------------------------------- 전격의 키놀 (사용자 지정 2026-10-13)
-
-
-@pytest.fixture
-def 키놀전장(monkeypatch):
-    """키놀 1마리 대 4인 파티. 모두 HP를 넉넉히 두고, 키놀 원본(지능 12, 보정 +1)을 돌려준다."""
-    rng.시드(5)
-    상태 = support.새게임(
-        [("", "귀검사"), ("", "격투가"), ("", "거너"), ("", "마법사")]
-    )
-    gf.전투_시작(상태, ["전격의 키놀"], 레벨=2, 차수=1)
-    support.반응_처리(상태)
-    전투상태 = 상태["전투상태"]
-    키놀 = next(p for p in 전투상태["참가자"] if p["진영"] == "적")
-    아군 = sorted(
-        (p for p in 전투상태["참가자"] if p["진영"] == "아군"),
-        key=lambda p: p["대형위치"],
-    )
-    for p in 전투상태["참가자"]:
-        p["현재HP"] = 999
-    return 전투상태, 키놀, 아군
-
-
-def test_초전자포는_한_번_굴려_주대상은_전부_양옆은_절반_민첩내성_성공시_다시_절반(
-    키놀전장, monkeypatch
-):
-    전투상태, 키놀, 아군 = 키놀전장
-    from game.system import monster_ai
-    from game.system.combat import monster_actions
-
-    _주사위고정(monkeypatch, 4)  # 2d4 = 8
-    # 내성굴림 순서: 대상마다(대형위치 왼쪽부터) 민첩 내성, 피해가 들어가면 알비노 고블린의
-    # 감전 건강 내성. 오른쪽 옆만 민첩 내성 성공, 감전 내성은 모두 성공(감전 없음)
-    결과들 = [False, True, False, True, True, True]
-    monkeypatch.setattr(
-        dice_utils, "내성_굴림", lambda 보정치, 난이도, **kw: (결과들.pop(0), 난이도)
-    )
-    monkeypatch.setattr(
-        monster_ai, "행동_선택", lambda p: gf.몬스터목록["전격의 키놀"]["패턴"][6]
-    )
-    monkeypatch.setattr(monster_ai, "타겟_선택", lambda *a, **k: 아군[1])
-    HP전 = {p["이름"]: p["현재HP"] for p in 아군}
-    결과 = monster_actions.몬스터_턴_실행(전투상태, 키놀)
-
-    # 2d4(8) + 지능보정치(1) + 몬스터 공통 데미지보너스
-    원래피해 = 8 + 1 + monster_actions.몬스터_데미지보너스(전투상태, 키놀)
-
-    def 기대(값, p):
-        return damage.최종피해_계산(
-            값, stats.유효_방어력(전투상태, p), stats.유효_보호률(전투상태, p)
-        )
-
-    assert [t["대상"] for t in 결과["타격"]] == [p["이름"] for p in 아군[:3]]
-    assert HP전[아군[1]["이름"]] - 아군[1]["현재HP"] == 기대(원래피해, 아군[1])
-    assert HP전[아군[0]["이름"]] - 아군[0]["현재HP"] == 기대(원래피해 * 0.5, 아군[0])
-    assert HP전[아군[2]["이름"]] - 아군[2]["현재HP"] == 기대(원래피해 * 0.25, 아군[2])
-    assert 아군[3]["현재HP"] == HP전[아군[3]["이름"]]
-    assert 결과["난이도"] == 9 + 1
-
-
-def _키놀_턴(전투상태, 키놀, monkeypatch, 패턴):
-    """키놀이 이 패턴으로 한 턴을 하고 턴을 끝낸다(턴 종료 시 소환수 행동 포함)."""
-    from game.system import monster_ai
-    from game.system.combat import monster_actions
-
-    monkeypatch.setattr(monster_ai, "행동_선택", lambda p: 패턴)
-    전투상태["현재턴"] = 전투상태["참가자"].index(키놀)
-    flow.턴_시작_처리(전투상태, 키놀)
-    monster_actions.몬스터_턴_실행(전투상태, 키놀)
-    flow.턴_종료_처리(전투상태, 키놀)
-
-
-def _연쇄번개_공격수(전투상태, 시작):
-    return sum(
-        len(x["타격"])
-        for x in 전투상태["로그"][시작:]
-        if x.get("패턴") == "연쇄 번개" and x.get("비고") == "소환수 행동"
-    )
-
-
-def test_연쇄_번개는_3턴간_턴_끝마다_무작위_적을_치고_겹쳐_쓰면_그만큼_더_친다(
-    키놀전장, monkeypatch
-):
-    전투상태, 키놀, 아군 = 키놀전장
-    연쇄 = gf.몬스터목록["전격의 키놀"]["패턴"][4]
-    무행동 = {"이름": "쉬기", "타입": "무행동"}
-    공격수 = []
-    for 패턴 in [연쇄, 무행동, 무행동]:
-        시작 = len(전투상태["로그"])
-        _키놀_턴(전투상태, 키놀, monkeypatch, 패턴)
-        공격수.append(_연쇄번개_공격수(전투상태, 시작))
-    assert 공격수 == [1, 1, 0]  # 건 턴을 포함해 2턴(2026-10-13 3 -> 2)
-    assert not any(b["이름"] == "소환:연쇄 번개" for b in 키놀["버프"])
-
-    공격수 = []
-    for 패턴 in [연쇄, 연쇄, 무행동, 무행동]:
-        시작 = len(전투상태["로그"])
-        _키놀_턴(전투상태, 키놀, monkeypatch, 패턴)
-        공격수.append(_연쇄번개_공격수(전투상태, 시작))
-    assert 공격수 == [1, 2, 1, 0]  # 시전마다 따로 2턴
-    기록 = [x for x in 전투상태["로그"] if x.get("패턴") == "연쇄 번개" and "타격" in x]
-    assert all(
-        t["판정"].get("명중결과") is not None for x in 기록 for t in x["타격"]
-    )  # 매번 명중굴림(지능판정)
-
-
-def test_연쇄_번개는_1d4_지능보정치_데미지보너스_마이너스1(키놀전장, monkeypatch):
-    # 사용자 지정(2026-10-13): 1d8 -> 1d6, 데미지보너스 -1, 지속턴 3 -> 2. 2026-10-15 1d6 -> 1d4
-    전투상태, 키놀, 아군 = 키놀전장
-    _주사위고정(monkeypatch, 15)  # 명중, 1d4 = 4
-    monkeypatch.setattr(
-        dice_utils, "내성_굴림", lambda 보정치, 난이도, **kw: (True, 난이도)
-    )
-    monkeypatch.setattr(rng.대상, "choice", lambda 목록: 목록[0])
-    시작 = len(전투상태["로그"])
-    _키놀_턴(전투상태, 키놀, monkeypatch, gf.몬스터목록["전격의 키놀"]["패턴"][4])
-    [기록] = [
-        x
-        for x in 전투상태["로그"][시작:]
-        if x.get("패턴") == "연쇄 번개" and x.get("비고") == "소환수 행동"
-    ]
-    [타격] = 기록["타격"]
-    대상 = next(p for p in 아군 if p["이름"] == 타격["대상"])
-    기대 = damage.최종피해_계산(
-        4 + 1 - 1, stats.유효_방어력(전투상태, 대상), stats.유효_보호률(전투상태, 대상)
-    )
-    assert 타격["피해"] == 기대
-
-
-def test_알비노_고블린은_명속성_피해를_주면_건강내성_실패시_3턴_감전(
-    키놀전장, monkeypatch
-):
-    전투상태, 키놀, 아군 = 키놀전장
-    _주사위고정(monkeypatch, 15)  # 명중
-    monkeypatch.setattr(
-        dice_utils, "내성_굴림", lambda 보정치, 난이도, **kw: (False, 난이도)
-    )
-    번개 = gf.몬스터목록["전격의 키놀"]["패턴"][2]
-    반월도 = gf.몬스터목록["전격의 키놀"]["패턴"][1]
-    from game.system import monster_ai
-
-    monkeypatch.setattr(monster_ai, "타겟_선택", lambda *a, **k: 아군[0])
-    _키놀_턴(전투상태, 키놀, monkeypatch, 반월도)  # 무속성 - 감전 없음
-    assert all(i["이름"] != "감전" for i in 아군[0]["상태이상"])
-    _키놀_턴(전투상태, 키놀, monkeypatch, 번개)
-    감전 = [i for i in 아군[0]["상태이상"] if i["이름"] == "감전"]
-    # 건 턴의 끝에 지속턴이 1 줄 수 있다(감전도 지속피해형) - 3턴짜리로 걸렸는지 본다
-    assert len(감전) == 1 and 감전[0]["지속턴"] in (2, 3)
-    비고 = [x for x in 전투상태["로그"] if "'알비노 고블린' 특성" in str(x.get("비고"))]
-    assert 비고 and "감전" in 비고[-1]["비고"]
-
-
-def _기상번개_준비(전투상태, 키놀, monkeypatch, 내성성공):
-    """키놀을 넘어짐(2턴 - 턴 시작에 1 줄어도 남는다)으로 두고, 모든 내성을 내성성공으로 고정한다.
-    1~6번 패턴을 고르면 실패하게 해 대체행동만 쓰는지 본다."""
-    from game.system import monster_ai
-
-    _주사위고정(monkeypatch, 6)  # 1d8 = 6
-    monkeypatch.setattr(
-        dice_utils, "내성_굴림", lambda 보정치, 난이도, **kw: (내성성공, 난이도)
-    )
-
-    def 고르면_안됨(p):
-        raise AssertionError("넘어짐인 턴에 1~6번 패턴을 골랐다")
-
-    monkeypatch.setattr(monster_ai, "행동_선택", 고르면_안됨)
-    키놀["상태이상"].append({"이름": "넘어짐", "지속턴": 2})
-    전투상태["현재턴"] = 전투상태["참가자"].index(키놀)
-
-
-def test_특수패턴_키놀은_넘어짐이면_넘어짐을_풀고_1_6번_대신_기상번개_적전체_명속성_감전(
-    키놀전장, monkeypatch
-):
-    # 사용자 지정 2026-10-15: 알비노 고블린의 "넘어짐 해제시" 공격을 키놀의 대체행동 "기상번개"로 옮겼다
-    from game.system.combat import monster_actions
-
-    전투상태, 키놀, 아군 = 키놀전장
-    assert "특수패턴:키놀" in gf.몬스터목록["전격의 키놀"]["특성"]
-    _기상번개_준비(전투상태, 키놀, monkeypatch, 내성성공=False)
-    HP전 = {p["이름"]: p["현재HP"] for p in 아군}
-    flow.턴_시작_처리(전투상태, 키놀)
-    결과 = monster_actions.몬스터_턴_실행(전투상태, 키놀)
-
-    assert 결과["패턴"] == "기상번개"
-    assert all(i["이름"] != "넘어짐" for i in 키놀["상태이상"])
-    # 1d8(6) + 지능보정치(1) + 몬스터 공통 데미지보너스, 민첩 내성 실패
-    원래피해 = 6 + 1 + monster_actions.몬스터_데미지보너스(전투상태, 키놀)
-    for p in 아군:
-        기대 = damage.최종피해_계산(
-            원래피해, stats.유효_방어력(전투상태, p), stats.유효_보호률(전투상태, p)
-        )
-        assert HP전[p["이름"]] - p["현재HP"] == 기대, p["이름"]
-        # 명속성 피해 -> 알비노 고블린의 감전(건강 내성 실패)
-        assert any(i["이름"] == "감전" for i in p["상태이상"]), p["이름"]
-
-
-def test_기상번개는_민첩내성에_성공하면_피한다(키놀전장, monkeypatch):
-    from game.system.combat import monster_actions
-
-    전투상태, 키놀, 아군 = 키놀전장
-    _기상번개_준비(전투상태, 키놀, monkeypatch, 내성성공=True)
-    HP전 = {p["이름"]: p["현재HP"] for p in 아군}
-    flow.턴_시작_처리(전투상태, 키놀)
-    결과 = monster_actions.몬스터_턴_실행(전투상태, 키놀)
-    assert 결과["패턴"] == "기상번개"
-    assert all(HP전[p["이름"]] == p["현재HP"] for p in 아군)
-
-
-def test_알비노_고블린은_넘어짐이_끝나도_공격하지_않는다(키놀전장):
-    # 사용자 지정 2026-10-15: 해제시 공격은 특수패턴:키놀로 옮기고 감전(속성피해시효과)만 남겼다
-    from game.data.monster.monster_ability import 특성목록
-
-    assert (
-        "발동조건" not in 특성목록["알비노 고블린"]
-        or not 특성목록["알비노 고블린"]["발동조건"]
-    )
-    전투상태, 키놀, 아군 = 키놀전장
-    HP전 = {p["이름"]: p["현재HP"] for p in 아군}
-    키놀["상태이상"].append({"이름": "넘어짐", "지속턴": 1})
-    flow.턴_시작_처리(전투상태, 키놀)  # 지속턴 만료
-    assert all(HP전[p["이름"]] == p["현재HP"] for p in 아군)
-    assert not any("'넘어짐' 해제" in str(x.get("비고")) for x in 전투상태["로그"])
 
 
 # ------------------------------------------- 지속피해형은 턴 종료에 피해 + 지속턴 감소 (사용자 지정 2026-10-16)
@@ -1875,7 +1643,7 @@ def test_지속피해형_1턴은_턴_시작에_사라지지_않고_턴_종료에
     이름, monkeypatch
 ):
     전투상태, 아군, 걸기 = _한명전장()
-    _주사위고정(monkeypatch, 2)
+    support.주사위고정(monkeypatch, 2)
     걸기(이름, 1)
     flow.턴_시작_처리(전투상태, 아군)
     assert [i["이름"] for i in 아군["상태이상"]] == [이름]
@@ -1887,7 +1655,7 @@ def test_지속피해형_1턴은_턴_시작에_사라지지_않고_턴_종료에
 
 def test_지속피해형_2턴은_두_번_피해를_준다(monkeypatch):
     전투상태, 아군, 걸기 = _한명전장()
-    _주사위고정(monkeypatch, 2)
+    support.주사위고정(monkeypatch, 2)
     걸기("출혈", 2)
     HP = []
     for _ in range(3):
@@ -1904,581 +1672,6 @@ def test_감전은_턴_종료에_지속턴이_준다():
     assert [i["이름"] for i in 아군["상태이상"]] == ["감전"]
     flow.턴_종료_처리(전투상태, 아군)
     assert 아군["상태이상"] == []
-
-
-# ------------------------------------------------------- 공중에뜸 -> 넘어짐 (사용자 지정 2026-10-15)
-
-
-def _내성_굴리면_실패(monkeypatch):
-    def 안됨(*a, **k):
-        raise AssertionError("공중에뜸이 끝난 넘어짐은 내성굴림을 하지 않는다")
-
-    monkeypatch.setattr(dice_utils, "내성_굴림", 안됨)
-
-
-def test_공중에뜸이_지속턴으로_끝나면_내성없이_넘어짐_1턴(키놀전장, monkeypatch):
-    # 공중에뜸 자체의 규칙 - 아군과 적 모두
-    전투상태, 키놀, 아군 = 키놀전장
-    _내성_굴리면_실패(monkeypatch)
-    for p in (아군[0], 키놀):
-        p["상태이상"].append({"이름": "공중에뜸", "지속턴": 1})
-        flow.턴_시작_처리(전투상태, p)
-        assert [i["이름"] for i in p["상태이상"]] == ["넘어짐"], p["이름"]
-        assert p["상태이상"][0]["지속턴"] == 1
-    flow.턴_시작_처리(전투상태, 아군[0])  # 다음 자기 턴 시작에 풀린다
-    assert 아군[0]["상태이상"] == []
-    문장 = "'공중에뜸'이 끝나 '넘어짐' 상태이상 부여"
-    assert [x["대상"] for x in 전투상태["로그"] if x.get("비고") == 문장] == [
-        아군[0]["이름"],
-        키놀["이름"],
-    ]
-
-
-def test_공중에뜸이_풀려도_넘어짐에_면역이면_넘어지지_않는다(키놀전장, monkeypatch):
-    from game.system.combat import status
-
-    전투상태, 키놀, 아군 = 키놀전장
-    monkeypatch.setattr(
-        status, "상태이상_면역", lambda 전투상태, p, 이름: 이름 == "넘어짐"
-    )
-    키놀["상태이상"].append({"이름": "공중에뜸", "지속턴": 1})
-    flow.턴_시작_처리(전투상태, 키놀)
-    assert 키놀["상태이상"] == []
-
-
-def test_공중에뜸에서_떨어진_키놀은_그_차례에_기상번개를_쓴다(키놀전장, monkeypatch):
-    from game.system.combat import monster_actions
-
-    전투상태, 키놀, 아군 = 키놀전장
-    _기상번개_준비(전투상태, 키놀, monkeypatch, 내성성공=True)
-    키놀["상태이상"] = [{"이름": "공중에뜸", "지속턴": 1}]
-    flow.턴_시작_처리(전투상태, 키놀)
-    결과 = monster_actions.몬스터_턴_실행(전투상태, 키놀)
-    assert 결과["패턴"] == "기상번개"
-    assert 키놀["상태이상"] == []
-
-
-def test_굴_구위시의_기상_충격파는_넘어짐이_풀릴_때만_터진다():
-    # 사용자 지정 2026-10-15: 공중에뜸 해제시는 뺐다 - 공중에뜸 -> 넘어짐 -> 넘어짐 해제에 한 번
-    rng.시드(5)
-    상태 = support.새게임()
-    gf.전투_시작(상태, ["굴 구위시"], 레벨=5, 차수=1)
-    support.반응_처리(상태)
-    전투상태 = 상태["전투상태"]
-    for p in 전투상태["참가자"]:
-        p["현재HP"] = 999
-    굴 = next(p for p in 전투상태["참가자"] if p["진영"] == "적")
-    굴["상태이상"] = [{"이름": "공중에뜸", "지속턴": 1}]
-
-    def 터진수():
-        return sum(
-            "'기상 충격파' 특성 발동" in str(x.get("비고")) for x in 전투상태["로그"]
-        )
-
-    flow.턴_시작_처리(전투상태, 굴)
-    assert 터진수() == 0 and [i["이름"] for i in 굴["상태이상"]] == ["넘어짐"]
-    flow.턴_시작_처리(전투상태, 굴)
-    # 한 번 터지면 살아 있는 아군마다 한 줄
-    assert 터진수() == sum(p["진영"] == "아군" for p in 전투상태["참가자"])
-
-
-# ------------------------------------------------------------- 펜릴 (사용자 지정 2026-10-13)
-
-
-@pytest.fixture
-def 펜릴전장():
-    """펜릴 1마리 대 4인 파티, 모두 HP 넉넉히."""
-    rng.시드(5)
-    상태 = support.새게임(
-        [("", "귀검사"), ("", "격투가"), ("", "거너"), ("", "마법사")]
-    )
-    gf.전투_시작(상태, ["펜릴"], 레벨=4, 차수=1)
-    support.반응_처리(상태)
-    전투상태 = 상태["전투상태"]
-    펜릴 = next(p for p in 전투상태["참가자"] if p["진영"] == "적")
-    아군 = sorted(
-        (p for p in 전투상태["참가자"] if p["진영"] == "아군"),
-        key=lambda p: p["대형위치"],
-    )
-    for p in 전투상태["참가자"]:
-        p["현재HP"] = 999
-    return 전투상태, 펜릴, 아군
-
-
-def _몬스터_한턴(전투상태, 몬스터, monkeypatch, 패턴, 대상=None):
-    """몬스터가 턴을 시작하고(턴 시작 처리) 이 패턴으로 행동한 뒤 턴을 끝낸다."""
-    from game.system import monster_ai
-    from game.system.combat import monster_actions
-
-    monkeypatch.setattr(monster_ai, "행동_선택", lambda p: 패턴)
-    if 대상 is not None:
-        monkeypatch.setattr(monster_ai, "타겟_선택", lambda *a, **k: 대상)
-    전투상태["현재턴"] = 전투상태["참가자"].index(몬스터)
-    flow.턴_시작_처리(전투상태, 몬스터)
-    monster_actions.몬스터_턴_실행(전투상태, 몬스터)
-    flow.턴_종료_처리(전투상태, 몬스터)
-
-
-def _이름들(참가자, 상태이상):
-    return [i for i in 참가자["상태이상"] if i["이름"] == 상태이상]
-
-
-def test_종족_루가루는_방어력_마이너스1이라_맞을_때마다_1을_더_받는다():
-    # 사용자 지정 2026-10-15 - 종족:루가루 특성에 방어력 -1(루가루 계열 다섯 종 모두)
-    상태 = support.새게임()
-    gf.전투_시작(상태, ["루가루"], 레벨=3, 차수=1)
-    support.반응_처리(상태)
-    전투상태 = 상태["전투상태"]
-    적 = next(p for p in 전투상태["참가자"] if p["진영"] == "적")
-    assert stats.유효_방어력(전투상태, 적) == -1
-    HP전 = 적["현재HP"]
-    damage.피해_적용(전투상태, 적, 3)
-    assert HP전 - 적["현재HP"] == 4
-
-
-def test_종족_좀비는_AC_마이너스1_방어력_마이너스1():
-    # 사용자 지정 2026-10-15 - 종족:좀비 특성에 AC -1, 방어력 -1(좀비 네 종 모두)
-    from game.system.combat import traits
-
-    상태 = support.새게임()
-    gf.전투_시작(상태, ["포레스트 좀비"], 레벨=5, 차수=1)
-    support.반응_처리(상태)
-    전투상태 = 상태["전투상태"]
-    적 = next(p for p in 전투상태["참가자"] if p["진영"] == "적")
-    assert traits.특성_수치(전투상태, 적, "AC") == -1
-    assert stats.유효_방어력(전투상태, 적) == -1
-
-
-def _좀비전장(몬스터="포레스트 좀비"):
-    rng.시드(4)
-    상태 = support.새게임()
-    gf.전투_시작(상태, [몬스터], 레벨=5, 차수=1)
-    support.반응_처리(상태)
-    전투상태 = 상태["전투상태"]
-    for p in 전투상태["참가자"]:
-        p["현재HP"] = 999
-    좀비 = next(p for p in 전투상태["참가자"] if p["진영"] == "적")
-    아군 = sorted(
-        (p for p in 전투상태["참가자"] if p["진영"] == "아군"),
-        key=lambda p: p["대형위치"],
-    )
-    return 전투상태, 좀비, 아군
-
-
-@pytest.mark.parametrize("내성성공", [False, True])
-def test_좀비_공격이_명중하면_건강내성_실패시_출혈_1턴(내성성공, monkeypatch):
-    from game.system.combat import monster_actions
-
-    전투상태, 좀비, 아군 = _좀비전장()
-    _주사위고정(monkeypatch, 15)  # 명중
-    monkeypatch.setattr(
-        dice_utils, "내성_굴림", lambda 보정치, 난이도, **kw: (내성성공, 난이도)
-    )
-    할퀴기 = gf.몬스터목록["포레스트 좀비"]["패턴"][1]
-    monkeypatch.setattr(
-        __import__("game.system.monster_ai", fromlist=["x"]),
-        "행동_선택",
-        lambda p: 할퀴기,
-    )
-    monkeypatch.setattr(
-        __import__("game.system.monster_ai", fromlist=["x"]),
-        "타겟_선택",
-        lambda *a, **k: 아군[0],
-    )
-    monster_actions.몬스터_턴_실행(전투상태, 좀비)
-    출혈 = [i for i in 아군[0]["상태이상"] if i["이름"] == "출혈"]
-    if 내성성공:
-        assert not 출혈
-    else:
-        assert len(출혈) == 1 and 출혈[0]["지속턴"] == 1
-
-
-def test_좀비는_출혈인_아군을_어그로_비중으로_우선_노린다(monkeypatch):
-    from game.system import monster_ai
-    from game.system.combat import monster_actions
-
-    전투상태, 좀비, 아군 = _좀비전장()
-    아군[1]["상태이상"].append({"이름": "출혈", "지속턴": 2})
-    아군[3]["상태이상"].append({"이름": "출혈", "지속턴": 2})
-    본것 = []
-    원래 = random.choices
-
-    def 기록(목록, weights=None, k=1):
-        본것.append([p["이름"] for p in 목록])
-        return 원래(목록, weights=weights, k=k)
-
-    monkeypatch.setattr(rng.대상, "choices", 기록)
-    할퀴기 = gf.몬스터목록["포레스트 좀비"]["패턴"][1]
-    monkeypatch.setattr(monster_ai, "행동_선택", lambda p: 할퀴기)
-    monster_actions.몬스터_턴_실행(전투상태, 좀비)
-    assert len(본것) == 1 and sorted(본것[0]) == sorted(
-        [아군[1]["이름"], 아군[3]["이름"]]
-    )
-    # 출혈인 아군이 없으면 전원 중에서
-    본것.clear()
-    for p in 아군:
-        p["상태이상"] = []
-    monster_actions.몬스터_턴_실행(전투상태, 좀비)
-    assert 본것 and len(본것[0]) == len(아군)
-
-
-def _패턴_로그(전투상태, 시작, 몬스터, 이름):
-    return [
-        x
-        for x in 전투상태["로그"][시작:]
-        if x.get("패턴") == 이름 and x.get("공격자") == 몬스터["이름"]
-    ]
-
-
-def test_달려들기가_명중하면_턴_끝에_물어뜯고_다음_턴은_패턴_대신_그_대상에게_피니쉬(
-    펜릴전장, monkeypatch
-):
-    전투상태, 펜릴, 아군 = 펜릴전장
-    _주사위고정(monkeypatch, 15)  # 명중, 치명타 아님
-    monkeypatch.setattr(
-        dice_utils, "내성_굴림", lambda 보정치, 난이도, **kw: (True, 난이도)
-    )
-    패턴 = gf.몬스터목록["펜릴"]["패턴"]
-    시작 = len(전투상태["로그"])
-    _몬스터_한턴(전투상태, 펜릴, monkeypatch, 패턴[5], 대상=아군[2])
-    물기 = _패턴_로그(전투상태, 시작, 펜릴, "물어뜯기")
-    assert len(물기) == 1 and 물기[0]["대상"] == 아군[2]["이름"]  # 턴 끝, 같은 대상
-    assert len(_이름들(아군[2], "들러붙음")) == 1
-    assert all(not _이름들(p, "들러붙음") for p in 아군 if p is not 아군[2])
-
-    # 다음 펜릴 턴: 1~6번 패턴 대신 들러붙은 대상(무작위 대상이 아니라)에게 확정 치명타 피니쉬!
-    시작 = len(전투상태["로그"])
-    _몬스터_한턴(전투상태, 펜릴, monkeypatch, 패턴[1], 대상=아군[0])
-    피니쉬 = _패턴_로그(전투상태, 시작, 펜릴, "피니쉬!")
-    assert len(피니쉬) == 1 and 피니쉬[0]["대상"] == 아군[2]["이름"]
-    [타격] = 피니쉬[0]["타격"]
-    assert 타격["판정"]["성공"] and 타격["판정"]["치명타"]
-    assert not _패턴_로그(전투상태, 시작, 펜릴, "두번 할퀴기")
-    assert not _패턴_로그(전투상태, 시작, 펜릴, "물어뜯기")
-    assert not _이름들(아군[2], "들러붙음")
-
-    # 그 다음 턴은 다시 1~6번 패턴
-    시작 = len(전투상태["로그"])
-    _몬스터_한턴(전투상태, 펜릴, monkeypatch, 패턴[1], 대상=아군[0])
-    assert not _패턴_로그(전투상태, 시작, 펜릴, "피니쉬!")
-    assert _패턴_로그(전투상태, 시작, 펜릴, "두번 할퀴기")
-
-
-def test_피니쉬는_명중굴림을_하고_빗나가면_피해없이_들러붙음만_풀린다(
-    펜릴전장, monkeypatch
-):
-    # 사용자 지정 2026-10-15: 반드시 명중 -> 근력판정 명중굴림(명중하면 확정 치명타)
-    전투상태, 펜릴, 아군 = 펜릴전장
-    아군[2]["상태이상"].append({"이름": "들러붙음", "시전자id": 펜릴["id"]})
-    _주사위고정(monkeypatch, 2)  # 빗나감(펌블 아님)
-    HP전 = 아군[2]["현재HP"]
-    시작 = len(전투상태["로그"])
-    _몬스터_한턴(
-        전투상태, 펜릴, monkeypatch, gf.몬스터목록["펜릴"]["패턴"][1], 대상=아군[0]
-    )
-    [피니쉬] = _패턴_로그(전투상태, 시작, 펜릴, "피니쉬!")
-    [타격] = 피니쉬["타격"]
-    assert 타격["판정"]["명중결과"] is not None and not 타격["판정"]["성공"]
-    assert 아군[2]["현재HP"] == HP전
-    assert not _이름들(아군[2], "들러붙음")
-
-
-def test_펜릴이_행동불가면_피니쉬_없이_들러붙음만_사라진다(펜릴전장, monkeypatch):
-    전투상태, 펜릴, 아군 = 펜릴전장
-    _주사위고정(monkeypatch, 15)
-    monkeypatch.setattr(
-        dice_utils, "내성_굴림", lambda 보정치, 난이도, **kw: (True, 난이도)
-    )
-    패턴 = gf.몬스터목록["펜릴"]["패턴"]
-    _몬스터_한턴(전투상태, 펜릴, monkeypatch, 패턴[5], 대상=아군[2])
-    assert _이름들(아군[2], "들러붙음")
-    펜릴["상태이상"].append({"이름": "기절", "지속턴": 3})
-    시작 = len(전투상태["로그"])
-    _몬스터_한턴(전투상태, 펜릴, monkeypatch, 패턴[1], 대상=아군[0])
-    assert not _패턴_로그(전투상태, 시작, 펜릴, "피니쉬!")
-    assert not _이름들(아군[2], "들러붙음")
-
-
-def test_루가루의_달려들기는_명중해도_물어뜯지_않는다(monkeypatch):
-    rng.시드(5)
-    상태 = support.새게임()
-    gf.전투_시작(상태, ["루가루"], 레벨=2, 차수=1)
-    support.반응_처리(상태)
-    전투상태 = 상태["전투상태"]
-    루가루 = next(p for p in 전투상태["참가자"] if p["진영"] == "적")
-    아군 = [p for p in 전투상태["참가자"] if p["진영"] == "아군"]
-    for p in 전투상태["참가자"]:
-        p["현재HP"] = 999
-    _주사위고정(monkeypatch, 15)
-    시작 = len(전투상태["로그"])
-    _몬스터_한턴(
-        전투상태, 루가루, monkeypatch, gf.몬스터목록["루가루"]["패턴"][5], 대상=아군[0]
-    )
-    [달려] = _패턴_로그(전투상태, 시작, 루가루, "달려들기")
-    assert 달려["타격"][0]["판정"]["성공"]
-    assert not _패턴_로그(전투상태, 시작, 루가루, "물어뜯기")
-    assert not any(_이름들(p, "들러붙음") for p in 아군)
-
-
-def test_달려들기가_빗나가면_물지_않는다(펜릴전장, monkeypatch):
-    전투상태, 펜릴, 아군 = 펜릴전장
-    _주사위고정(monkeypatch, 1)  # 자동 실패
-    시작 = len(전투상태["로그"])
-    _몬스터_한턴(
-        전투상태, 펜릴, monkeypatch, gf.몬스터목록["펜릴"]["패턴"][6], 대상=아군[0]
-    )
-    assert not [x for x in 전투상태["로그"][시작:] if x.get("패턴") == "물어뜯기"]
-
-
-def test_독샘의_주인_펜릴의_공격이_명중하면_내성_없이_3턴_중독(펜릴전장, monkeypatch):
-    전투상태, 펜릴, 아군 = 펜릴전장
-    _주사위고정(monkeypatch, 15)
-    내성들 = []
-    monkeypatch.setattr(
-        dice_utils,
-        "내성_굴림",
-        lambda 보정치, 난이도, **kw: 내성들.append(난이도) or (True, 난이도),
-    )
-    _몬스터_한턴(
-        전투상태, 펜릴, monkeypatch, gf.몬스터목록["펜릴"]["패턴"][1], 대상=아군[0]
-    )
-    중독 = _이름들(아군[0], "중독")
-    assert len(중독) == 2 and all(
-        i["지속턴"] == 3 for i in 중독
-    )  # 두 번 할퀴어 둘 다 명중
-    assert 내성들 == []  # 내성굴림 없음
-
-
-def _펜릴_때리기(전투상태, 아군, 펜릴, monkeypatch, 굴림):
-    monkeypatch.setattr(rng.확률, "random", lambda: 굴림)
-    전투상태["현재턴"] = 전투상태["참가자"].index(아군[0])
-    시작 = len(전투상태["로그"])
-    attacks.일반공격_실행(전투상태, 아군[0], 펜릴)
-    return 전투상태["로그"][시작:]
-
-
-@pytest.mark.parametrize(
-    "굴림, 독구름, 블러드", [(0.1, True, True), (0.3, False, True), (0.6, False, False)]
-)
-def test_독샘의_주인_피격시_20퍼센트_독구름_50퍼센트_포이즌_블러드(
-    펜릴전장, monkeypatch, 굴림, 독구름, 블러드
-):
-    전투상태, 펜릴, 아군 = 펜릴전장
-    _주사위고정(monkeypatch, 15)  # 아군 공격 명중
-    난이도들 = []
-    monkeypatch.setattr(
-        dice_utils,
-        "내성_굴림",
-        lambda 보정치, 난이도, **kw: 난이도들.append(난이도) or (False, 난이도),
-    )
-    monkeypatch.setattr(stats, "유효_방어력", lambda 전, p: 999 if p is 펜릴 else 0)
-    HP전 = 펜릴["현재HP"]
-    로그 = _펜릴_때리기(전투상태, 아군, 펜릴, monkeypatch, 굴림)
-    assert 펜릴["현재HP"] == HP전  # 명중했지만 피해 0 - 그래도 발동한다
-    중독 = {p["이름"]: len(_이름들(p, "중독")) for p in 아군}
-    기대 = {p["이름"]: (1 if 독구름 else 0) for p in 아군}
-    if 블러드:
-        기대[아군[0]["이름"]] += 1
-    assert 중독 == 기대
-    assert all(i["지속턴"] == 3 for p in 아군 for i in _이름들(p, "중독"))
-    assert set(난이도들) <= {12}
-    비고 = " ".join(str(x.get("비고", "")) for x in 로그)
-    assert ("독구름" in 비고) is 독구름 and ("포이즌 블러드" in 비고) is 블러드
-
-
-def test_독샘의_주인은_지속피해로는_발동하지_않는다(펜릴전장, monkeypatch):
-    전투상태, 펜릴, 아군 = 펜릴전장
-    monkeypatch.setattr(rng.확률, "random", lambda: 0.0)
-    펜릴["상태이상"].append({"이름": "출혈", "지속턴": 3})
-    시작 = len(전투상태["로그"])
-    flow.턴_종료_처리(전투상태, 펜릴)
-    비고 = " ".join(str(x.get("비고", "")) for x in 전투상태["로그"][시작:])
-    assert "독구름" not in 비고 and "포이즌 블러드" not in 비고
-
-
-# ------------------------------------------------------------- 타우 포효/대포효 (사용자 지정 2026-10-14)
-
-
-@pytest.fixture
-def 샤우타전장():
-    """샤우타 1마리 대 4인 파티. 모두 HP를 넉넉히 둔다."""
-    rng.시드(5)
-    상태 = support.새게임(
-        [("", "귀검사"), ("", "격투가"), ("", "거너"), ("", "마법사")]
-    )
-    gf.전투_시작(상태, ["타우킹 샤우타"], 레벨=2, 차수=1)
-    support.반응_처리(상태)
-    전투상태 = 상태["전투상태"]
-    샤우타 = next(p for p in 전투상태["참가자"] if p["진영"] == "적")
-    아군 = sorted(
-        (p for p in 전투상태["참가자"] if p["진영"] == "아군"),
-        key=lambda p: p["대형위치"],
-    )
-    for p in 전투상태["참가자"]:
-        p["현재HP"] = 999
-    return 전투상태, 샤우타, 아군
-
-
-@pytest.mark.parametrize("번호", [5, 6], ids=["포효", "대포효"])
-def test_포효는_매력내성_성공시_데미지_절반_대포효는_기절내성을_따로_모두_굴린다(
-    샤우타전장, monkeypatch, 번호
-):
-    전투상태, 샤우타, 아군 = 샤우타전장
-    from game.system import monster_ai
-    from game.system.combat import monster_actions
-
-    패턴 = gf.몬스터목록["타우킹 샤우타"]["패턴"][번호]
-    _주사위고정(monkeypatch, 3)
-    데미지DC = stats.몬스터_수식값(전투상태, 샤우타, "10+매력보정치")
-    기절DC = stats.몬스터_수식값(전투상태, 샤우타, "15+매력보정치")
-    # 내성굴림은 대상 목록 순서로 한다. 데미지 내성: 앞의 둘 실패, 뒤의 둘 성공.
-    # 기절 내성: 실패/성공을 번갈아 - 데미지 내성 결과와 엇갈리게 둔다
-    결과들 = {데미지DC: [False, False, True, True], 기절DC: [False, True, False, True]}
-    기절굴림 = []
-
-    def 내성(보정치, 난이도, **kw):
-        if 난이도 == 기절DC:
-            기절굴림.append(난이도)
-        return 결과들[난이도].pop(0), 난이도
-
-    monkeypatch.setattr(dice_utils, "내성_굴림", 내성)
-    monkeypatch.setattr(monster_ai, "행동_선택", lambda p: 패턴)
-    monkeypatch.setattr(monster_ai, "타겟_선택", lambda *a, **k: 아군[0])
-    HP전 = {p["이름"]: p["현재HP"] for p in 아군}
-    전투상태["공격연출"].clear()
-    결과 = monster_actions.몬스터_턴_실행(전투상태, 샤우타)
-    # 내성에 성공해도 절반을 맞으므로 모두 연출이 뜬다(사용자 지정 2026-10-14)
-    assert sorted(e["대상id"] for e in 전투상태["공격연출"]) == sorted(
-        p["id"] for p in 아군
-    )
-    assert {e["종류"] for e in 전투상태["공격연출"]} == {"마법:무"}
-
-    원래피해 = stats.몬스터_수식값(
-        전투상태, 샤우타, 패턴["실패시데미지"]
-    ) + monster_actions.몬스터_데미지보너스(전투상태, 샤우타)
-
-    def 기대(값, p):
-        return damage.최종피해_계산(
-            값, stats.유효_방어력(전투상태, p), stats.유효_보호률(전투상태, p)
-        )
-
-    assert 결과["난이도"] == 데미지DC
-    assert [t["내성"] for t in 결과["타격"]] == ["실패", "실패", "성공", "성공"]
-    순서 = [t["대상"] for t in 결과["타격"]]
-    assert set(순서) == {p["이름"] for p in 아군}
-    for p in 아군:
-        k = 순서.index(p["이름"])
-        assert HP전[p["이름"]] - p["현재HP"] == 기대(
-            원래피해 * (1 if k < 2 else 0.5), p
-        )
-        기절 = any(s["이름"] == "기절" for s in p.get("상태이상", []))
-        assert 기절 is (번호 == 6 and k in (0, 2)), p["이름"]
-    assert len(기절굴림) == (4 if 번호 == 6 else 0)
-
-
-# ------------------------------------------- 몬스터 공격 데미지의 능력치 보정치 (사용자 지정 2026-10-14)
-
-
-@pytest.mark.parametrize("식", ["1d4+근력보정치", "1d4+보정치"])
-def test_몬스터_공격_데미지의_근력보정치는_버프_디버프를_반영한다(monkeypatch, 식):
-    """ "근력보정치"가 몬스터 원본이 아니라 버프/디버프가 반영된 근력으로 계산된다 -
-    근력판정의 "보정치"와 같은 값이어야 한다(그전에는 원본 근력이라 디버프를 무시했다)."""
-    from game.system import monster_ai
-    from game.system.combat import monster_actions
-
-    rng.시드(1)
-    상태 = support.새게임([("", "귀검사")])
-    gf.전투_시작(상태, ["타우 아미"], 레벨=2, 차수=1)
-    support.반응_처리(상태)
-    전투상태 = 상태["전투상태"]
-    아미 = next(p for p in 전투상태["참가자"] if p["진영"] == "적")
-    대상 = next(p for p in 전투상태["참가자"] if p["진영"] == "아군")
-    대상["현재HP"] = 999
-    원래보정 = (아미["원본"]["근력"] - 10) // 2
-    아미.setdefault("디버프", []).append({"이름": "근력감소", "지속턴": 3, "중첩": 4})
-    보정 = stats.유효_능력치_보정치(전투상태, 아미, "근력")
-    assert 보정 == 원래보정 - 2  # 근력 -4
-
-    패턴 = {
-        "이름": "시험 공격",
-        "타입": "공격패턴",
-        "타겟": "적단일",
-        "속성": "무속성",
-        "데미지": 식,
-        "데미지보너스": 0,
-        "명중률": "근력판정",
-        "명중보너스": 0,
-        "공격횟수": 1,
-        "각공격명중굴림": False,
-        "효과": None,
-        "조건부효과": None,
-    }
-    monkeypatch.setattr(
-        damage, "명중_판정", lambda *a, **k: {"성공": True, "치명타": False}
-    )
-    monkeypatch.setattr(monster_ai, "행동_선택", lambda p: 패턴)
-    monkeypatch.setattr(monster_ai, "타겟_선택", lambda *a, **k: 대상)
-    _주사위고정(monkeypatch, 4)  # 1d4 = 4
-    결과 = monster_actions.몬스터_턴_실행(전투상태, 아미)
-
-    원래피해 = 4 + 보정 + monster_actions.몬스터_데미지보너스(전투상태, 아미)
-    기대 = damage.최종피해_계산(
-        원래피해, stats.유효_방어력(전투상태, 대상), stats.유효_보호률(전투상태, 대상)
-    )
-    assert 999 - 대상["현재HP"] == 기대, 결과
-
-
-# ------------------------------------------------- 타우 능력치·특성, 돌연변이:거대화 (사용자 지정 2026-10-14)
-
-
-def _비스트전장():
-    rng.시드(3)
-    상태 = support.새게임([("", "귀검사")])
-    gf.전투_시작(상태, ["타우 비스트"], 레벨=2, 차수=1)
-    support.반응_처리(상태)
-    전투상태 = 상태["전투상태"]
-    비스트 = next(p for p in 전투상태["참가자"] if p["진영"] == "적")
-    return 전투상태, 비스트
-
-
-def test_거대화는_종족특성까지_더한_최대HP를_2배로_한다():
-    전투상태, 비스트 = _비스트전장()
-    원본 = 비스트["원본"]
-    종족보너스 = 원본["레벨"] * ((원본["건강"] - 10) // 2)  # 종족:타우 레벨x건강보정치
-    기대 = 2 * (비스트["기본최대HP"] + 종족보너스)
-    assert stats.유효_최대HP(전투상태, 비스트) == 기대
-    assert 비스트["현재HP"] == 기대  # 전투 시작 HP도 2배
-
-
-def test_거대화는_첫_차례는_쉬고_짝수_차례에만_행동하며_쉬는_차례에도_기절이_줄어든다(
-    monkeypatch,
-):
-    from game.system import monster_ai
-    from game.system.combat import monster_actions
-
-    전투상태, 비스트 = _비스트전장()
-    아군 = next(p for p in 전투상태["참가자"] if p["진영"] == "아군")
-    아군["현재HP"] = 999
-    패턴 = gf.몬스터목록["타우 비스트"]["패턴"][1]  # 주먹 내려찍기
-    monkeypatch.setattr(monster_ai, "행동_선택", lambda p: 패턴)
-    monkeypatch.setattr(monster_ai, "타겟_선택", lambda *a, **k: 아군)
-    행동 = []
-    for 차례 in range(1, 7):
-        if 차례 == 3:  # 쉬는 차례(3)와 행동 차례(4)를 걸치는 기절 2턴
-            비스트.setdefault("상태이상", []).append({"이름": "기절", "지속턴": 2})
-        flow.턴_시작_처리(전투상태, 비스트)
-        결과 = monster_actions.몬스터_턴_실행(전투상태, 비스트)
-        행동.append(결과.get("패턴") or 결과.get("행동"))
-    # 3번째(쉬는 차례 - 기절이 먼저 기록된다)에 기절 2 -> 1, 4번째 시작에 1 -> 0으로 풀려
-    # 4번째에 행동한다
-    assert 행동 == [
-        "거대화로 쉼",
-        "주먹 내려찍기",
-        "행동불가 상태로 무행동",
-        "주먹 내려찍기",
-        "거대화로 쉼",
-        "주먹 내려찍기",
-    ]
 
 
 # -------------------------------------------------- 기절의 확정 치명타 삭제 (사용자 지정 2026-10-14)
@@ -2499,610 +1692,12 @@ def test_기절은_행동불가만_있고_피격시_확정치명타가_없다(mo
     assert 판정["성공"] is False and 판정["치명타"] is False
 
 
-# ------------------------------------------------- 특수패턴:샤우타 (사용자 지정 2026-10-14)
-
-
-def _샤우타_차례(전투상태, 샤우타):
-    from game.system.combat import monster_actions
-
-    flow.턴_시작_처리(전투상태, 샤우타)
-    return monster_actions.몬스터_턴_실행(전투상태, 샤우타)
-
-
-@pytest.mark.parametrize("시드", range(6))
-def test_기절한_적이_있으면_샤우타는_그중_한_명에게_점프_도끼_내려찍기를_한_번_쓴다(
-    샤우타전장, 시드
-):
-    전투상태, 샤우타, 아군 = 샤우타전장
-    rng.시드(시드)
-    기절 = {아군[1]["이름"], 아군[3]["이름"]}
-    for p in (아군[1], 아군[3]):
-        p.setdefault("상태이상", []).append({"이름": "기절", "지속턴": 3})
-    결과 = _샤우타_차례(전투상태, 샤우타)
-    assert 결과["패턴"] == "점프 도끼 내려찍기"
-    assert len(결과["타격"]) == 1 and 결과["대상"] in 기절
-
-
-def test_기절한_적이_없으면_샤우타는_평소처럼_1_6번_패턴을_쓴다(
-    샤우타전장, monkeypatch
-):
-    from game.system import monster_ai
-
-    전투상태, 샤우타, 아군 = 샤우타전장
-    아군[0].setdefault("상태이상", []).append({"이름": "공중에뜸", "지속턴": 3})
-    고른 = []
-    원래 = monster_ai.행동_선택
-    monkeypatch.setattr(monster_ai, "행동_선택", lambda p: 고른.append(1) or 원래(p))
-    결과 = _샤우타_차례(전투상태, 샤우타)
-    assert 고른 == [1] and 결과.get("패턴") != "점프 도끼 내려찍기"
-
-
-def test_타우의_왕은_샤우타의_방어력과_데미지보너스를_1씩_올린다(샤우타전장):
-    from game.system.combat import monster_actions
-
-    전투상태, 샤우타, _ = 샤우타전장
-    assert (
-        stats.유효_방어력(전투상태, 샤우타) == (샤우타["원본"].get("방어력") or 0) + 1
-    )
-    원래 = list(샤우타["원본"]["특성"])
-    보너스 = monster_actions.몬스터_데미지보너스(전투상태, 샤우타)
-    샤우타["원본"] = dict(샤우타["원본"], 특성=[x for x in 원래 if x != "타우의 왕"])
-    assert monster_actions.몬스터_데미지보너스(전투상태, 샤우타) == 보너스 - 1
-
-
-# -------------------------------------------- 차수만큼 패턴 반복 (사용자 지정 2026-10-14)
-
-
-def _차수전장(몬스터들, 차수):
-    """몬스터들 대 4인 파티, 모두 HP 넉넉히(반응으로 몬스터가 쓰러지지 않게 몬스터도)."""
-    rng.시드(5)
-    상태 = support.새게임(
-        [("", "귀검사"), ("", "격투가"), ("", "거너"), ("", "마법사")]
-    )
-    gf.전투_시작(상태, 몬스터들, 레벨=4, 차수=차수)
-    support.반응_처리(상태)
-    전투상태 = 상태["전투상태"]
-    적 = [p for p in 전투상태["참가자"] if p["진영"] == "적"]
-    아군 = sorted(
-        (p for p in 전투상태["참가자"] if p["진영"] == "아군"),
-        key=lambda p: p["대형위치"],
-    )
-    for p in 전투상태["참가자"]:
-        p["현재HP"] = 999
-    return 전투상태, 적, 아군
-
-
-def _굴림_기록(monkeypatch, 패턴들):
-    """monster_ai.행동_선택(1~6 굴림)을 패턴들 순서로 돌려주게 하고, 굴린 횟수를 담을 리스트를 준다."""
-    from game.system import monster_ai
-
-    굴림 = []
-
-    def 선택(p):
-        굴림.append(p["이름"])
-        return 패턴들[(len(굴림) - 1) % len(패턴들)]
-
-    monkeypatch.setattr(monster_ai, "행동_선택", 선택)
-    return 굴림
-
-
-def _대상_차례로(monkeypatch, 대상들):
-    from game.system import monster_ai
-
-    남은 = list(대상들)
-    monkeypatch.setattr(
-        monster_ai,
-        "타겟_선택",
-        lambda *a, **k: 남은.pop(0) if len(남은) > 1 else 남은[0],
-    )
-
-
-def _한턴(전투상태, 몬스터):
-    from game.system.combat import monster_actions
-
-    전투상태["현재턴"] = 전투상태["참가자"].index(몬스터)
-    flow.턴_시작_처리(전투상태, 몬스터)
-    monster_actions.몬스터_턴_실행(전투상태, 몬스터)
-    flow.턴_종료_처리(전투상태, 몬스터)
-
-
-def _쓴_패턴(전투상태, 시작, 몬스터):
-    return [
-        (x["패턴"], x["대상"])
-        for x in 전투상태["로그"][시작:]
-        if x.get("종류") == "타격" and x.get("공격자") == 몬스터["이름"]
-    ]
-
-
-@pytest.mark.parametrize("차수", [1, 2, 3])
-def test_몬스터는_한_턴에_차수만큼_패턴을_새로_굴려_각각_쓴다(monkeypatch, 차수):
-    전투상태, [루가루], 아군 = _차수전장(["루가루"], 차수)
-    패턴 = gf.몬스터목록["루가루"]["패턴"]
-    굴림 = _굴림_기록(monkeypatch, [패턴[1], 패턴[5]])
-    _대상_차례로(monkeypatch, [아군[0]])
-    시작 = len(전투상태["로그"])
-    _한턴(전투상태, 루가루)
-    assert len(굴림) == 차수
-    이름 = [p for p, _ in _쓴_패턴(전투상태, 시작, 루가루)]
-    assert 이름 == (["두번 할퀴기", "달려들기"] * 2)[:차수]
-
-
-def test_대체행동은_기본으로_한_턴에_한_번만_쓰고_나머지는_패턴을_굴린다(monkeypatch):
-    전투상태, [샤우타], 아군 = _차수전장(["타우킹 샤우타"], 2)
-    아군[1]["상태이상"].append({"이름": "기절", "지속턴": 3})
-    도끼 = gf.몬스터목록["타우킹 샤우타"]["패턴"][1]
-    굴림 = _굴림_기록(monkeypatch, [도끼])
-    _대상_차례로(monkeypatch, [아군[0]])
-    시작 = len(전투상태["로그"])
-    _한턴(전투상태, 샤우타)
-    assert _쓴_패턴(전투상태, 시작, 샤우타) == [
-        ("점프 도끼 내려찍기", 아군[1]["이름"]),
-        (도끼["이름"], 아군[0]["이름"]),
-    ]
-    assert len(굴림) == 1
-
-
-@pytest.mark.parametrize("횟수, 점프, 굴림수", [(2, 2, 1), ("전부", 3, 0)])
-def test_대체횟수는_특수패턴마다_2회나_전부로_정할_수_있다(
-    monkeypatch, 횟수, 점프, 굴림수
-):
-    전투상태, [샤우타], 아군 = _차수전장(["타우킹 샤우타"], 3)
-    정의 = dict(전투상태["특성정의"]["특수패턴:샤우타"])
-    정의["대체행동"] = {**정의["대체행동"], "대체횟수": 횟수}
-    전투상태["특성정의"] = {**전투상태["특성정의"], "특수패턴:샤우타": 정의}
-    아군[1]["상태이상"].append({"이름": "기절", "지속턴": 3})
-    도끼 = gf.몬스터목록["타우킹 샤우타"]["패턴"][1]
-    굴림 = _굴림_기록(monkeypatch, [도끼])
-    _대상_차례로(monkeypatch, [아군[0]])
-    시작 = len(전투상태["로그"])
-    _한턴(전투상태, 샤우타)
-    쓴 = [p for p, _ in _쓴_패턴(전투상태, 시작, 샤우타)]
-    assert 쓴 == ["점프 도끼 내려찍기"] * 점프 + [도끼["이름"]] * 굴림수
-    assert len(굴림) == 굴림수
-
-
-def test_2차수_펜릴이_두_번_물면_나중에_문_적만_들러붙고_다음_턴_피니쉬도_그_적에게(
-    monkeypatch,
-):
-    전투상태, [펜릴], 아군 = _차수전장(["펜릴"], 2)
-    _주사위고정(monkeypatch, 15)  # 명중, 치명타 아님
-    monkeypatch.setattr(
-        dice_utils, "내성_굴림", lambda 보정치, 난이도, **kw: (True, 난이도)
-    )
-    패턴 = gf.몬스터목록["펜릴"]["패턴"]
-    _굴림_기록(monkeypatch, [패턴[5]])
-    _대상_차례로(monkeypatch, [아군[0], 아군[2]])
-    시작 = len(전투상태["로그"])
-    _한턴(전투상태, 펜릴)
-    물기 = [대상 for p, 대상 in _쓴_패턴(전투상태, 시작, 펜릴) if p == "물어뜯기"]
-    assert 물기 == [아군[0]["이름"], 아군[2]["이름"]]  # 턴 끝에 명중한 순서대로
-    붙음 = [p["이름"] for p in 아군 if _이름들(p, "들러붙음")]
-    assert 붙음 == [아군[2]["이름"]]  # 나중에 문 적만
-
-    굴림 = _굴림_기록(monkeypatch, [패턴[1]])
-    _대상_차례로(monkeypatch, [아군[0]])
-    시작 = len(전투상태["로그"])
-    _한턴(전투상태, 펜릴)
-    assert _쓴_패턴(전투상태, 시작, 펜릴) == [
-        ("피니쉬!", 아군[2]["이름"]),
-        ("두번 할퀴기", 아군[0]["이름"]),
-    ]
-    assert len(굴림) == 1
-    assert not any(_이름들(p, "들러붙음") for p in 아군)
-
-
-def test_거대화는_쉬는_차례에_통째로_쉬고_행동_차례에_차수만큼_움직인다(monkeypatch):
-    전투상태, [비스트], 아군 = _차수전장(["타우 비스트"], 2)
-    굴림 = _굴림_기록(monkeypatch, [gf.몬스터목록["타우 비스트"]["패턴"][1]])
-    _대상_차례로(monkeypatch, [아군[0]])
-    _한턴(전투상태, 비스트)
-    assert len(굴림) == 0
-    _한턴(전투상태, 비스트)
-    assert len(굴림) == 2
-
-
-# ---------------------------------- 케라하·비노슈 주문영창과 감옥 (사용자 지정 2026-10-14)
-
-
-def _마녀전장(이름):
-    """마녀 1마리 대 4인 파티(귀검사/격투가/거너/마법사), 모두 HP 넉넉히."""
-    전투상태, [마녀], 아군 = _차수전장([이름], 1)
-    return 전투상태, 마녀, 아군
-
-
-def _문장들(전투상태, 시작):
-    return [z for x in 전투상태["로그"][시작:] for z in gf.로그_문장들(x)]
-
-
-def _감옥들(전투상태):
-    return [p for p in 전투상태["참가자"] if p.get("감옥") and p["생존"]]
-
-
-@pytest.mark.parametrize(
-    "몬스터, 시전", [("결빙의 케라하", "블리자드"), ("화염의 비노슈", "메테오")]
-)
-def test_영창_패턴은_주문영창만_되고_다음_턴에_패턴_대신_시전한다(
-    monkeypatch, 몬스터, 시전
-):
-    전투상태, 마녀, 아군 = _마녀전장(몬스터)
-    패턴 = gf.몬스터목록[몬스터]["패턴"]
-    _굴림_기록(monkeypatch, [패턴[6]])
-    _대상_차례로(monkeypatch, [아군[1]])
-    HP전 = [p["현재HP"] for p in 아군]
-    시작 = len(전투상태["로그"])
-    _한턴(전투상태, 마녀)
-    assert _이름들(마녀, "주문영창")
-    assert [p["현재HP"] for p in 아군] == HP전  # 영창하는 턴에는 공격하지 않는다
-    줄 = _문장들(전투상태, 시작)
-    assert 줄[:2] == [
-        f"{마녀['이름']}의 {시전}!",
-        f"{마녀['이름']}는 주문영창을 시작했다!",  # 하·슈 - 받침 없음
-    ], 줄
-
-    굴림 = _굴림_기록(monkeypatch, [패턴[1]])
-    시작 = len(전투상태["로그"])
-    _한턴(전투상태, 마녀)
-    assert len(굴림) == 0  # 패턴 대신 시전
-    assert {p for p, _ in _쓴_패턴(전투상태, 시작, 마녀)} == {시전}
-    assert f"{마녀['이름']}의 {시전}!!" in _문장들(전투상태, 시작)
-    assert not _이름들(마녀, "주문영창")
-
-
-@pytest.mark.parametrize("상태", ["기절", "침묵"])
-def test_주문영창은_행동불가형_상태이상이나_침묵에_걸리면_풀린다(monkeypatch, 상태):
-    from game.system.skill import skill_grant
-
-    전투상태, 마녀, 아군 = _마녀전장("결빙의 케라하")
-    if (
-        상태 not in 전투상태["상태이상정의"]
-    ):  # 침묵은 아직 데이터에 없다 - 이름으로 판정한다
-        전투상태["상태이상정의"] = {**전투상태["상태이상정의"], 상태: {"효과": {}}}
-    패턴 = gf.몬스터목록["결빙의 케라하"]["패턴"]
-    _굴림_기록(monkeypatch, [패턴[6]])
-    _한턴(전투상태, 마녀)
-    assert _이름들(마녀, "주문영창")
-    skill_grant.상태이상_부여(전투상태, 마녀, 상태, 1)
-    assert not _이름들(마녀, "주문영창")
-
-
-def test_얼음감옥은_내성_없이_10턴_체력은_5더하기_지능보정치(monkeypatch):
-    """민첩내성은 2026-10-14 삭제(사용자 지정) - 운석처럼 바로 갇힌다."""
-    전투상태, 마녀, 아군 = _마녀전장("결빙의 케라하")
-    패턴 = gf.몬스터목록["결빙의 케라하"]["패턴"]
-    assert "내성" not in 패턴[5] and "난이도" not in 패턴[5]
-    _굴림_기록(monkeypatch, [패턴[5]])
-    _대상_차례로(monkeypatch, [아군[0]])
-    받은DC = []
-
-    def 내성(보정치, 난이도, **kw):
-        받은DC.append(난이도)
-        return True, 난이도
-
-    monkeypatch.setattr(dice_utils, "내성_굴림", 내성)
-    _한턴(전투상태, 마녀)
-    지능 = stats.유효_능력치_보정치(전투상태, 마녀, "지능")
-    assert 받은DC == []
-    [감옥] = _감옥들(전투상태)
-    assert 감옥["진영"] == "감옥" and 감옥["갇힌id"] == 아군[0]["id"]
-    assert 감옥["현재HP"] == 5 + 지능
-    assert [i["지속턴"] for i in _이름들(아군[0], "감옥")] == [10]
-    assert stats.최종AC(전투상태, 감옥) == 1
-
-
-def _가두기(monkeypatch, 이름, 대상):
-    """마녀의 5번 패턴(얼음감옥/운석폭발)으로 대상을 가둔다(내성굴림은 실패로 고정)."""
-    전투상태, 마녀, 아군 = _마녀전장(이름)
-    _굴림_기록(monkeypatch, [gf.몬스터목록[이름]["패턴"][5]])
-    _대상_차례로(monkeypatch, [아군[대상]])
-    monkeypatch.setattr(
-        dice_utils, "내성_굴림", lambda 보정치, 난이도, **kw: (False, 1)
-    )
-    _한턴(전투상태, 마녀)
-    [감옥] = _감옥들(전투상태)
-    return 전투상태, 마녀, 아군, 감옥
-
-
-def test_갇힌_사람의_공격은_감옥이_받고_남은_데미지는_사라진다(monkeypatch):
-    from game.system.combat import attacks
-
-    전투상태, 마녀, 아군, 감옥 = _가두기(monkeypatch, "결빙의 케라하", 0)
-    마녀HP = 마녀["현재HP"]
-    _주사위고정(monkeypatch, 2)  # 대실패만 아니면 감옥은 맞는다(AC 1)
-    monkeypatch.setattr(stats, "피해_굴림", lambda *a, **k: 999)
-    결과 = attacks.일반공격_실행(전투상태, 아군[0], 마녀)
-    assert 결과["대상"] == 감옥["이름"] and 결과["판정"]["성공"]
-    assert 마녀["현재HP"] == 마녀HP  # 남은 데미지는 원래 대상에게 가지 않는다
-    assert 감옥["현재HP"] == 0 and not 감옥["생존"]
-    assert not _이름들(아군[0], "감옥")  # 부서지면 풀린다
-
-
-def test_감옥은_대실패면_빗나간다(monkeypatch):
-    from game.system.combat import attacks
-
-    전투상태, 마녀, 아군, 감옥 = _가두기(monkeypatch, "결빙의 케라하", 0)
-    _주사위고정(monkeypatch, 1)
-    결과 = attacks.일반공격_실행(전투상태, 아군[1], 감옥)
-    assert not 결과["판정"]["성공"] and 결과["판정"]["자동실패"]
-
-
-def test_얼음감옥은_수속성_저항_화속성_취약_운석은_반대(monkeypatch):
-    전투상태, 마녀, 아군, 얼음 = _가두기(monkeypatch, "결빙의 케라하", 0)
-    assert damage.피해_속성배율(전투상태, 얼음, "수속성") == 0.5
-    assert damage.피해_속성배율(전투상태, 얼음, "화속성") == 2
-    전투상태, 마녀, 아군, 운석 = _가두기(monkeypatch, "화염의 비노슈", 0)
-    assert damage.피해_속성배율(전투상태, 운석, "화속성") == 0.5
-    assert damage.피해_속성배율(전투상태, 운석, "수속성") == 2
-
-
-def test_감옥은_공격_대상_목록에_나오고_턴은_없고_승패에서_빠진다(monkeypatch):
-    전투상태, 마녀, 아군, 감옥 = _가두기(monkeypatch, "결빙의 케라하", 0)
-    상태 = {"전투상태": 전투상태}
-    assert 감옥 in gf.공격대상_목록(상태) and 마녀 in gf.공격대상_목록(상태)
-    assert 감옥 not in gf.적_목록(상태)  # 적 그림 칸에는 그리지 않는다
-    for _ in range(12):  # 한 바퀴 넘게 돌려도 감옥 차례는 오지 않는다
-        assert flow.다음_턴(전투상태) is not 감옥
-    마녀["현재HP"] = 0
-    마녀["생존"] = False
-    전투상태["종료"] = None
-    assert core.전투_종료_판정(전투상태) == "아군승리"
-
-
-def test_아군의_전체공격만_감옥에_맞는다(monkeypatch):
-    from game.system.skill import skill_target
-
-    전투상태, 마녀, 아군, 감옥 = _가두기(monkeypatch, "결빙의 케라하", 0)
-    assert 감옥 in skill_target.타겟_확장(전투상태, 아군[1], "적전체")
-    assert 감옥 not in skill_target.타겟_확장(전투상태, 아군[1], "적3체", 마녀)
-    # 갇힌 사람이 지정한 대상 몫은 감옥이 받는다
-    assert skill_target.타겟_확장(전투상태, 아군[0], "적단일", 마녀) == [감옥]
-
-
-def test_다른_캐릭터가_감옥을_때리면_넘친_데미지는_버린다(monkeypatch):
-    from game.system.combat import attacks
-
-    전투상태, 마녀, 아군, 감옥 = _가두기(monkeypatch, "결빙의 케라하", 0)
-    _주사위고정(monkeypatch, 10)
-    monkeypatch.setattr(stats, "피해_굴림", lambda *a, **k: 999)
-    HP전 = [p["현재HP"] for p in 아군]
-    attacks.일반공격_실행(전투상태, 아군[1], 감옥)
-    assert not 감옥["생존"] and not _이름들(아군[0], "감옥")
-    assert [p["현재HP"] for p in 아군] == HP전
-
-
-def _갇힌_사람_턴(전투상태, 사람):
-    전투상태["현재턴"] = 전투상태["참가자"].index(사람)
-    flow.턴_시작_처리(전투상태, 사람)
-    flow.턴_종료_처리(전투상태, 사람)
-
-
-def test_운석은_갇힌_사람의_턴_2번이_지나면_터져_모두에게_피해와_확정_화상(monkeypatch):
-    전투상태, 마녀, 아군, 운석 = _가두기(monkeypatch, "화염의 비노슈", 2)
-    assert [i["지속턴"] for i in _이름들(아군[2], "감옥")] == [2]
-    HP전 = [p["현재HP"] for p in 아군]
-    _갇힌_사람_턴(전투상태, 아군[2])
-    assert 운석["생존"] and [p["현재HP"] for p in 아군] == HP전
-    # 운석은 비노슈와 따로다 - 걸 때의 지능으로 터지고, 비노슈가 먼저 죽거나 능력치가 바뀌어도 그대로
-    지능 = stats.유효_능력치_보정치(전투상태, 마녀, "지능")
-    마녀["원본"] = dict(마녀["원본"], 지능=1)
-    마녀["현재HP"] = 0
-    마녀["생존"] = False
-    _주사위고정(monkeypatch, 6)
-    _갇힌_사람_턴(전투상태, 아군[2])
-    assert not 운석["생존"] and not _이름들(아군[2], "감옥")
-    for p, 전 in zip(아군, HP전):
-        assert 전 - p["현재HP"] == damage.최종피해_계산(
-            6 + 지능, stats.유효_방어력(전투상태, p), stats.유효_보호률(전투상태, p)
-        )
-        assert [i["지속턴"] for i in _이름들(p, "화상")] == [3]
-
-
-def test_운석을_부수면_터지지_않는다(monkeypatch):
-    from game.system.combat import attacks
-
-    전투상태, 마녀, 아군, 운석 = _가두기(monkeypatch, "화염의 비노슈", 2)
-    _주사위고정(monkeypatch, 10)
-    monkeypatch.setattr(stats, "피해_굴림", lambda *a, **k: 999)
-    attacks.일반공격_실행(전투상태, 아군[0], 운석)
-    HP전 = [p["현재HP"] for p in 아군]
-    _갇힌_사람_턴(전투상태, 아군[2])
-    _갇힌_사람_턴(전투상태, 아군[2])
-    assert [p["현재HP"] for p in 아군] == HP전
-    assert not any(_이름들(p, "화상") for p in 아군)
-
-
-def test_감옥은_하나만_새_감옥이_걸리면_앞_감옥의_벌칙이_일어난다(monkeypatch):
-    전투상태, 마녀, 아군, 운석 = _가두기(monkeypatch, "화염의 비노슈", 2)
-    HP전 = [p["현재HP"] for p in 아군]
-    _한턴(전투상태, 마녀)  # 같은 사람에게 운석폭발 한 번 더
-    [새운석] = _감옥들(전투상태)
-    assert 새운석 is not 운석 and not 운석["생존"]
-    assert len(_이름들(아군[2], "감옥")) == 1
-    assert all(p["현재HP"] < 전 for p, 전 in zip(아군, HP전))  # 앞 운석이 터졌다
-
-
-# ---------------------------------- 얼음감옥 아이스 그라운드 (사용자 지정 2026-10-14)
-
-
-def _아이스그라운드(전투상태, 시작, 감옥):
-    return [
-        x
-        for x in 전투상태["로그"][시작:]
-        if x.get("종류") == "타격"
-        and x.get("공격자") == 감옥["이름"]
-        and x.get("패턴") == "아이스 그라운드"
-    ]
-
-
-@pytest.mark.parametrize("내성성공", [False, True])
-def test_갇힌_사람의_턴이_끝날_때마다_얼음감옥이_아이스_그라운드를_쓴다(
-    monkeypatch, 내성성공
-):
-    전투상태, 마녀, 아군, 감옥 = _가두기(monkeypatch, "결빙의 케라하", 0)
-    받은DC = []
-
-    def 내성(보정치, 난이도, **kw):
-        받은DC.append(난이도)
-        return 내성성공, 난이도
-
-    monkeypatch.setattr(dice_utils, "내성_굴림", 내성)
-    _주사위고정(monkeypatch, 3)  # 1d4 = 3, 필중
-    # 케라하와 따로다 - 케라하가 쓰러져도 감옥이 공격한다
-    마녀["현재HP"] = 0
-    마녀["생존"] = False
-    HP전 = 아군[0]["현재HP"]
-    시작 = len(전투상태["로그"])
-    _갇힌_사람_턴(전투상태, 아군[0])
-    [기록] = _아이스그라운드(전투상태, 시작, 감옥)
-    assert 기록["대상"] == 아군[0]["이름"] and 기록["타격"][0]["판정"]["성공"]
-    기대 = damage.최종피해_계산(
-        3 * damage.피해_속성배율(전투상태, 아군[0], "수속성"),
-        stats.유효_방어력(전투상태, 아군[0]),
-        stats.유효_보호률(전투상태, 아군[0]),
-    )
-    assert HP전 - 아군[0]["현재HP"] == 기대  # 보정치 없는 1d4
-    assert 받은DC == [10]
-    assert bool(_이름들(아군[0], "빙결")) is not 내성성공
-    assert [i["지속턴"] for i in _이름들(아군[0], "빙결")] == ([] if 내성성공 else [1])
-    # 갇힌 사람이 아닌 아군의 턴 끝에는 쓰지 않는다
-    시작 = len(전투상태["로그"])
-    _갇힌_사람_턴(전투상태, 아군[1])
-    assert not _아이스그라운드(전투상태, 시작, 감옥)
-
-
-def test_감옥이_끝나는_턴에도_아이스_그라운드를_쓰고_부서지면_멈춘다(monkeypatch):
-    from game.system.combat import attacks
-
-    전투상태, 마녀, 아군, 감옥 = _가두기(monkeypatch, "결빙의 케라하", 0)
-    [항목] = _이름들(아군[0], "감옥")
-    항목["지속턴"] = 1  # 이번 턴 끝에 감옥이 끝난다
-    시작 = len(전투상태["로그"])
-    _갇힌_사람_턴(전투상태, 아군[0])
-    assert len(_아이스그라운드(전투상태, 시작, 감옥)) == 1
-    assert not 감옥["생존"] and not _이름들(아군[0], "감옥")
-
-    전투상태, 마녀, 아군, 감옥 = _가두기(monkeypatch, "결빙의 케라하", 0)
-    _주사위고정(monkeypatch, 10)
-    monkeypatch.setattr(stats, "피해_굴림", lambda *a, **k: 999)
-    attacks.일반공격_실행(전투상태, 아군[1], 감옥)  # 부순다
-    시작 = len(전투상태["로그"])
-    _갇힌_사람_턴(전투상태, 아군[0])
-    assert not _아이스그라운드(전투상태, 시작, 감옥)
-
-
-# ---------------------------------- 감옥 그림 (사용자 지정 2026-10-14)
-
-
-@pytest.mark.parametrize(
-    "이름, 기대",
-    [
-        (
-            "결빙의 케라하",
-            (
-                "asset_monster_ice_prison_back.webp",
-                "asset_monster_ice_prison_front.webp",
-            ),
-        ),
-        ("화염의 비노슈", ("asset_monster_meteor_prison.webp", None)),
-    ],
-)
-def test_갇힌_아군의_감옥_그림은_뒤와_앞이고_부서지면_없다(monkeypatch, 이름, 기대):
-    import os
-    from game.system.combat import attacks
-
-    전투상태, 마녀, 아군, 감옥 = _가두기(monkeypatch, 이름, 0)
-    상태 = {"전투상태": 전투상태}
-    assert gf.감옥_그림(상태, 아군[0]) == 기대
-    assert gf.감옥_그림(상태, 아군[1]) == (None, None)
-    for 파일 in 기대:
-        if 파일:
-            assert os.path.isfile(os.path.join("game", "assets", "monster", 파일)), 파일
-    _주사위고정(monkeypatch, 10)
-    monkeypatch.setattr(stats, "피해_굴림", lambda *a, **k: 999)
-    attacks.일반공격_실행(전투상태, 아군[1], 감옥)
-    assert gf.감옥_그림(상태, 아군[0]) == (None, None)
-
-
-# ------------------------------------- 명중 굴림이 없는 공격의 연출 (사용자 지정 2026-10-14)
-
-
-def _전장(몬스터들):
-    rng.시드(5)
-    상태 = support.새게임(
-        [("", "귀검사"), ("", "격투가"), ("", "거너"), ("", "마법사")]
-    )
-    gf.전투_시작(상태, 몬스터들, 레벨=2, 차수=1)
-    support.반응_처리(상태)
-    전투상태 = 상태["전투상태"]
-    for p in 전투상태["참가자"]:
-        p["현재HP"] = 999
-    적 = [p for p in 전투상태["참가자"] if p["진영"] == "적"]
-    아군 = [p for p in 전투상태["참가자"] if p["진영"] == "아군"]
-    전투상태["공격연출"].clear()
-    return 전투상태, 적, 아군
-
-
-def test_냉기방출은_내성_결과와_관계없이_모든_적에게_연출(monkeypatch):
-    전투상태, [굴], 아군 = _전장(["굴 구위시"])
-    결과 = iter([True, False, True, False])  # 성공해도 절반을 맞는다
-    monkeypatch.setattr(
-        dice_utils, "내성_굴림", lambda 보정치, 난이도, **kw: (next(결과), 난이도)
-    )
-    traits.특성_턴종료시_발동(전투상태, 굴)
-    assert sorted(e["대상id"] for e in 전투상태["공격연출"]) == sorted(
-        p["id"] for p in 아군
-    )
-    assert {e["종류"] for e in 전투상태["공격연출"]} == {"마법:수"}
-
-
-def test_기상_충격파는_모든_적에게_타격_연출(monkeypatch):
-    전투상태, [굴], 아군 = _전장(["굴 구위시"])
-    monkeypatch.setattr(
-        dice_utils, "내성_굴림", lambda 보정치, 난이도, **kw: (True, 난이도)
-    )
-    굴["상태이상"].append({"이름": "넘어짐", "지속턴": 1})
-    flow.턴_시작_처리(전투상태, 굴)  # 지속턴 만료 -> 해제시 발동
-    assert sorted(e["대상id"] for e in 전투상태["공격연출"]) == sorted(
-        p["id"] for p in 아군
-    )
-    assert {e["종류"] for e in 전투상태["공격연출"]} == {"타격:무"}
-
-
-def test_자폭명령은_폭사한_수만큼_맞은_대상에게_연출(monkeypatch):
-    from game.system import monster_ai
-    from game.system.combat import monster_actions
-
-    전투상태, 적, 아군 = _전장(["고블린 십장", "고블린", "고블린"])
-    십장 = next(p for p in 적 if p["원본"]["몬스터명"] == "고블린 십장")
-    패턴 = next(
-        p
-        for p in gf.몬스터목록["고블린 십장"]["패턴"].values()
-        if p.get("타입") == "자폭패턴"
-    )
-    monkeypatch.setattr(monster_ai, "행동_선택", lambda p: 패턴)
-    결과 = monster_actions.몬스터_턴_실행(전투상태, 십장)
-    아군id = {p["id"] for p in 아군}
-    assert 결과["폭사수"] == 2
-    assert len(전투상태["공격연출"]) == 2
-    assert all(
-        e["대상id"] in 아군id and e["종류"] == "타격:무" for e in 전투상태["공격연출"]
-    )
-
-
 # ------------------------------------------------------------------ 집요함 (2026-10-15 사용자 결정, 데미지보너스 제외 2026-10-19)
 
 
 def _집요함_전장():
-    전투상태, 적, 아군 = _전장(["고블린"])
+    전투상태, 적, 아군 = support.시험_전투(["고블린"])
     return 전투상태, 적[0], 아군[0]
-
-
-def _빗나감(자동실패=False):
-    return {
-        "성공": False,
-        "자연눈": 1 if 자동실패 else 5,
-        "치명타": False,
-        "자동실패": 자동실패,
-    }
 
 
 def test_집요함은_빗나간_공격에_그_수치만큼_피해를_준다():
@@ -3136,7 +1731,7 @@ def test_일반공격이_빗나가면_공격_줄_뒤에_집요함_줄(monkeypatc
     귀검사["버프"].append({"이름": "집요함", "중첩": 2})
     고블린["원본"]["방어력"] = 0
     고블린["원본"]["AC"] = 99
-    _주사위고정(monkeypatch, 눈)
+    support.주사위고정(monkeypatch, 눈)
     전 = 고블린["현재HP"]
     시작 = len(전투상태["로그"])
     결과 = attacks.일반공격_실행(전투상태, 귀검사, 고블린)
@@ -3147,7 +1742,7 @@ def test_일반공격이_빗나가면_공격_줄_뒤에_집요함_줄(monkeypatc
 
     # 명중하면 집요함은 없다
     고블린["원본"]["AC"] = 1
-    _주사위고정(monkeypatch, 19)
+    support.주사위고정(monkeypatch, 19)
     시작 = len(전투상태["로그"])
     attacks.일반공격_실행(전투상태, 귀검사, 고블린)
     assert not any(e.get("비고") == "집요함" for e in 전투상태["로그"][시작:])
@@ -3195,205 +1790,11 @@ def test_집요함_피해에는_시전자의_데미지보너스가_더해지지_
     assert 고블린["현재HP"] == 전
 
 
-# ------------------------------------------------------------------ 얀데레 퍽 (2026-10-19 사용자 결정)
-
-
-def _얀데레_전장():
-    전투상태, 고블린, 귀검사 = _집요함_전장()
-    귀검사["원본"]["보유특성"].append("얀데레")
-    고블린["원본"]["방어력"] = 0
-    return 전투상태, 고블린, 귀검사
-
-
-def test_얀데레는_펌블이면_집요함이_치명타주사위만큼_더해진다():
-    전투상태, 고블린, 귀검사 = _얀데레_전장()
-    귀검사["버프"].append({"이름": "집요함", "중첩": 5})
-    귀검사["치명타주사위"] = 3
-    전 = 고블린["현재HP"]
-    damage.집요함_발동(전투상태, 귀검사, 고블린, "무속성", 판정=_빗나감(True))
-    assert 고블린["현재HP"] == 전 - 5 * (1 + 3)
-    # 펌블이 아닌 빗나감은 집요함 1회
-    전 = 고블린["현재HP"]
-    damage.집요함_발동(전투상태, 귀검사, 고블린, "무속성", 판정=_빗나감())
-    assert 고블린["현재HP"] == 전 - 5
-
-
-def test_치명타주사위_강화가_없어도_얀데레_펌블은_집요함_두_배():
-    전투상태, 고블린, 귀검사 = _얀데레_전장()
-    귀검사["버프"].append({"이름": "집요함", "중첩": 5})
-    assert stats.치명타_주사위수(전투상태, 귀검사) == 1
-    전 = 고블린["현재HP"]
-    damage.집요함_발동(전투상태, 귀검사, 고블린, "무속성", 판정=_빗나감(True))
-    assert 고블린["현재HP"] == 전 - 10
-
-
-def test_얀데레가_없으면_펌블도_집요함_1회():
-    전투상태, 고블린, 귀검사 = _집요함_전장()
-    고블린["원본"]["방어력"] = 0
-    귀검사["버프"].append({"이름": "집요함", "중첩": 5})
-    귀검사["치명타주사위"] = 3
-    전 = 고블린["현재HP"]
-    damage.집요함_발동(전투상태, 귀검사, 고블린, "무속성", 판정=_빗나감(True))
-    assert 고블린["현재HP"] == 전 - 5
-    assert damage.유효_펌블범위(전투상태, 귀검사, 고블린) == 1
-    귀검사["치명타범위"] = 18
-    assert damage.유효_펌블범위(전투상태, 귀검사, 고블린) == 1
-
-
-def test_얀데레는_치명타범위가_낮아진_만큼_펌블범위가_는다():
-    전투상태, 고블린, 귀검사 = _얀데레_전장()
-    assert damage.유효_펌블범위(전투상태, 귀검사, 고블린) == 1
-    귀검사["치명타범위"] = 18  # 20 -> 18: 펌블 1 -> 3
-    assert damage.유효_펌블범위(전투상태, 귀검사, 고블린) == 3
-    # 버프로 치명타범위가 바뀌면 그때그때 따라간다
-    귀검사["버프"].append({"이름": "치명타확률증가", "중첩": 1})
-    assert damage.유효_펌블범위(전투상태, 귀검사, 고블린) == 1 + (
-        20 - damage.유효_치명타범위(전투상태, 귀검사)
-    )
-    assert damage.유효_치명타범위(전투상태, 귀검사) < 18
-
-
-def test_얀데레_일반공격이_늘어난_펌블범위에서_펌블이면_집요함이_늘어난다(monkeypatch):
-    전투상태, 고블린, 귀검사 = _얀데레_전장()
-    귀검사["버프"].append({"이름": "집요함", "중첩": 2})
-    귀검사["치명타범위"] = 18  # 펌블범위 3
-    고블린["원본"]["AC"] = 1
-    _주사위고정(monkeypatch, 3)  # 3은 원래 명중이지만 얀데레면 펌블
-    전 = 고블린["현재HP"]
-    결과 = attacks.일반공격_실행(전투상태, 귀검사, 고블린)
-    assert 결과["판정"]["자동실패"] and not 결과["판정"]["성공"]
-    assert 고블린["현재HP"] == 전 - 2 * (1 + 1)
-
-
-# ------------------------------------------------------------------ 흡혈귀 퍽 / 흡혈 (2026-10-19 사용자 결정)
-
-
-def _흡혈귀_전장():
-    from game.data.ability.job_ability_0000 import 특성목록
-    from game.system import effect_engine
-
-    전투상태, 고블린, 귀검사 = _집요함_전장()
-    effect_engine.특성_부여(귀검사["원본"], "흡혈귀", 특성목록["흡혈귀"])
-    고블린["원본"]["방어력"] = 0
-    고블린["원본"]["저항"] = []
-    고블린["원본"]["취약"] = []
-    귀검사["현재HP"] = 1
-    return 전투상태, 고블린, 귀검사
-
-
-def test_흡혈귀는_암수에_저항_화명에_취약하고_흡혈_10():
-    전투상태, 고블린, 귀검사 = _흡혈귀_전장()
-    배율 = {
-        s: damage.속성_피해배율(전투상태, 귀검사, s)
-        for s in ("암속성", "수속성", "화속성", "명속성", "무속성")
-    }
-    assert 배율 == {
-        "암속성": 0.5,
-        "수속성": 0.5,
-        "화속성": 2,
-        "명속성": 2,
-        "무속성": 1,
-    }
-    assert damage.유효_흡혈(전투상태, 귀검사) == 10
-    assert damage.유효_흡혈(전투상태, 고블린) == 0
-
-
-def test_흡혈은_입힌_피해의_1퍼센트당_회복하고_올림한다():
-    전투상태, 고블린, 귀검사 = _흡혈귀_전장()
-    피해 = damage.피해_적용(전투상태, 고블린, 15, 속성="무속성", 공격측=귀검사)
-    assert 피해 == 15
-    assert 귀검사["현재HP"] == 1 + 2  # 15 x 10% = 1.5 -> 2
-    core.로그(전투상태, {"비고": "공격 줄"}, 종류="비고")
-    공격, 흡혈 = 전투상태["로그"][-2:]
-    assert 공격["비고"] == "공격 줄"  # 흡혈 줄은 공격 줄 뒤에 붙는다
-    assert (흡혈["비고"], 흡혈["회복"], 흡혈["공격자"]) == ("흡혈", 2, 귀검사["이름"])
-
-
-def test_흡혈_회복은_최대HP를_넘지_않는다():
-    전투상태, 고블린, 귀검사 = _흡혈귀_전장()
-    최대 = int(stats.유효_최대HP(전투상태, 귀검사))
-    귀검사["현재HP"] = 최대 - 1
-    damage.피해_적용(전투상태, 고블린, 50, 속성="무속성", 공격측=귀검사)
-    assert 귀검사["현재HP"] == 최대
-
-
-def test_출혈에_걸린_적은_흡혈_회복이_두_배():
-    전투상태, 고블린, 귀검사 = _흡혈귀_전장()
-    고블린["상태이상"].append({"이름": "출혈", "지속턴": 3, "중첩": 1})
-    damage.피해_적용(전투상태, 고블린, 15, 속성="무속성", 공격측=귀검사)
-    assert 귀검사["현재HP"] == 1 + 3  # 15 x 20% = 3
-
-
-def test_지속피해형으로는_흡혈하지_않는다():
-    전투상태, 고블린, 귀검사 = _흡혈귀_전장()
-    항목 = {"이름": "출혈", "지속턴": 3, "중첩": 1}
-    고블린["상태이상"].append(항목)
-    damage.지속피해_적용(전투상태, 고블린, 항목, 전투상태["상태이상정의"]["출혈"])
-    assert 귀검사["현재HP"] == 1
-
-
-def test_중독에_걸린_적을_흡혈하면_내성굴림_없이_1턴_1차수_중독(monkeypatch):
-    전투상태, 고블린, 귀검사 = _흡혈귀_전장()
-    고블린["상태이상"].append({"이름": "중독", "지속턴": 3, "중첩": 1})
-    damage.피해_적용(전투상태, 고블린, 15, 속성="무속성", 공격측=귀검사)
-    damage.피해_적용(전투상태, 고블린, 15, 속성="무속성", 공격측=귀검사)
-    중독들 = [e for e in 귀검사["상태이상"] if e["이름"] == "중독"]
-    assert (
-        중독들 == [{"이름": "중독", "지속턴": 1, "중첩": 1, "차수": 1}] * 2
-    )  # 타격마다
-    assert 귀검사["현재HP"] == 1 + 2 + 2  # 회복은 그대로
-    # 1차수 중독 = 1d4 (캐릭터 차수와 상관없이)
-    _주사위고정(monkeypatch, 99)
-    전 = 귀검사["현재HP"]
-    damage.지속피해_적용(전투상태, 귀검사, 중독들[0], 전투상태["상태이상정의"]["중독"])
-    assert 귀검사["현재HP"] == 전 - 4
-
-
-def test_지속피해형_인스턴스의_차수가_있으면_그_차수로_굴린다(monkeypatch):
-    전투상태, 고블린, 귀검사 = _흡혈귀_전장()
-    _주사위고정(monkeypatch, 99)
-    항목 = {"이름": "중독", "지속턴": 1, "중첩": 1, "차수": 3}
-    전 = 고블린["현재HP"]
-    damage.지속피해_적용(전투상태, 고블린, 항목, 전투상태["상태이상정의"]["중독"])
-    assert 고블린["현재HP"] == 전 - 8  # 1d(2+2x3) = 1d8
-
-
-def test_몬스터도_흡혈한다():
-    전투상태, 고블린, 귀검사 = _흡혈귀_전장()
-    전투상태["특성정의"] = {
-        **전투상태["특성정의"],
-        "테스트흡혈": {"효과": [{"변동대상": "흡혈", "변동값": 50}]},
-    }
-    고블린["원본"] = {**고블린["원본"], "특성": [*고블린["원본"]["특성"], "테스트흡혈"]}
-    고블린["현재HP"] = 1
-    귀검사["현재HP"] = 999
-    귀검사["원본"]["방어력"] = 0
-    damage.피해_적용(전투상태, 귀검사, 5, 속성="무속성", 공격자=고블린)
-    assert 고블린["현재HP"] == 1 + 3  # 5 x 50% = 2.5 -> 3
-
-
-def test_흡혈귀_일반공격이_명중하면_공격_줄_뒤에_흡혈_줄(monkeypatch):
-    from game.controller import ctl_battle_log
-
-    전투상태, 고블린, 귀검사 = _흡혈귀_전장()
-    고블린["원본"]["AC"] = 1
-    _주사위고정(monkeypatch, 10)
-    시작 = len(전투상태["로그"])
-    결과 = attacks.일반공격_실행(전투상태, 귀검사, 고블린)
-    assert 결과["판정"]["성공"] and 결과["피해"] > 0
-    공격, 흡혈 = 전투상태["로그"][시작:]
-    assert 공격["종류"] == "일반공격" and 흡혈["비고"] == "흡혈"
-    assert 귀검사["현재HP"] == 1 + -(-결과["피해"] * 10 // 100)
-    assert ctl_battle_log.로그_문장들(흡혈) == [
-        f"귀검사는 흡혈로 HP를 {흡혈['회복']} 회복했다."
-    ]
-
-
 # ------------------------------------------------------------------ 무기 명중시효과 (2026-10-15 사용자 결정)
 
 
 def _가시_무기_전장(monkeypatch, 고를_상태이상):
-    전투상태, 적, 아군 = _전장(["고블린"])
+    전투상태, 적, 아군 = support.시험_전투(["고블린"])
     격투가 = next(p for p in 아군 if p["원본"]["직업"] == "격투가")
     카탈로그 = gf.새_게임_시작([("", "격투가")])["상점카탈로그"]["장비"]["무기"]
     격투가["장비데이터"]["무기"] = 카탈로그["크로쿠타의 가시"]
@@ -3412,7 +1813,7 @@ def _가시_무기_전장(monkeypatch, 고를_상태이상):
 def test_가시_무기는_명중하면_무작위_상태이상을_건다(monkeypatch, 상태이상, 지속턴):
     전투상태, 고블린, 격투가 = _가시_무기_전장(monkeypatch, 상태이상)
     고블린["원본"]["AC"] = 1
-    _주사위고정(monkeypatch, 15)
+    support.주사위고정(monkeypatch, 15)
     결과 = attacks.일반공격_실행(전투상태, 격투가, 고블린)
     assert 결과["판정"]["성공"]
     assert {"이름": 상태이상, "지속턴": 지속턴} in 고블린["상태이상"]
@@ -3421,7 +1822,7 @@ def test_가시_무기는_명중하면_무작위_상태이상을_건다(monkeypa
 def test_가시_무기는_빗나가면_상태이상이_없다(monkeypatch):
     전투상태, 고블린, 격투가 = _가시_무기_전장(monkeypatch, "기절")
     고블린["원본"]["AC"] = 99
-    _주사위고정(monkeypatch, 2)
+    support.주사위고정(monkeypatch, 2)
     attacks.일반공격_실행(전투상태, 격투가, 고블린)
     assert 고블린["상태이상"] == []
 
@@ -3440,29 +1841,8 @@ def test_무기_주사위를_안_쓰는_피해는_명중시효과가_없다(monk
 # 일반공격취급 스킬을 쓰면 그 턴에 추가행동이 열린다(2026-10-16 사용자 결정, game-rules "추가행동").
 
 
-# 타우 아미가 아군을 기절시키지 않아 아군 차례마다 행동이 남는 시드(0은 첫 차례를 기절로 잃는다)
-_추가행동_시드 = 2
-
-
-def _추가행동_전장(직업="귀검사", 전직="웨펀마스터", 레벨=6):
-    rng.시드(_추가행동_시드)
-    상태 = support.새게임([("", 직업)])
-    c = 상태["파티"]["파티원"][0]
-    support.성장(상태, c, 레벨, 전직=전직)
-    gf.파티_최대치로_회복(상태)
-    gf.전투_시작(상태, ["타우 아미", "타우 아미"], 레벨=8, 차수=2)
-    support.반응_처리(상태)
-    while not gf.아군_차례인가(상태):
-        gf.턴_넘기기(상태)
-    p = gf.현재_턴_참가자(상태)
-    p["현재MP"] = 100
-    적 = [e for e in gf.적_목록(상태) if e["생존"]][0]
-    적["현재HP"] = 적["최대HP"] = 10**6  # 공격으로 끝나지 않게
-    return 상태, p, 적
-
-
 def test_추가행동은_일반행동으로_일반공격하면_열리고_추가공격_수만큼_쓴다():
-    상태, p, 적 = _추가행동_전장()
+    상태, p, 적 = support.추가행동_전장()
     assert p["원본"]["추가공격"] == 1 and gf.추가행동_남은수(p) == 0
     assert gf.일반공격_가능여부(상태, p)
     gf.아군_일반공격(상태, 적)
@@ -3480,7 +1860,7 @@ def test_추가행동은_일반행동으로_일반공격하면_열리고_추가�
 
 
 def test_추가행동은_일반공격취급_스킬로도_열리고_그_스킬을_쓸_수_있다():
-    상태, p, 적 = _추가행동_전장()
+    상태, p, 적 = support.추가행동_전장()
     gf.아군_스킬사용(상태, "어퍼 슬래쉬", 중심대상=적)  # 일반공격취급, 일반행동
     assert p["행동자원"]["일반행동"] == 0 and gf.추가행동_남은수(p) == 1
     assert gf.스킬_행동선택지(상태, p, "어퍼 슬래쉬") == ["추가행동"]
@@ -3492,19 +1872,19 @@ def test_추가행동은_일반공격취급_스킬로도_열리고_그_스킬을
 
 
 def test_일반공격취급이_아닌_스킬은_추가행동을_열지도_쓰지도_못한다():
-    상태, p, 적 = _추가행동_전장()
+    상태, p, 적 = support.추가행동_전장()
     gf.아군_스킬사용(상태, "가드", 중심대상=p)  # 일반행동 버프 스킬
     assert p["행동자원"]["일반행동"] == 0 and gf.추가행동_남은수(p) == 0
     assert not gf.일반공격_가능여부(상태, p)
     # 열린 뒤에도 일반공격취급이 아닌 스킬(귀참)은 추가행동으로 못 낸다
-    상태, p, 적 = _추가행동_전장()
+    상태, p, 적 = support.추가행동_전장()
     gf.아군_일반공격(상태, 적)
     가능, 사유 = gf.스킬_사용_가능여부(상태, p, "귀참")
     assert not 가능 and "일반행동" in 사유
 
 
 def test_추가공격이_없으면_추가행동도_없다():
-    상태, p, 적 = _추가행동_전장(레벨=5, 전직=None)
+    상태, p, 적 = support.추가행동_전장(레벨=5, 전직=None)
     assert p["원본"]["추가공격"] == 0
     gf.아군_일반공격(상태, 적)
     assert gf.추가행동_남은수(p) == 0 and not gf.일반공격_가능여부(상태, p)
@@ -3512,7 +1892,7 @@ def test_추가공격이_없으면_추가행동도_없다():
 
 
 def test_쇼타임행동으로_낸_일반공격취급_스킬은_추가행동을_열지_않는다():
-    상태, p, 적 = _추가행동_전장()
+    상태, p, 적 = support.추가행동_전장()
     스킬 = {
         "_이름": "시험마법",
         "분류": "공격스킬",
@@ -3529,7 +1909,7 @@ def test_쇼타임행동으로_낸_일반공격취급_스킬은_추가행동을_
 
 
 def test_삼연참_공격횟수의_추가공격은_추가행동을_써도_줄지_않는다():
-    상태, p, 적 = _추가행동_전장()
+    상태, p, 적 = support.추가행동_전장()
     전투상태 = 상태["전투상태"]
     assert stats.기본_컨텍스트(전투상태, p)["추가공격"] == 1
     gf.아군_일반공격(상태, 적)
@@ -3538,7 +1918,7 @@ def test_삼연참_공격횟수의_추가공격은_추가행동을_써도_줄지
 
 
 def test_자동전투는_추가행동까지_일반공격한다():
-    상태, p, 적 = _추가행동_전장()
+    상태, p, 적 = support.추가행동_전장()
     로그수 = len(상태["전투상태"]["로그"])
     gf.자동전투_한_턴(상태)
     내공격 = [
@@ -3547,380 +1927,3 @@ def test_자동전투는_추가행동까지_일반공격한다():
         if r.get("공격자") == p["이름"] and r.get("종류") == "일반공격"
     ]
     assert len(내공격) == 2  # 일반행동 1 + 추가행동 1
-
-
-# ------------------------------------------------------------------ 원펀맨 퍽 (2026-10-19 사용자 결정)
-# 일반행동으로 하는 순수 일반공격 한 번에 남은 일반행동 x (1 + 추가공격)을 합친다(배수 M).
-# 명중 굴림은 한 번, 명중 보정 전체 x M, 보정공격력 M번 굴림(치명타면 굴림마다 주사위 증가),
-# 데미지보너스 x M, 집요함 x M. 추가피해/상태이상은 한 번.
-
-
-def test_일반공격_배수는_명중보정과_굴림과_데미지보너스를_곱한다(monkeypatch):
-    전투상태, 고블린, 귀검사 = _집요함_전장()
-    전투상태["상세로그"] = True  # 피해내역 "합" = 방어 전 피해
-    monkeypatch.setattr(stats, "최종AC", lambda *a: 1)
-    _주사위고정(monkeypatch, 3)
-    보정치 = stats.평타_능력치_보정치(전투상태, 귀검사)
-    한방 = attacks.일반공격_실행(전투상태, 귀검사, 고블린)
-    세방 = attacks.일반공격_실행(전투상태, 귀검사, 고블린, 배수=3)
-    보정합 = 한방["판정"]["명중결과"] - 3  # 주사위 3 + 명중 보정 전체
-    assert 보정합 > 0
-    assert 세방["판정"]["명중결과"] == 3 + 보정합 * 3
-    무기 = stats.유효_무기공격력(전투상태, 귀검사, 귀검사["장비데이터"]["무기"])
-    개수 = int(무기.split("d")[0])
-    굴림 = 개수 * 3 + 보정치  # 주사위는 전부 3
-    추가 = stats.일반공격_추가피해(
-        전투상태, 귀검사, {"보정치": 보정치, "무기공격력": 무기}
-    )
-    보너스 = stats.장비_데미지보너스(귀검사, 고블린)
-    assert 한방["피해내역"]["합"] == 굴림 + 추가 + 보너스
-    assert 세방["피해내역"]["합"] == 굴림 * 3 + 추가 + 보너스 * 3
-    assert 세방["피해내역"]["식"].endswith(" x3")
-    assert 세방["배수"] == 3 and "배수" not in 한방
-
-
-def test_일반공격_배수_치명타는_굴림마다_주사위가_는다(monkeypatch):
-    전투상태, 고블린, 귀검사 = _집요함_전장()
-    전투상태["상세로그"] = True
-    _주사위고정(monkeypatch, 20)  # 치명타 - 피해 주사위도 최대(면수)로 고정
-    결과 = attacks.일반공격_실행(전투상태, 귀검사, 고블린, 배수=2)
-    assert 결과["판정"]["치명타"]
-    보정치 = stats.평타_능력치_보정치(전투상태, 귀검사)
-    무기 = stats.유효_무기공격력(전투상태, 귀검사, 귀검사["장비데이터"]["무기"])
-    개수, 면 = (int(x) for x in 무기.split("d"))
-    추가 = stats.일반공격_추가피해(
-        전투상태, 귀검사, {"보정치": 보정치, "무기공격력": 무기}
-    )
-    보너스 = stats.장비_데미지보너스(귀검사, 고블린)
-    한번 = (개수 + stats.치명타_주사위수(전투상태, 귀검사)) * 면 + 보정치
-    assert 결과["피해내역"]["합"] == 한번 * 2 + 추가 + 보너스 * 2
-
-
-def test_일반공격_배수는_빗나가면_집요함도_곱한다(monkeypatch):
-    전투상태, 고블린, 귀검사 = _얀데레_전장()
-    귀검사["버프"].append({"이름": "집요함", "중첩": 2})
-    monkeypatch.setattr(
-        stats, "최종AC", lambda *a: 99
-    )  # 배수로 커진 명중 보정에도 빗나가게
-    _주사위고정(monkeypatch, 5)
-    전 = 고블린["현재HP"]
-    attacks.일반공격_실행(전투상태, 귀검사, 고블린, 배수=3)
-    assert 고블린["현재HP"] == 전 - 2 * 3
-    _주사위고정(monkeypatch, 1)  # 펌블 - 얀데레까지 곱한다
-    전 = 고블린["현재HP"]
-    attacks.일반공격_실행(전투상태, 귀검사, 고블린, 배수=3)
-    assert 고블린["현재HP"] == 전 - 2 * 3 * (1 + 1)
-
-
-def test_원펀맨은_남은_일반행동과_추가공격을_한_번에_합친다(monkeypatch):
-    상태, p, 적 = _추가행동_전장()
-    p["원본"]["보유특성"].append("원펀맨")
-    p["원본"]["추가공격"] = 2
-    p["행동자원"]["일반행동"] = 2
-    받은배수 = []
-    원래 = attacks.일반공격_실행
-    monkeypatch.setattr(
-        attacks,
-        "일반공격_실행",
-        lambda *a, 배수=1, **k: 받은배수.append(배수) or 원래(*a, 배수=배수, **k),
-    )
-    gf.아군_일반공격(상태, 적)
-    assert 받은배수 == [2 * (1 + 2)]
-    assert p["행동자원"]["일반행동"] == 0 and gf.추가행동_남은수(p) == 0
-    assert not gf.일반공격_가능여부(상태, p)
-
-
-def test_원펀맨이_없으면_일반공격은_한_번씩():
-    상태, p, 적 = _추가행동_전장()
-    gf.아군_일반공격(상태, 적)
-    assert gf.추가행동_남은수(p) == 1  # 기존 추가행동 그대로
-
-
-# ------------------------------------------------------------------ 인형사 - 28호 (2026-10-19 사용자 결정)
-# 인형은 소모품 [사용]으로 파티["인형"]에 붙고(마을/던전/전투, 행동 소모 없음, 있으면 교체), 전투에서
-# 아군 5번째 칸으로 들어가 행동표(d6)대로 스스로 행동한다. 레벨/차수는 플레이어 레벨, HP는 격투가 공식.
-
-
-def _인형_게임(플레이어레벨=4):
-    상태 = support.새게임()
-    상태["진행도"]["플레이어레벨"] = 플레이어레벨
-    상태["소지품"]["소모품"]["28호"] = 3
-    return 상태
-
-
-def _인형_전투(monkeypatch=None, 플레이어레벨=4):
-    상태 = _인형_게임(플레이어레벨)
-    gf.인형_사용(상태, "28호")
-    gf.전투_시작(상태, ["고블린"], 레벨=2, 차수=1)
-    support.반응_처리(상태)
-    인형 = next(p for p in gf.아군_목록(상태) if p.get("인형"))
-    return 상태, 인형
-
-
-def test_인형_사용은_소지품을_하나_쓰고_파티에_28호를_붙인다():
-    상태 = _인형_게임(플레이어레벨=4)
-    gf.인형_사용(상태, "28호")
-    assert 상태["소지품"]["소모품"]["28호"] == 2
-    인형 = 상태["파티"]["인형"]
-    능력치 = {n: 인형[n] for n in ("근력", "민첩", "건강", "지능", "지혜", "매력")}
-    assert 능력치 == {
-        "근력": 8,
-        "민첩": 12,
-        "건강": 10,
-        "지능": 16,
-        "지혜": 10,
-        "매력": 10,
-    }
-    # 격투가 레벨당체력증가 6, 건강 보정치 0, 플레이어 레벨 4: 6 + 올림(4 x 6 / 2)
-    assert 인형["레벨"] == 4 and 인형["기본최대HP"] == 6 + 12 == 인형["현재HP"]
-    assert 인형["보유특성"] == ["인형:28호"]
-    assert 인형 not in 상태["파티"]["파티원"]
-
-
-def test_인형이_있으면_새_인형으로_바뀌고_없으면_쓸_수_없다():
-    상태 = _인형_게임()
-    gf.인형_사용(상태, "28호")
-    상태["파티"]["인형"]["현재HP"] = 1
-    gf.인형_사용(상태, "28호")
-    assert 상태["파티"]["인형"]["현재HP"] == 상태["파티"]["인형"]["기본최대HP"]
-    상태["소지품"]["소모품"]["28호"] = 0
-    with pytest.raises(ValueError):
-        gf.인형_사용(상태, "28호")
-
-
-def test_인형은_상점에서_사고팔지_않지만_소지품_인형_탭에서_쓴다():
-    상태 = _인형_게임()
-    for 탭 in gf.상점_탭목록("소모품"):
-        assert all(a["이름"] != "28호" for a in gf.상점_구매목록(상태, "소모품", 탭))
-        assert all(a["이름"] != "28호" for a, _ in gf.상점_판매목록(상태, "소모품", 탭))
-    assert "인형" in gf.소지품_탭줄(상태, "소모품")[0]
-    [(아이템, 개수, 종류)] = gf.소지품_목록(상태, "소모품", "인형")
-    assert (아이템["이름"], 개수, 종류) == ("28호", 3, "인형")
-
-
-def test_인형은_전투에서_아군_마지막_칸이고_AC는_14_더하기_민첩보정():
-    상태, 인형 = _인형_전투()
-    아군 = gf.아군_목록(상태)
-    assert 아군[-1] is 인형 and len(아군) == 5
-    assert stats.최종AC(상태["전투상태"], 인형) == 14 + 1
-    assert core.차수(인형) == 1
-
-
-def test_인형_차례는_조종하지_않고_행동표대로_넨탄을_쏜다(monkeypatch):
-    상태, 인형 = _인형_전투()
-    전투상태 = 상태["전투상태"]
-    전투상태["현재턴"] = 전투상태["참가자"].index(인형)
-    flow.턴_시작_처리(전투상태, 인형)
-    assert not gf.아군_차례인가(상태)
-    _주사위고정(monkeypatch, 1)  # d6 1 -> 넨탄
-    시작 = len(전투상태["로그"])
-    gf.인형_턴(상태, 인형)
-    새로그 = 전투상태["로그"][시작:]
-    assert any(e.get("스킬") == "넨탄" for e in 새로그), 새로그
-    assert 인형["현재MP"] == 0  # MP를 쓰지 않는다
-
-
-def test_인형의_미정_패턴은_그_턴을_쉰다(monkeypatch):
-    상태, 인형 = _인형_전투()
-    전투상태 = 상태["전투상태"]
-    전투상태["현재턴"] = 전투상태["참가자"].index(인형)
-    flow.턴_시작_처리(전투상태, 인형)
-    _주사위고정(monkeypatch, 6)  # 넨가드 - 미정
-    적HP = [p["현재HP"] for p in gf.적_목록(상태)]
-    gf.인형_턴(상태, 인형)
-    assert 전투상태["로그"][-1].get("쉼") and 전투상태["로그"][-1]["공격자"] == "28호"
-    assert [p["현재HP"] for p in gf.적_목록(상태)] == 적HP
-
-
-def _인형_행동수(monkeypatch, 스타일, 플레이어레벨, 주사위=1):
-    """인형 스타일을 바꿔 인형_턴 한 번에 스킬을 몇 번 쓰는지(스킬_실행은 세기만 한다)."""
-    from game.data.item.item_doll import 인형_데이터
-
-    monkeypatch.setitem(인형_데이터["28호"], "스타일", 스타일)
-    상태, 인형 = _인형_전투(플레이어레벨=플레이어레벨)
-    전투상태 = 상태["전투상태"]
-    전투상태["현재턴"] = 전투상태["참가자"].index(인형)
-    flow.턴_시작_처리(전투상태, 인형)
-    쓴것 = []
-    monkeypatch.setattr(ss, "스킬_실행", lambda *a, **k: 쓴것.append(a[2]))
-    굴림 = []
-    원래 = dice_utils.주사위_합
-    monkeypatch.setattr(
-        dice_utils, "주사위_합", lambda n, m: 굴림.append(m) or 원래(n, m)
-    )
-    _주사위고정(monkeypatch, 주사위)
-    gf.인형_턴(상태, 인형)
-    return 쓴것, 굴림, 전투상태
-
-
-def test_캐스터_인형은_차수와_상관없이_패턴을_한_번만_쓴다(monkeypatch):
-    쓴것, 굴림, _ = _인형_행동수(monkeypatch, "캐스터", 플레이어레벨=11)  # 3차수
-    assert 쓴것 == ["넨탄"] and 굴림 == [6]
-
-
-def test_밀리_인형은_차수만큼_패턴_주사위를_새로_굴린다(monkeypatch):
-    쓴것, 굴림, _ = _인형_행동수(monkeypatch, "밀리", 플레이어레벨=11)  # 3차수
-    assert 쓴것 == ["넨탄"] * 3 and 굴림 == [6, 6, 6]
-
-
-def test_하이브리드_인형은_지금은_밀리처럼_행동한다(monkeypatch):
-    쓴것, 굴림, _ = _인형_행동수(monkeypatch, "하이브리드", 플레이어레벨=6)  # 2차수
-    assert 쓴것 == ["넨탄"] * 2 and 굴림 == [6, 6]
-
-
-def test_밀리_인형의_미정_패턴은_그_한_번만_쉰다(monkeypatch):
-    쓴것, 굴림, 전투상태 = _인형_행동수(
-        monkeypatch, "밀리", 플레이어레벨=6, 주사위=6
-    )  # 넨가드 - 미정
-    assert 쓴것 == [] and 굴림 == [6, 6]
-    assert sum(1 for e in 전투상태["로그"] if e.get("쉼")) == 2
-
-
-def test_밀리_인형은_적이_다_쓰러지면_남은_행동을_하지_않는다(monkeypatch):
-    from game.data.item.item_doll import 인형_데이터
-
-    monkeypatch.setitem(인형_데이터["28호"], "스타일", "밀리")
-    상태, 인형 = _인형_전투(플레이어레벨=11)
-    전투상태 = 상태["전투상태"]
-    전투상태["현재턴"] = 전투상태["참가자"].index(인형)
-    flow.턴_시작_처리(전투상태, 인형)
-    쓴것 = []
-
-    def 쓰러뜨리기(전투상태, 시전자, 이름, *a, **k):
-        쓴것.append(이름)
-        for 적 in gf.적_목록(상태):
-            적["현재HP"], 적["생존"] = 0, False
-
-    monkeypatch.setattr(ss, "스킬_실행", 쓰러뜨리기)
-    _주사위고정(monkeypatch, 1)
-    gf.인형_턴(상태, 인형)
-    assert 쓴것 == ["넨탄"]
-
-
-def test_전투_중_인형_사용은_행동을_쓰지_않고_교체하면_옛_인형은_빠진다():
-    상태, 옛인형 = _인형_전투()
-    while not gf.아군_차례인가(상태):
-        gf.턴_넘기기(상태)
-    p = gf.현재_턴_참가자(상태)
-    행동 = dict(p["행동자원"])
-    gf.인형_사용(상태, "28호")
-    assert p["행동자원"] == 행동
-    인형들 = [q for q in gf.아군_목록(상태) if q.get("인형")]
-    assert len(인형들) == 1 and 인형들[0] is not 옛인형
-    assert not 옛인형["생존"]
-    assert 인형들[0]["원본"] is 상태["파티"]["인형"]
-
-
-def test_아군이_모두_쓰러져도_인형이_살아_있으면_패배가_아니다():
-    상태, 인형 = _인형_전투()
-    for p in gf.아군_목록(상태):
-        if p is not 인형:
-            p["현재HP"], p["생존"] = 0, False
-    assert core.전투_종료_판정(상태["전투상태"]) is None
-
-
-def test_인형_HP는_전투_뒤에도_이어지고_쓰러지면_사라진다():
-    상태, 인형 = _인형_전투()
-    인형["현재HP"] = 3
-    support.강제_승리(상태)
-    gf.전투_결과_정리(상태)
-    assert 상태["파티"]["인형"]["현재HP"] == 3
-    gf.전투_시작(상태, ["고블린"], 레벨=2, 차수=1)
-    support.반응_처리(상태)
-    인형 = next(p for p in gf.아군_목록(상태) if p.get("인형"))
-    assert 인형["현재HP"] == 3
-    인형["현재HP"], 인형["생존"] = 0, False
-    support.강제_승리(상태)
-    gf.전투_결과_정리(상태)
-    assert 상태["파티"]["인형"] is None
-
-
-def test_마을에서_휴식하면_인형이_사라진다():
-    상태 = _인형_게임()
-    gf.인형_사용(상태, "28호")
-    gf.휴식(상태)
-    assert 상태["파티"]["인형"] is None
-
-
-def test_몬스터는_인형도_공격_대상으로_고른다():
-    상태, 인형 = _인형_전투()
-    전투상태 = 상태["전투상태"]
-    고블린 = gf.적_목록(상태)[0]
-    for p in gf.아군_목록(상태):
-        if p is not 인형:
-            p["생존"] = False
-    시작 = len(전투상태["로그"])
-    monster_actions.몬스터_턴_실행(전투상태, 고블린)
-    assert "28호" in str(전투상태["로그"][시작:])
-
-
-def test_인형과_전투_참가자는_상태_스키마에_맞는다():
-    from game.system import state_schema
-
-    상태, 인형 = _인형_전투()
-    assert state_schema.캐릭터_문제목록(상태["파티"]["인형"], 엄격=True) == []
-    assert state_schema.참가자_문제목록(인형, 엄격=True) == []
-
-
-# ------------------------------------------------------------------ 내아내몬 퍽 (2026-10-19 사용자 결정)
-# 보유자가 파티에 있으면 인형이 휴식/전투 사망에도 파티에 남고(쓰러지면 HP 0, 휴식으로 회복), 인형의 모든
-# 능력치가 보유자의 매력 보정치(장비 반영)만큼 늘어난다(여럿이면 합, 음수면 줄어든다).
-
-
-def _내아내몬(상태, 캐릭터, 매력):
-    캐릭터["보유특성"].append("내아내몬")
-    캐릭터["매력"] = 매력
-
-
-def test_내아내몬은_인형_능력치를_보유자_매력_보정치만큼_올린다():
-    상태 = _인형_게임(플레이어레벨=4)
-    파티원 = 상태["파티"]["파티원"]
-    _내아내몬(상태, 파티원[0], 14)  # +2
-    gf.인형_사용(상태, "28호")
-    인형 = 상태["파티"]["인형"]
-    assert (인형["근력"], 인형["민첩"], 인형["건강"], 인형["지능"]) == (10, 14, 12, 18)
-    # 건강 12(보정 +1): 기본체력 7 + 올림(4 x 7 / 2)
-    assert 인형["기본최대HP"] == 7 + 14
-    gf.전투_시작(상태, ["고블린"], 레벨=2, 차수=1)
-    support.반응_처리(상태)
-    참가자 = next(p for p in gf.아군_목록(상태) if p.get("인형"))
-    assert stats.최종AC(상태["전투상태"], 참가자) == 14 + 2  # 민첩 14
-
-
-def test_내아내몬_보유자가_여럿이면_합치고_음수면_깎는다():
-    상태 = _인형_게임()
-    파티원 = 상태["파티"]["파티원"]
-    _내아내몬(상태, 파티원[0], 14)  # +2
-    _내아내몬(상태, 파티원[1], 12)  # +1
-    gf.인형_사용(상태, "28호")
-    assert 상태["파티"]["인형"]["지능"] == 16 + 3
-    파티원[0]["매력"] = 파티원[1]["매력"] = 8  # -1씩
-    gf.전투_시작(상태, ["고블린"], 레벨=2, 차수=1)  # 전투 시작 때 다시 맞춘다
-    assert 상태["파티"]["인형"]["지능"] == 16 - 2
-
-
-def test_내아내몬이면_휴식해도_인형이_남고_회복한다():
-    상태 = _인형_게임()
-    _내아내몬(상태, 상태["파티"]["파티원"][0], 10)
-    gf.인형_사용(상태, "28호")
-    상태["파티"]["인형"]["현재HP"] = 1
-    gf.휴식(상태)
-    인형 = 상태["파티"]["인형"]
-    assert 인형 is not None and 인형["현재HP"] == 인형["기본최대HP"]
-
-
-def test_내아내몬이면_전투에서_쓰러진_인형은_HP_0으로_남고_다음_전투엔_빠진다():
-    상태 = _인형_게임()
-    _내아내몬(상태, 상태["파티"]["파티원"][0], 10)
-    gf.인형_사용(상태, "28호")
-    gf.전투_시작(상태, ["고블린"], 레벨=2, 차수=1)
-    support.반응_처리(상태)
-    인형 = next(p for p in gf.아군_목록(상태) if p.get("인형"))
-    인형["현재HP"], 인형["생존"] = 0, False
-    support.강제_승리(상태)
-    gf.전투_결과_정리(상태)
-    assert 상태["파티"]["인형"]["현재HP"] == 0
-    gf.전투_시작(상태, ["고블린"], 레벨=2, 차수=1)
-    assert not any(p.get("인형") for p in gf.아군_목록(상태))
-    gf.휴식(상태)
-    assert 상태["파티"]["인형"]["현재HP"] == 상태["파티"]["인형"]["기본최대HP"]
