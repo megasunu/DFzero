@@ -780,6 +780,33 @@ class 스모크앱(main.DnfMobileApp):
         assert 고른 == ["귀참"] and len(Window.children) == 1, 고른
         결과["단계"].append("스킬강화 팝업(보유 스킬 버튼 -> 그 스킬로 확정)")
 
+        # 훔쳐배우기(#279): 퍽 선택에서 고르면 다른 전직의 스킬/특성 고르기 팝업, 누르면 그것으로 확정
+        다른 = support.새게임([("", "귀검사")])
+        버서커 = 다른["파티"]["파티원"][0]
+        support.성장(다른, 버서커, 8, 전직="버서커")
+        고른 = []
+        매니저.get_screen("파티관리")._퍽선택_팝업(버서커, 고른.append)
+        yield 0.5
+        _팝업_버튼("훔쳐배우기").dispatch("on_release")
+        yield 0.6
+        _찍기("steal_learn_popup")
+        팝업 = list(Window.children)[0]
+        버튼들 = [
+            w
+            for w in 팝업.walk(restrict=True)
+            if isinstance(w, Button) and w.text.startswith("귀신 : 브레멘 (소울브링어")
+        ]
+        assert len(버튼들) == 1, [getattr(w, "text", "") for w in 팝업.walk()]
+        버튼들[0].dispatch("on_release")
+        yield 0.6
+        assert len(고른) == 1 and 고른[0]["선택스킬"] == "귀신 : 브레멘", 고른
+        assert len(Window.children) == 1
+        gf.캐릭터_레벨업_적용(버서커, **고른[0])
+        assert "귀신 : 브레멘" in 버서커["보유스킬"]
+        결과["단계"].append(
+            "훔쳐배우기: 퍽 선택 -> 다른 전직 스킬/특성 팝업 -> 고른 것(귀신 : 브레멘)을 배움"
+        )
+
         # [스킬습득] 팝업: 직업 계열 스킬 목록 + 비용, 골드가 모자라면 버튼 잠금, 누르면 배운다
         파티관리 = 매니저.get_screen("파티관리")
         파티관리.갱신()

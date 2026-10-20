@@ -687,9 +687,56 @@ class 파티관리화면(Screen):
             )
             return
 
+        if gameflow.훔쳐배우기_퍽인가(퍽정의):
+            팝업.dismiss()
+            self._훔쳐배우기_팝업(
+                캐릭터,
+                확인콜백=lambda 이름: 확인콜백(
+                    {"퍽이름": 퍽이름, "퍽정의": 퍽정의, "선택스킬": 이름}
+                ),
+            )
+            return
+
         특성정의 = gameflow.퍽_특성정의_찾기(캐릭터, 퍽정의)
         팝업.dismiss()
         확인콜백({"퍽이름": 퍽이름, "퍽정의": 퍽정의, "특성정의": 특성정의})
+
+    def _훔쳐배우기_팝업(self, 캐릭터, 확인콜백):
+        """공용 퍽 훔쳐배우기(#279) - 같은 계열 다른 전직의 훔쳐배울 수 있는 스킬/특성마다 버튼, 맨 아래 [취소]."""
+        목록 = gameflow.훔쳐배우기_후보(캐릭터)
+        본문 = BoxLayout(orientation="vertical", spacing=8, padding=12)
+        본문.add_widget(_줄바꿈_라벨("다른 전직의 스킬이나 특성을 하나 배웁니다."))
+        스크롤, 목록틀 = 스크롤_목록(1)
+        본문.add_widget(스크롤)
+        팝업 = Popup(
+            title=f"{캐릭터['캐릭터명']} 훔쳐배우기",
+            content=본문,
+            size_hint=(0.9, 0.85),
+            auto_dismiss=False,
+        )
+
+        def 고르기(이름):
+            팝업.dismiss()
+            확인콜백(이름)
+
+        for 후보 in 목록:
+            버튼 = Button(
+                text=f"{후보['이름']} ({후보['전직']} {후보['종류']})\n{후보['설명']}",
+                size_hint=(1, None),
+                height=dp(72),
+                halign="center",
+                font_size="13sp",
+            )
+            버튼.bind(
+                size=lambda inst, sz: setattr(inst, "text_size", (sz[0] - 12, None))
+            )
+            버튼.bind(on_release=lambda inst, n=후보["이름"]: 고르기(n))
+            목록틀.add_widget(버튼)
+        취소 = Button(text="취소", size_hint=(1, None), height=dp(44))
+        뒤로키_버튼(취소)
+        취소.bind(on_release=lambda *_: 팝업.dismiss())
+        본문.add_widget(취소)
+        팝업.open()
 
     # -------------------------------------------------
     # 스킬습득 팝업 - 지금 직업 계열 스킬을 골드(50 x 차수)로 배운다
