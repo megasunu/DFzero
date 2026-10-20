@@ -854,6 +854,31 @@ class 스모크앱(main.DnfMobileApp):
             "약점증가: 능력치 배분에서 주스탯·보조스탯을 뺀 4개가 (약점)"
         )
 
+        # 포켓몬(4차수): 퍽 선택 -> 특성 고르기 팝업 -> 고른 특성(마중물)을 얻는다
+        포켓 = support.새게임([("", "귀검사")])
+        포켓캐 = 포켓["파티"]["파티원"][0]
+        support.성장(포켓, 포켓캐, 18, 전직="버서커")
+        고른 = []
+        매니저.get_screen("파티관리")._퍽선택_팝업(포켓캐, 고른.append)
+        yield 0.5
+        _팝업_버튼("포켓몬").dispatch("on_release")
+        yield 0.6
+        _찍기("pokemon_pick")
+        버튼들 = [
+            w
+            for w in list(Window.children)[0].walk(restrict=True)
+            if isinstance(w, Button) and w.text.startswith("마중물\n")
+        ]
+        assert len(버튼들) == 1, [getattr(w, "text", "") for w in Window.children]
+        버튼들[0].dispatch("on_release")
+        yield 0.6
+        assert len(고른) == 1 and 고른[0]["선택특성"] == "마중물", 고른
+        gf.캐릭터_레벨업_적용(포켓캐, **고른[0])
+        assert "마중물" in 포켓캐["보유특성"]
+        결과["단계"].append(
+            "포켓몬: 퍽 선택 -> 특성 고르기 팝업 -> 고른 특성(마중물)을 얻음"
+        )
+
         # [스킬습득] 팝업: 직업 계열 스킬 목록 + 비용, 골드가 모자라면 버튼 잠금, 누르면 배운다
         파티관리 = 매니저.get_screen("파티관리")
         파티관리.갱신()
