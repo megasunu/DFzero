@@ -20,7 +20,6 @@ game/system/       전투, 스킬, 장비, 세이브 등 게임 로직
                      쓰는 쪽은 `game.system.skill_system`(재수출 창구)을 부른다
 game/system/rng.py 모든 무작위의 출처 - 용도별 흐름(주사위/확률/대상/던전/보상). 전역 random을 직접 쓰지 않는다
 game/data/         직업, 몬스터, 맵, 아이템 데이터(파이썬 딕셔너리)
-                     file_path.py = 모든 모듈의 import 경로표 (테스트가 실제 파일과 대조)
 game/assets/       폰트, 이미지
 tests/             헤드리스 테스트 + golden/*.json (kivy 없이 돈다, tests.md "테스트 지도")
 tools/check.py     완료 기준 게이트 (CLAUDE.md "완료 기준")
@@ -42,7 +41,6 @@ README.md          입구(실행/개발/구조/빌드 요약)
   `test_화면은_game_system을_직접_쓰지_않는다`와 `test_controller_structure.py`가 지킨다.
 - 컨트롤러 모듈은 위에서 아래로만 부른다(registry -> party -> 기능 모듈 -> dungeon/potion/rewards/charview/tavern).
   모듈끼리 순환하거나 다른 모듈의 밑줄 이름을 가져오면 테스트가 실패한다.
-- 모듈을 추가/이동/이름변경하면 `game/data/file_path.py`도 같은 커밋에서 고친다.
 - **전투 엔진이 작업 스레드에서 도는 동안 화면은 게임상태를 쓰지 않는다**(`screens_battle._엔진_실행`: 전투 화면을 `disabled`로
   막고 `_엔진중`이면 새 작업을 받지 않는다). 그사이 화면 쪽 일은 반응 팝업(`_반응_묻기`, 엔진은 `Event`로 기다림)의 읽기뿐이고,
   끝 처리는 `Clock.schedule_once`로 메인 스레드에서 한다. 반응 자동이면 스레드 없이 바로 돈다. 테스트는 이 규약을 못 본다.

@@ -23,8 +23,7 @@
 #   모르고 "마을명" 필드만 갖고 있어서다.
 # - 기본_마을목록()은 지금 존재하는 마을 파일(town_01A_T01_Elvengard.py,
 #   town_01A_T02_hendonmyre.py, town_02A_T03_westcoast.py)을 담는다. 이 프로젝트는 아직 여러 파일에
-#   흩어진 데이터를 자동 스캔해서 모으는 레지스트리 패턴이 없어서
-#   (file_path.py도 사람이 직접 채워 넣는 참고용 딕셔너리다), 새 마을
+#   흩어진 데이터를 자동 스캔해서 모으는 레지스트리 패턴이 없어서, 새 마을
 #   파일이 추가되면 이 함수에도 손으로 import/등록을 추가해야 한다.
 
 from game.data.town.town_01A_T01_Elvengard import 마을정보 as _엘븐가드

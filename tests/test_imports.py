@@ -44,17 +44,3 @@ def test_헤드리스_계층은_kivy에_의존하지_않는다():
         if 모듈명 not in 알려진_깨진모듈:
             importlib.import_module(모듈명)
     assert not any(m == "kivy" or m.startswith("kivy.") for m in sys.modules)
-
-
-def test_file_path_레지스트리가_실제_파일과_일치():
-    """game/data/file_path.py는 사람이 손으로 채우는 경로표다. 파일을 추가/이동/
-    이름변경(리팩터링)하면 여기도 같이 고쳐야 한다 - 빠뜨리면 이 테스트가 잡는다."""
-    from game.data.file_path import 파일경로
-
-    실제 = {}
-    for 폴더, _, 파일들 in os.walk(os.path.join(ROOT, "game")):
-        for 파일 in 파일들:
-            if 파일.endswith(".py") and 파일 != "__init__.py":
-                상대 = os.path.relpath(os.path.join(폴더, 파일), ROOT)
-                실제[파일[:-3]] = 상대[:-3].replace(os.sep, ".")
-    assert 파일경로 == 실제
