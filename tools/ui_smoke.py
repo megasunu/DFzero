@@ -242,6 +242,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_감옥_대상팝업(상태, 매니저)
         yield from self._단계_인형(상태, 매니저)
         yield from self._단계_란마(상태, 매니저)
+        yield from self._단계_축염포(상태, 매니저)
         yield from self._단계_소지품(상태, 매니저)
         yield from self._단계_도감_업적(상태, 매니저)
         yield from self._단계_메뉴(상태, 매니저)
@@ -2499,10 +2500,25 @@ class 스모크앱(main.DnfMobileApp):
             _찍기("dungeon_skill_toggle")
             _팝업_닫기()
             yield 0.2
+            # 전환스킬 나선의 넨(넨마스터 골드 스킬 #280): 던전에서는 MP 없이 켠다
+            귀검사["보유스킬"].append("나선의 넨")
+            MP = 귀검사["현재MP"]
+            스킬버튼.trigger_action(duration=0)
+            yield 0.3
+            줄 = [b for b in _대상버튼들() if " - 나선의 넨" in b.text]
+            assert len(줄) == 1 and "(꺼짐)" in 줄[0].text, [
+                b.text for b in _대상버튼들()
+            ]
+            줄[0].trigger_action(duration=0)
+            yield 0.4
+            assert "나선의 넨" in 귀검사.get("켜진특성", []), 귀검사.get("켜진특성")
+            assert 귀검사["현재MP"] == MP
+            _팝업_닫기()
+            yield 0.2
             결과["단계"].append(
                 "던전 [스킬]: 던전 캠핑 줄(1/1, MP 0) -> 파티 HP 최대(쓰러진 파티원 포함), 다시 열면 0/1 비활성. "
                 "봉절(MP 5) -> 상태줄 '봉절 N' -> 다시 열면 (풀기) -> 풀림. "
-                "프렌지 (꺼짐) -> 누르면 켜짐, 다시 열면 (켜짐)"
+                "프렌지 (꺼짐) -> 누르면 켜짐, 다시 열면 (켜짐). 나선의 넨 (꺼짐) -> MP 없이 켜짐"
             )
         finally:
             상태["던전상태"] = 원래[0]
@@ -2769,6 +2785,62 @@ class 스모크앱(main.DnfMobileApp):
             귀검사["성별"] = 원래[1]
             귀검사.pop("란마성별", None)
             상태["전투상태"] = None
+            매니저.current = "마을"
+
+    def _단계_축염포(self, 상태, 매니저):
+        """축염포(넨마스터 #280): 스킬을 쓰면 턴이 바로 끝나고, 남은 순서가 돈 뒤 밀린 차례에 발사되어
+        넨마스터 차례로 돌아온다(캐스팅 표시가 사라지고 보조행동이 남아 있다)."""
+        다른 = support.새게임([("", "격투가"), ("", "귀검사")])
+        nm = 다른["파티"]["파티원"][0]
+        for c in 다른["파티"]["파티원"]:
+            support.성장(
+                다른,
+                c,
+                8,
+                전직={"격투가": "넨마스터", "귀검사": "웨펀마스터"}[c["직업"]],
+            )
+        원래 = self.게임상태
+        try:
+            self.게임상태 = 다른
+            gf.전투_시작(다른, ["고블린", "고블린", "고블린"], 레벨=2, 차수=1)
+            support.반응_처리(다른)
+            전투상태 = 다른["전투상태"]
+            for e in 전투상태["참가자"]:
+                if e["진영"] == "적":
+                    e["현재HP"] = e["최대HP"] = 999
+            n = next(p for p in 전투상태["참가자"] if p["원본"] is nm)
+            for _ in range(40):
+                if gf.현재_턴_참가자(다른) is n:
+                    break
+                gf.턴_넘기기(다른)
+            assert gf.현재_턴_참가자(다른) is n
+            n["현재MP"] = 50
+            전투 = 매니저.get_screen("전투")
+            전투.갱신(신규=True)
+            매니저.current = "전투"
+            yield 0.5
+            _팝업_닫기()
+            적 = next(p for p in 전투상태["참가자"] if p["진영"] == "적")
+            전투._스킬_실행("축염포", 적)
+            yield 1.0
+            for _ in range(10):  # 밀린 차례 전에 아군(웨펀마스터) 차례가 오면 넘긴다
+                if gf.현재_턴_참가자(다른) is n:
+                    break
+                gf.턴_넘기기(다른)
+            로그 = [e for e in 전투상태["로그"] if isinstance(e, dict)]
+            assert any("캐스팅을 시작" in str(e.get("비고", "")) for e in 로그)
+            assert any(e.get("스킬") == "축염포" and "타격" in e for e in 로그), 로그[
+                -3:
+            ]
+            assert gf.현재_턴_참가자(다른) is n
+            assert not any(s["이름"] == "캐스팅" for s in n["상태이상"])
+            assert n["행동자원"].get("보조행동", 0) >= 1
+            _찍기("battle_charged_blast")
+            결과["단계"].append(
+                "축염포: 쓰면 턴이 끝나고 밀린 차례에 발사, 넨마스터 차례로 돌아와 보조행동이 남음"
+            )
+        finally:
+            self.게임상태 = 원래
             매니저.current = "마을"
 
     def _단계_공격연출(self, 상태, 매니저):
