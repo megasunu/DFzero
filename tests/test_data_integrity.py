@@ -975,3 +975,19 @@ def test_마봉능력의_부위_버프_상태이상_참조는_실제로_있다()
     for 탭, 아이템들 in 카탈로그.items():
         for 봉인 in (n for n in 아이템들 if n in 봉인장비_해제이름):
             assert any(탭 in 능력["부위"] for 능력 in 마봉능력.values()), (탭, 봉인)
+
+
+def test_레벨8_버프스킬은_모든_직업에서_휴식당_1회다():
+    # 2026-10-20 사용자 결정(#247): 모든 직업의 레벨 8 버프 스킬은 휴식당 1회
+    import game.data.job_level as 레벨패키지
+
+    스킬정의 = gf.스킬데이터모음_생성()
+    검사한것 = []
+    for 모듈정보 in pkgutil.iter_modules(레벨패키지.__path__):
+        모듈 = importlib.import_module(f"game.data.job_level.{모듈정보.name}")
+        획득 = (getattr(모듈, "레벨업테이블", {}).get(8) or {}).get("획득") or {}
+        for 이름 in 획득.get("획득스킬") or []:
+            if 스킬정의[이름]["분류"] == "버프스킬":
+                검사한것.append(이름)
+                assert 스킬정의[이름].get("휴식당횟수") == 1, 이름
+    assert {"오버드라이브", "잔영의 케이가", "강권"} <= set(검사한것)

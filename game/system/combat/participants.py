@@ -108,7 +108,7 @@ def 적_참가자_생성(몬스터원본):
     최대HP = 몬스터_수식_평가(몬스터_역할군_수식(몬스터원본, "최대HP"), 몬스터원본, 1)
     if not isinstance(최대HP, (int, float)):
         최대HP = 1
-    최대HP = max(1, int(최대HP))
+    최대HP = max(1, formula.올림(최대HP))
 
     return {
         "이름": 몬스터원본["몬스터명"],

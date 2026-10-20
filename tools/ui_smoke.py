@@ -40,6 +40,7 @@ Config.set("graphics", "height", "2340")
 Config.set("graphics", "resizable", "0")
 
 import main  # noqa: E402 - 크래시 로그 훅/폰트 등록 등 앱 초기화를 그대로 쓴다
+from kivy.animation import Animation  # noqa: E402
 from kivy.app import App  # noqa: E402
 from kivy.clock import Clock  # noqa: E402
 from kivy.core.window import Window  # noqa: E402
@@ -190,13 +191,24 @@ class 스모크앱(main.DnfMobileApp):
     def _다음(self, _dt):
         try:
             Clock.schedule_once(
-                self._다음, next(self._단계)
+                lambda _: self._애니메이션_기다리기(0), next(self._단계)
             )  # 단계 사이에 화면을 그리게 기다린다
         except StopIteration:
             self.stop()
         except Exception:  # noqa: BLE001
             결과["오류"] = traceback.format_exc()
             self.stop()
+
+    def _애니메이션_기다리기(self, 기다린):
+        """정해진 시간이 지나도 팝업 열기/닫기 애니메이션(kivy ModalView의 페이드)이 아직 돌면 끝날 때까지
+        0.05초씩 더 기다린 뒤 다음 단계로(최대 5초). 느린 러너(CI Python 3.11)에서는 0.1초짜리 페이드가
+        0.3초 뒤에도 안 끝나 닫히는 팝업이 남아 팝업 수를 2로 셌다(#231)."""
+        if Animation._instances and 기다린 < 5:
+            Clock.schedule_once(
+                lambda _: self._애니메이션_기다리기(기다린 + 0.05), 0.05
+            )
+            return
+        self._다음(0)
 
     def _단계들(self):
         random.seed(3)
@@ -216,6 +228,7 @@ class 스모크앱(main.DnfMobileApp):
         전투 = yield from self._단계_장비_포션_뒤로키_전투팝업(상태, 매니저)
         yield from self._단계_전투종료_자동전투_주점(상태, 매니저, 전투)
         yield from self._단계_맵_타일(상태, 매니저)
+        yield from self._단계_출입구_위(상태, 매니저)
         yield from self._단계_목록_스크롤(상태, 매니저)
         yield from self._단계_세이브(상태, 매니저)
         yield from self._단계_설정(매니저)
@@ -623,7 +636,12 @@ class 스모크앱(main.DnfMobileApp):
         yield 0.3
         assert 팝업().title == "28호"
         줄들 = [w.text for w in 팝업().walk(restrict=True) if isinstance(w, Label)]
-        for 글 in ("이름: 28호", "AC = 14 + 민첩보정", "6. 넨가드"):
+        for 글 in (
+            "이름: 28호",
+            "직업스타일: 캐스터",
+            "AC = 14 + 민첩보정",
+            "6. 넨가드",
+        ):
             assert 글 in 줄들, 줄들
         assert any(줄.startswith("HP = (6 + 건강보정)") for 줄 in 줄들), 줄들
         _찍기("profession_doll_detail")
@@ -653,7 +671,7 @@ class 스모크앱(main.DnfMobileApp):
         화면._나가기()
         yield 0.3
         결과["단계"].append(
-            "인형사: 인형제작 창(레어 소울 0/10이면 제작 못 누름), 상세보기(수식/패턴 6개), "
+            "인형사: 인형제작 창(레어 소울 0/10이면 제작 못 누름), 상세보기(직업스타일/수식/패턴 6개), "
             "제작 -> 소지품 1개 + 도감 인형"
         )
 
@@ -667,6 +685,29 @@ class 스모크앱(main.DnfMobileApp):
         _찍기("stat_popup")
         _팝업_닫기()
         결과["단계"].append("능력치 배분 팝업")
+
+        # 전직 선택 팝업(레벨 5): 1차 전직이 전부 구현돼 모든 버튼을 누를 수 있다.
+        # 따로 만든 게임에서 키우고 난수 상태를 되돌려 뒤 단계에 영향을 주지 않는다
+        난수 = random.getstate()
+        전직상태 = support.새게임([("", "귀검사")])
+        전직귀검 = 전직상태["파티"]["파티원"][0]
+        support.성장(전직상태, 전직귀검, 5)
+        random.setstate(난수)
+        매니저.get_screen("파티관리")._전직선택_팝업(전직귀검)
+        yield 0.5
+        팝업 = Window.children[0]
+        assert 팝업.title == "전직 선택"
+        전직버튼 = [
+            w
+            for w in 팝업.walk(restrict=True)
+            if isinstance(w, Button) and w.text in gf.전직_레지스트리["귀검사"]
+        ]
+        assert [b.text for b in 전직버튼] == list(gf.전직_레지스트리["귀검사"])
+        assert len(전직버튼) == 5 and not any(b.disabled for b in 전직버튼)
+        _찍기("advancement_popup")
+        _팝업_닫기()
+        yield 0.3
+        결과["단계"].append("전직 선택 팝업(귀검사 전직 5개 모두 선택 가능)")
 
         # 마스터리 선택 팝업: 줄마다 이름 토글 + [상세보기](설명은 상세보기 창에만)
         from kivy.uix.togglebutton import ToggleButton
@@ -1789,12 +1830,31 @@ class 스모크앱(main.DnfMobileApp):
             if abs(c.size[0] - 칸폭 * 2) < 1 and abs(c.size[1] - 칸높이 * 2) < 1
         ]
         assert 감옥, "감옥이 2x2칸 크기로 그려지지 않음"
+        # 출입구("#") 칸은 감옥보다 위에 그린다(_단계_출입구_위) - 바닥 비교에서 뺀다
+        출입구칸 = [
+            지도._칸위치(화면x, 화면y)
+            for 화면y in range(지도._행수)
+            for 화면x in range(지도._열수)
+            if 지도._칸_문자(*지도._맵_좌표(화면x, 화면y)) == "#"
+        ]
+
+        def 출입구에(c):  # 캔버스 좌표는 float32라 조금 어긋난다
+            return any(
+                abs(c.pos[0] - x) < 1 and abs(c.pos[1] - y) < 1 for x, y in 출입구칸
+            )
+
+        assert 출입구칸, "로리엔 보스 옆 출입구가 안 보임"
         칸들 = [
             i
             for i, c in enumerate(사각형들)
-            if abs(c.size[0] - 칸폭) < 1 and abs(c.size[1] - 칸높이) < 1
+            if abs(c.size[0] - 칸폭) < 1
+            and abs(c.size[1] - 칸높이) < 1
+            and not 출입구에(c)
         ]
         assert max(칸들) < 감옥[0], "감옥이 바닥보다 먼저 그려짐"
+        assert any(출입구에(c) for c in 사각형들[감옥[0] :]), (
+            "출입구가 감옥보다 먼저 그려짐"
+        )
         assert 지도.canvas.children[-1] is not 사각형들[감옥[0]]  # 플레이어가 맨 위
         _찍기("dungeon_prison_2x2")
         gf.던전_진입(상태, "dungeon_02A_D11_amon_lower")
@@ -1863,6 +1923,66 @@ class 스모크앱(main.DnfMobileApp):
         yield 0.3
         결과["단계"].append(
             "맵 타일(하늘성 발판/벽/노을 하늘/게이트 겹침), 정사각형 칸, 감옥 2x2칸(바닥 위, 플레이어 아래), 이어진 맵 함께 보이기"
+        )
+
+    def _단계_출입구_위(self, 상태, 매니저):
+        """출입구("#")는 한 칸 그림으로, 나무/큰 오브젝트를 다 그린 뒤(플레이어 아래)에
+        그려서 가려지지 않는다 - 그란플로리스(로리엔)와 하늘성(아몬 상층) 둘 다"""
+        from kivy.graphics import Rectangle
+
+        _팝업_닫기()
+        매니저.current = "던전"
+        던전 = 매니저.get_screen("던전")
+        지도 = 던전.지도위젯
+
+        def 사각형들():
+            return [c for c in 지도.canvas.children if isinstance(c, Rectangle)]
+
+        def 마지막(텍스처):
+            # 잘라 그리기(get_region) 조각도 같은 GL 텍스처라 id로 찾는다
+            return max(
+                (
+                    i
+                    for i, c in enumerate(사각형들())
+                    if c.texture is not None and c.texture.id == 텍스처.id
+                ),
+                default=-1,
+            )
+
+        # 로리엔 서쪽 출입구(0,3) - 바로 아래(0,4)가 나무라 그 위 절반이 출입구 칸에 겹친다
+        gf.던전_진입(상태, "dungeon_01A_D01_Lorien")
+        상태["던전상태"]["위치"] = (2, 3)
+        던전.갱신()
+        yield 0.5
+        assert 지도._칸_문자(0, 3) == "#" and 지도._칸_문자(0, 4) == "X"
+        게이트 = 지도._타일("게이트")
+        assert 게이트 is not None, "그란플로리스 게이트 그림을 못 읽음"
+        assert 게이트.size == (8, 8), ("게이트 그림이 한 칸이 아님", 게이트.size)
+        칸폭, 칸높이 = 지도._칸_크기()
+        게이트칸 = [
+            c for c in 사각형들() if c.texture is not None and c.texture.id == 게이트.id
+        ]
+        assert 게이트칸 and all(
+            abs(c.size[0] - 칸폭) < 1 and abs(c.size[1] - 칸높이) < 1 for c in 게이트칸
+        ), "게이트가 한 칸 크기로 그려지지 않음"
+        assert 마지막(게이트) > 마지막(지도._타일("나무")), "게이트가 나무에 가려짐"
+        assert 지도.canvas.children[-1] is not 게이트칸[-1]  # 플레이어가 맨 위
+        _찍기("dungeon_gate_grandflores")
+
+        # 아몬 상층 마을 포탈(3,19) - 벽 위 하늘성 게이트도 다른 칸을 다 그린 뒤에
+        gf.던전_진입(상태, "dungeon_02A_D12_amon_upper")
+        상태["던전상태"]["위치"] = (4, 16)
+        던전.갱신()
+        yield 0.5
+        하늘성 = 지도._맵_타일("#")[-1]
+        발판 = 지도._맵_타일("O")[-1]
+        assert 마지막(하늘성) > 마지막(발판) >= 0, "하늘성 게이트가 먼저 그려짐"
+        _찍기("dungeon_gate_skycastle")
+        상태["던전상태"] = None
+        매니저.current = "마을"
+        yield 0.3
+        결과["단계"].append(
+            "출입구는 한 칸 그림으로 나무/큰 오브젝트 위(플레이어 아래)에 - 그란플로리스·하늘성"
         )
 
     def _단계_목록_스크롤(self, 상태, 매니저):
@@ -2331,9 +2451,29 @@ class 스모크앱(main.DnfMobileApp):
             yield 0.4
             assert "봉절" not in 던전.상태라벨.text, 던전.상태라벨.text
             assert "풀렸다" in 던전.메시지라벨.text, 던전.메시지라벨.text
+            # 전환스킬 프렌지(버서커 퍽 광기 #247): 줄 끝이 (꺼짐) -> 누르면 켜지고 다시 열면 (켜짐)
+            귀검사["보유스킬"].append("프렌지")
+            스킬버튼.trigger_action(duration=0)
+            yield 0.3
+            줄 = [b for b in _대상버튼들() if " - 프렌지" in b.text]
+            assert len(줄) == 1 and "(꺼짐)" in 줄[0].text, [
+                b.text for b in _대상버튼들()
+            ]
+            줄[0].trigger_action(duration=0)
+            yield 0.4
+            assert 귀검사.get("켜진특성") == ["프렌지"], 귀검사.get("켜진특성")
+            assert "켰다" in 던전.메시지라벨.text, 던전.메시지라벨.text
+            스킬버튼.trigger_action(duration=0)
+            yield 0.3
+            줄 = [b for b in _대상버튼들() if " - 프렌지" in b.text]
+            assert "(켜짐)" in 줄[0].text, 줄[0].text
+            _찍기("dungeon_skill_toggle")
+            _팝업_닫기()
+            yield 0.2
             결과["단계"].append(
                 "던전 [스킬]: 던전 캠핑 줄(1/1, MP 0) -> 파티 HP 최대(쓰러진 파티원 포함), 다시 열면 0/1 비활성. "
-                "봉절(MP 5) -> 상태줄 '봉절 N' -> 다시 열면 (풀기) -> 풀림"
+                "봉절(MP 5) -> 상태줄 '봉절 N' -> 다시 열면 (풀기) -> 풀림. "
+                "프렌지 (꺼짐) -> 누르면 켜짐, 다시 열면 (켜짐)"
             )
         finally:
             상태["던전상태"] = 원래[0]
@@ -2341,6 +2481,7 @@ class 스모크앱(main.DnfMobileApp):
             귀검사.get("횟수제한스킬", {}).get("휴식제한스킬", {}).pop(
                 "던전 캠핑", None
             )
+            귀검사.pop("켜진특성", None)
             gf.파티_최대치로_회복(상태)
             매니저.current = "마을"
 

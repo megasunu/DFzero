@@ -550,8 +550,8 @@ def test_context_guard_훅이_등록되고_게이트가_그_테스트를_돌린�
     ) as f:
         훅 = json.load(f)["hooks"]
     명령 = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/context-guard.cjs"'
-    assert [h["command"] for 묶음 in 훅["UserPromptSubmit"] for h in 묶음["hooks"]] == [
-        명령
+    assert 명령 in [
+        h["command"] for 묶음 in 훅["UserPromptSubmit"] for h in 묶음["hooks"]
     ]
     assert [
         (묶음["matcher"], [h["command"] for h in 묶음["hooks"]])
@@ -562,3 +562,56 @@ def test_context_guard_훅이_등록되고_게이트가_그_테스트를_돌린�
     )
     assert any(이름 == "node --test" for 이름, _ in check.STEPS)
     assert ".cjs" in fix_eol.TEXT_EXTS
+
+
+def test_time_log_훅이_모든_도구와_턴에_등록되고_게이트가_그_테스트를_돌린다():
+    """작업시간 기록(임시, #236) - 등록이 빠지면 그 이벤트의 시간이 조용히 비어 버린다."""
+    import json
+
+    from tools import check
+
+    with open(
+        os.path.join(fix_eol.ROOT, ".claude", "settings.json"), encoding="utf-8"
+    ) as f:
+        훅 = json.load(f)["hooks"]
+    명령 = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/time-log.cjs"'
+    for 이벤트 in (
+        "PreToolUse",
+        "PostToolUse",
+        "PostToolUseFailure",
+        "UserPromptSubmit",
+        "Stop",
+    ):
+        묶음들 = 훅[이벤트]
+        assert any(
+            묶음.get("matcher", "*") == "*"
+            and 명령 in [h["command"] for h in 묶음["hooks"]]
+            for 묶음 in 묶음들
+        ), 이벤트
+    단계 = dict(check.STEPS)["node --test"]
+    assert ".claude/hooks/time-log.test.cjs" in 단계
+    assert ".claude/time-log/" in _읽기(os.path.join(fix_eol.ROOT, ".gitignore"))
+
+
+def test_게이트는_단계별_시간을_작업시간_기록에_남긴다(tmp_path):
+    """작업시간 기록(임시, #239) - 가장 최근 세션 기록에 GateStep 한 줄. 기록 폴더가 없으면(CI) 아무것도 안 한다."""
+    import json
+
+    from tools import check
+
+    check.시간_기록(str(tmp_path / "없음"), "pytest", 1.23, True)
+    assert not (tmp_path / "없음").exists()
+
+    (tmp_path / "옛.jsonl").write_text("", encoding="utf-8")
+    최근 = tmp_path / "새.jsonl"
+    최근.write_text("", encoding="utf-8")
+    os.utime(tmp_path / "옛.jsonl", (0, 0))
+    check.시간_기록(str(tmp_path), "pytest", 1.23, False)
+    줄 = json.loads(최근.read_text(encoding="utf-8"))
+    assert (줄["ev"], 줄["step"], 줄["sec"], 줄["ok"]) == (
+        "GateStep",
+        "pytest",
+        1.2,
+        False,
+    )
+    assert (tmp_path / "옛.jsonl").read_text(encoding="utf-8") == ""
