@@ -378,6 +378,15 @@ def _캐릭터특성_수치(
                 continue
             if isinstance(값, bool):
                 continue
+            if isinstance(값, str) and "혈십자단계" in 값:
+                값 = 값.replace(
+                    "혈십자단계",
+                    str(
+                        혈십자_단계(
+                            참가자["현재HP"], stats.유효_최대HP(전투상태, 참가자)
+                        )
+                    ),
+                )
             if isinstance(값, str):
                 if 컨텍스트 is None:
                     컨텍스트 = {
@@ -393,6 +402,14 @@ def _캐릭터특성_수치(
             if isinstance(값, (int, float)):
                 합계 += 값
     return 합계
+
+
+def 혈십자_단계(현재HP, 최대HP):
+    """버서커 혈십자(#247) - HP 비율을 20%씩 5단계로 나눈다. 가득 차면 1단계, 20% 이하면 5단계,
+    경계(80%/60%/40%/20%)는 높은 단계. 특성 수식의 "혈십자단계"가 이 값이다."""
+    if 최대HP <= 0:
+        return 1
+    return min(5, max(1, 6 - formula.올림(현재HP * 5 / 최대HP)))
 
 
 def 캐릭터특성_평타스탯(전투상태, 참가자):
