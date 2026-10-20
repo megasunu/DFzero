@@ -240,6 +240,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_화면_틀(매니저)
         yield from self._단계_공격연출(상태, 매니저)
         yield from self._단계_감옥_대상팝업(상태, 매니저)
+        yield from self._단계_프렌드_실드(상태, 매니저)
         yield from self._단계_인형(상태, 매니저)
         yield from self._단계_란마(상태, 매니저)
         yield from self._단계_축염포(상태, 매니저)
@@ -2756,6 +2757,70 @@ class 스모크앱(main.DnfMobileApp):
         _찍기("battle_prison_meteor")
         결과["단계"].append(
             "얼음감옥: 갇힌 아군 칸에 뒤/앞 그림, 적 칸에는 없고 대상 팝업에 나오며 골라서 공격. 운석은 뒤 그림만"
+        )
+
+    def _단계_프렌드_실드(self, 상태, 매니저):
+        """프렌드 실드(#310): 반응 자동이 꺼져 있으면 적의 단일 공격 대상이 될 때 반응 팝업에 살아 있는
+        아군이 한 명당 한 줄("프렌드 실드 → 이름")로 나오고(쓰러진 아군은 없다), 고른 아군이 대신 맞는다."""
+        from game.system import monster_ai
+        from game.system.combat import monster_actions
+
+        gf.전투_시작(
+            상태, ["결빙의 케라하"], 레벨=4, 차수=1
+        )  # 고블린은 시작 반응에 쓰러진다
+        support.반응_처리(상태)
+        전투상태 = 상태["전투상태"]
+        고블린 = next(p for p in 전투상태["참가자"] if p["진영"] == "적")
+        아군 = [p for p in 전투상태["참가자"] if p["진영"] == "아군"]
+        귀검사 = next(p for p in 아군 if p["원본"]["직업"] == "귀검사")
+        격투가, 거너 = [p for p in 아군 if p is not 귀검사][
+            :2
+        ]  # 받을 아군, 쓰러진 아군
+        귀검사["원본"]["보유스킬"].append("프렌드 실드")
+        귀검사["행동자원"]["반응행동"] = 1
+        거너["생존"] = False  # 쓰러진 아군은 고를 수 없다
+        전투 = 매니저.get_screen("전투")
+        전투.갱신(신규=True)
+        매니저.current = "전투"
+        yield 0.5
+        _팝업_닫기()
+        패턴 = {"이름": "시험", "타겟": "적단일", "명중률": "근력판정", "데미지": "1"}
+        원래 = (monster_ai.행동_선택, monster_ai.타겟_선택, gf.반응_자동_여부())
+        monster_ai.행동_선택 = lambda m: 패턴
+        monster_ai.타겟_선택 = lambda *a, **k: 귀검사
+        gf.반응_자동_설정(False)
+        try:
+            전투._엔진_실행(lambda: monster_actions.몬스터_턴_실행(전투상태, 고블린))
+            for _ in range(40):
+                yield 0.05
+                if _팝업수() == 1:
+                    break
+            글들 = [b.text for b in _대상버튼들()]
+            줄 = [t for t in 글들 if t.startswith("프렌드 실드 → ")]
+            assert any(격투가["이름"] in t for t in 줄), 글들
+            assert not any(거너["이름"] in t for t in 줄), 글들
+            assert 글들[-1] == "사용 안 함", 글들
+            _찍기("battle_friend_shield_popup")
+            버튼 = next(b for b in _대상버튼들() if 격투가["이름"] in b.text)
+            버튼.trigger_action(duration=0)
+            for _ in range(40):
+                yield 0.05
+                if not 전투._엔진중:
+                    break
+        finally:
+            monster_ai.행동_선택, monster_ai.타겟_선택 = 원래[:2]
+            gf.반응_자동_설정(원래[2])
+            거너["생존"] = True
+        assert not 전투._엔진중
+        타격 = [
+            x
+            for x in 전투상태["로그"]
+            if isinstance(x, dict) and x.get("공격자") == 고블린["이름"] and "대상" in x
+        ]
+        assert 타격 and 타격[-1]["대상"] == 격투가["이름"], 타격
+        assert 귀검사["행동자원"]["반응행동"] == 0
+        결과["단계"].append(
+            "프렌드 실드: 단일 공격 대상이 되면 반응 팝업에 살아 있는 아군만 한 줄씩, 고른 아군이 대신 맞음"
         )
 
     def _단계_인형(self, 상태, 매니저):
