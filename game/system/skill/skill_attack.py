@@ -3,7 +3,7 @@
 패키지 설명과 구현 범위는 game/system/skill_system.py 머리 주석을 본다(밖에서는 skill_system을 통해 쓴다)."""
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from game.system import dice_utils
 from game.system.combat import (
@@ -312,6 +312,20 @@ class _스킬타격문맥:
     대상기록: list | None = None
 
 
+def _번호째_옵션(옵션, 번호):
+    """효과 원소에 "적용타격"(1부터 센 타격 번호 목록)이 있으면 그 타격에만 건다(달빛베기 2타의 공중에뜸)."""
+    if not any("적용타격" in 효과 for 효과 in 옵션.효과리스트):
+        return 옵션
+    return replace(
+        옵션,
+        효과리스트=[
+            효과
+            for 효과 in 옵션.효과리스트
+            if 번호 + 1 in 효과.get("적용타격", [번호 + 1])
+        ],
+    )
+
+
 def _타격(문맥, 대상, 번호, 미리계산된판정=None):
     """번호째 타격 1회 - 데미지식/명중률은 스킬 데이터의 리스트 값이면 번호째를 쓴다."""
     스킬데이터 = 문맥.스킬데이터
@@ -321,7 +335,7 @@ def _타격(문맥, 대상, 번호, 미리계산된판정=None):
         대상,
         값_또는_리스트(스킬데이터["데미지"], 번호),
         값_또는_리스트(스킬데이터["명중률"], 번호),
-        문맥.옵션,
+        _번호째_옵션(문맥.옵션, 번호),
         미리계산된판정=미리계산된판정,
     )
 
