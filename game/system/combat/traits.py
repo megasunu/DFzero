@@ -3,6 +3,7 @@
 
 from game.system import rng
 
+from game.system import character_data_system as 캐릭터데이터
 from game.system import equipment_system
 from game.system.combat import (
     core,
@@ -196,6 +197,7 @@ def 특성_수치(
                             "차수": core.차수(참가자),
                             "레벨": 참가자.get("원본", {}).get("레벨") or 1,
                             "능력치": 참가자["원본"],
+                            "능력치보정치": 캐릭터데이터.보정치표(참가자["원본"]),
                         },
                     )
                 except Exception:
@@ -444,6 +446,9 @@ def _캐릭터특성_수치(
                         "레벨": 참가자["원본"].get("레벨") or 1,
                         "주문시전보정치": stats.주문시전_보정치(전투상태, 참가자),
                         "능력치": stats.유효_능력치(전투상태, 참가자),
+                        "능력치보정치": 캐릭터데이터.보정치표(
+                            참가자["원본"], stats.유효_능력치(전투상태, 참가자)
+                        ),
                     }
                 try:
                     값 = formula.수식_평가(값, 컨텍스트)
