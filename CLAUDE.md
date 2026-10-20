@@ -24,9 +24,9 @@ git config core.hooksPath .githooks          # pre-commit 훅 켜기
 
 한 작업을 끝냈다고 하려면 다음을 모두 만족해야 한다:
 
-1. **`python tools/check.py` 통과** - compileall + `ruff check` + `ruff format --check` + `pytest` +
-   커버리지 하한(game/system + game/controller + gameflow.py, `COVERAGE_FLOOR`) + 훅 `node --test`. CI(`.github/workflows/check.yml`)도
-   모든 push/PR에서 같은 명령을 돌린다. 서식이 걸리면 `python -m ruff format .`.
+1. **push 전 `python tools/check.py --빠른` 통과, PR의 CI `check` 초록** - 로컬은 compileall + `ruff` 검사·서식 + `pytest` 전체 + 훅 `node --test`.
+   CI(`.github/workflows/check.yml`)는 모든 push/PR에서 `python tools/check.py`를 돌려 커버리지 하한(game/system + game/controller +
+   gameflow.py, `COVERAGE_FLOOR`)까지 판정한다 - 하한은 로컬에서 재지 않는다(#285). 서식이 걸리면 `python -m ruff format .`.
    **로직을 추가/변경하면 테스트도 같이 추가한다** - 어디에 넣을지는 `.claude/rules/tests.md`의 "테스트 지도".
 2. **골든 파일(`tests/golden/`)이 바뀌었다면 이유를 커밋에 적는다.** 리팩터링은
    동작을 바꾸지 않는 것이 정의이므로 골든이 바뀌면 안 된다. 동작을 일부러
@@ -84,7 +84,7 @@ git config core.hooksPath .githooks          # pre-commit 훅 켜기
 - **`main-branch`에 직접 push하지 않는다.** 기능마다 최신 `main-branch`에서 브랜치를 따서 게이트 통과 후 PR을 연다.
   **Claude가 연 `claude/*` PR은 `auto-merge.yml`이 CI(`check`·`ui-smoke`) 초록에서 병합한다**(2026-10-15 사용자 결정) - Claude는 GitHub 자동 병합을
   켜거나 손으로 병합하지 않고 빨간 CI를 고친다. 보호 경로(`.github/workflows/`·`buildozer.spec`·`tools/auto_merge_gate.py`·`CLAUDE.md`·`.claude/rules/` - `tests.md`·`layers.md`는 뺀다)를 바꾸는 PR은 초안으로 열고, 초안과 사용자가 연 PR은 사용자가 병합한다. 병합된 브랜치는 끝난 것이다.
-- **작업 중 커밋은 빠른 확인(`check.py --빠른`), push 전에 전체 게이트 한 번.** 원격에 올라간 커밋은 고치지 않는다(강제 push 금지). 절차 전체는 `repo-workflow` 스킬.
+- **무거운 실행은 작업당 한 번: push 전 `check.py --빠른`(골든을 바꿨으면 골든 갱신 실행이 대신한다), 커버리지는 CI.** 원격에 올라간 커밋은 고치지 않는다(강제 push 금지). 절차 전체는 `repo-workflow` 스킬.
 - Claude의 커밋은 `Claude <noreply@anthropic.com>`으로 쓴다: 커밋마다 `git -c user.name=Claude -c user.email=noreply@anthropic.com commit`,
   git config에는 넣지 않는다. 이슈와 사용자가 연 PR은 사용자의 것이다.
 - **APK 빌드는 `v*` 태그 push로만 돈다**(`build-apk.yml`). 사용자는 PC가 없고 이 세션의 git은 태그 push를 403으로 막는다. **릴리스는 사용자가

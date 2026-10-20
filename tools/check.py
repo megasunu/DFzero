@@ -1,7 +1,7 @@
-"""완료 기준(DoD) 게이트 - push(와 PR) 전에 이것 하나만 돌린다. 작업 중 커밋은 --빠른으로 확인한다.
+"""완료 기준(DoD) 게이트 - CI가 모든 push/PR에서 전체를 돌려 커버리지 하한까지 판정한다. push 전 로컬 확인은 --빠른 한 번(#285).
 
-    python tools/check.py
-    python tools/check.py --빠른 [테스트 파일 ...]   # 작업 중 빠른 확인 - 완료 기준 아님
+    python tools/check.py                            # 전체: 커버리지 하한 포함 - CI의 판정
+    python tools/check.py --빠른 [테스트 파일 ...]   # 커버리지 없음 - 파일 없이 주면 push 전 로컬 확인
 
 1. compileall  : 모든 .py 파일 문법 검사
 2. ruff check  : 정의 안 된 이름, 안 쓰는 import 등 (pyproject.toml 설정)
@@ -13,7 +13,7 @@
                 NOT VERIFIED라고 찍는다(CI 러너에는 node가 있다).
 
 앞의 싼 검사(1, 2)가 실패하면 테스트로 넘어가지 않고 멈춘다 - 고친 뒤 어차피 다시 돌린다.
-`--빠른`은 커버리지 없이 테스트(파일을 주면 그 파일만)를 돌린다. 작업 중 확인용이고, push 전에는 전체를 돌린다.
+`--빠른`은 커버리지 없이 테스트(파일을 주면 그 파일만)를 돌린다. 파일 없이 주면 push 전 로컬 확인이고, 하한은 CI가 판정한다.
 하나라도 실패하면 0이 아닌 코드로 끝난다. Windows/리눅스 어디서나 돈다.
 필요한 도구: pip install pytest pytest-cov pytest-xdist==3.8.0 ruff==0.16.9 (CI와 같은 버전 - 서식 결과가 버전마다 다르다)
 """
@@ -160,7 +160,7 @@ def main(argv=None):
         return 1
     if 빠른:
         print(
-            "PASS: 빠른 확인 통과 - 커버리지 없음, 완료 기준이 아니다(push 전에 python tools/check.py)"
+            "PASS: 빠른 확인 통과 - 커버리지 하한은 CI(check)가 판정한다(전체: python tools/check.py)"
         )
         return 0
     print("PASS: 모든 검사 통과")
