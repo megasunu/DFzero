@@ -9,6 +9,8 @@
 //          and Stop adds the turn's output tokens and context size, read from the transcript.
 //   mark   `node .claude/hooks/time-log.cjs mark 작업 <유형> <이름>` starts a task;
 //          `mark <단계>` starts a phase. tools/check.py adds one GateStep line per gate step.
+//          `mark 작업` also prints when the last CI should turn green (ETA_SEC + CI_SEC); `mark CI 초록|빨강 [시각]`
+//          records when it really did (#287).
 //   report `node .claude/hooks/time-log.cjs report [file]` - markdown tables of a log (the latest by default).
 //
 // The hook never blocks a tool call or a prompt: on any error it prints nothing and exits 0.
@@ -222,7 +224,20 @@ function backgroundLines(input, now) {
   return stopped ? [{ t: now, ev: "BgEnd", id: String(stopped), status: "stopped" }] : [];
 }
 
+// A task's usual length from start to push, by kind: medians of the #237 records from 2026-10-20 on, when the
+// gate and golden changes had landed. Change them from the report's expected-green table. 조사 opens no PR.
+const ETA_SEC = { 버그: 240, 설정: 240, 규칙: 240, 자동검사수정: 240, 문서: 240, 리팩터링: 540, 기능: 720, 기타: 720 };
+const CI_SEC = 190; // check + ui-smoke, the last 11 PR runs took 3:00-3:18
+
+function eta(kind, t) {
+  if (kind === "조사") return null;
+  const sec = (ETA_SEC[kind] || ETA_SEC.기타) + CI_SEC;
+  return { sec, green: new Date(Date.parse(t) + sec * 1000).toISOString() };
+}
+
 function parseMark(args) {
+  if (args[0] === "CI" && ["초록", "빨강"].includes(args[1]))
+    return { ev: "CI", result: args[1], ...(args[2] ? { at: args[2] } : {}) };
   if (args[0] === "작업") return { ev: "Task", kind: args[1] || "기타", name: args.slice(2).join(" ") || "이름 없음" };
   return { ev: "Mark", phase: args.join(" ").trim() || "이름 없음" };
 }
@@ -257,6 +272,7 @@ function summarize(events) {
   const working = [];
   const marks = [];
   const tasks = [];
+  const cis = [];
   const gate = {};
   const steps = [];
   const bgStarts = [];
@@ -316,6 +332,7 @@ function summarize(events) {
       lastStop = e;
     } else if (e.ev === "Mark") marks.push(e);
     else if (e.ev === "Task") tasks.push(e);
+    else if (e.ev === "CI") cis.push(e);
     else if (e.ev === "BgStart") bgStarts.push(e);
     else if (e.ev === "BgEnd") bgEnds[e.id] ||= e;
     else if (e.ev === "GateStep") {
@@ -524,8 +541,26 @@ function summarize(events) {
     gateRuns.push({ task: run.task, kind: run.kind, n: seen[key], sec: r1((run.e - run.s) / 1000), prev: prev ? result(prev) : "-", since });
   });
 
+  // Expected green against the first CI result marked after the task started (and before the next task).
+  const etas = [];
+  tasks.forEach((task, i) => {
+    if (!task.eta) return;
+    const next = i + 1 < tasks.length ? ms(tasks[i + 1].t) : Infinity;
+    const ci = cis.find((c) => ms(c.t) >= ms(task.t) && ms(c.t) < next);
+    const actual = ci ? ci.at || ci.t : null;
+    etas.push({
+      task: task.name,
+      kind: task.kind,
+      eta: task.eta,
+      actual,
+      diff: actual ? r1((ms(actual) - ms(task.eta)) / 1000) : null,
+      result: ci ? ci.result : "-",
+    });
+  });
+
   return {
     start: events.length ? events[0].t : null,
+    etas,
     end,
     waiting: r1(waiting),
     bgWaiting: r1(bgWaiting),
@@ -634,6 +669,19 @@ function format(s) {
       ...runs.map((g) => `| ${g.task} | ${g.kind} ${g.n} | ${dur(g.sec)} | ${g.prev} | ${g.since} |`),
     );
   }
+  const etas = s.etas || [];
+  if (etas.length) {
+    const clock = (iso) => (iso ? iso.slice(11, 19) : "-");
+    const signed = (sec) => (sec === null ? "-" : `${sec < 0 ? "-" : "+"}${dur(Math.abs(sec))}`);
+    out.push(
+      "",
+      "**예상 초록 시각** (UTC, 작업 표시 + 유형 기준값 + CI, 차이 = 실제 - 예상)",
+      "",
+      "| 작업 | 유형 | 예상 | 실제 | 차이 | 결과 |",
+      "|---|---|---|---|---|---|",
+      ...etas.map((r) => `| ${r.task} | ${r.kind} | ${clock(r.eta)} | ${clock(r.actual)} | ${signed(r.diff)} | ${r.result} |`),
+    );
+  }
   const bg = Object.entries(s.background || {});
   if (bg.length) {
     out.push(
@@ -733,7 +781,14 @@ function hook(input, dir) {
 function main(argv, env) {
   const dir = logDir(env);
   if (argv[0] === "mark") {
-    append(latestLog(dir) || logFile(dir, "manual"), { t: new Date().toISOString(), ...parseMark(argv.slice(1)) });
+    const line = { t: new Date().toISOString(), ...parseMark(argv.slice(1)) };
+    const expected = line.ev === "Task" && eta(line.kind, line.t);
+    if (expected) {
+      line.eta = expected.green;
+      const work = expected.sec - CI_SEC;
+      process.stdout.write(`예상 초록 ${expected.green.slice(11, 19)} UTC (작업 ${dur(work)} + CI ${dur(CI_SEC)})\n`);
+    }
+    append(latestLog(dir) || logFile(dir, "manual"), line);
     return;
   }
   if (argv[0] === "report") {
@@ -765,6 +820,7 @@ module.exports = {
   promptKind,
   backgroundLines,
   parseMark,
+  eta,
   summarize,
   format,
   dur,
