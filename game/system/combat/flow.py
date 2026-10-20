@@ -7,6 +7,7 @@ from game.system import dice_utils
 from game.system import equipment_system
 from game.system import party_system
 from game.system.combat import (
+    attacks,
     core,
     damage,
     formula,
@@ -234,8 +235,11 @@ def 턴_시작_처리(전투상태, 참가자):
                 continue
             if 정의.get("효과", {}).get("발동시점") == "턴시작시":
                 damage.지속피해_적용(전투상태, 참가자, 항목, 정의)
+    줄기전_디버프 = list(참가자.get("디버프") or [])
     for 목록이름 in ("상태이상", "버프", "디버프"):
         참가자[목록이름] = _지속턴_감소(전투상태, 참가자, 목록이름, 지속피해정지)
+    # 귀신 : 라사 - 줄기 전 목록으로 친다(마지막 턴에도 치고, 건 빙결이 이번 턴에 남는다)
+    attacks.턴시작_디버프공격(전투상태, 참가자, 줄기전_디버프)
 
 
 def _특성_턴시작_체력감소(전투상태, 참가자):
