@@ -264,6 +264,74 @@ test("format: a turn of minutes shows minutes and seconds", () => {
   assert.strictEqual(t.dur(119.6), "2분 0초");
 });
 
+test("record: a finished call keeps the size of what it returned", () => {
+  const input = { hook_event_name: "PostToolUse", tool_use_id: "u", tool_response: { stdout: "abcd" } };
+  assert.strictEqual(t.record(input, at(1)).size, JSON.stringify(input.tool_response).length);
+  assert.strictEqual("size" in t.record({ ...input, tool_response: undefined }, at(1)), false);
+});
+
+// a turn that moves to the next task after work on the first one: the turn is split at the task mark
+const TWO_TASKS = [
+  { t: at(0), ev: "UserPromptSubmit" },
+  { t: at(1), ev: "Task", kind: "기능", name: "#1 가" },
+  { t: at(2), ev: "PreToolUse", tool: "Bash", cat: "전체 게이트", id: "g" },
+  { t: at(12), ev: "PostToolUse", id: "g", ok: true, size: 3000 },
+  { t: at(20), ev: "Task", kind: "기능", name: "#2 나" },
+  { t: at(22), ev: "PreToolUse", tool: "Read", cat: "파일 읽기", id: "r" },
+  { t: at(23), ev: "PostToolUse", id: "r", ok: true, size: 100 },
+  { t: at(30), ev: "Stop", output: 50, context: 1000 },
+];
+
+test("summarize: a task mark after work in the turn splits the turn between the tasks", () => {
+  const s = t.summarize(TWO_TASKS);
+  assert.deepStrictEqual(
+    s.turns.map((r) => [r.n, r.task, r.sec, r.tools, r.think, r.output]),
+    [
+      ["1-1", "#1 가", 20, 10, 10, 0],
+      ["1-2", "#2 나", 10, 1, 9, 50],
+    ],
+  );
+  assert.deepStrictEqual(
+    s.tasks.map((r) => [r.name, r.turns, r.sec]),
+    [
+      ["#1 가", 1, 20],
+      ["#2 나", 1, 10],
+    ],
+  );
+});
+
+test("summarize: thinking time is split by what came just before it", () => {
+  const s = t.summarize(TWO_TASKS);
+  assert.deepStrictEqual(s.gaps, {
+    "턴 시작": { count: 1, sec: 2, max: 2, size: 0 },
+    "전체 게이트 뒤": { count: 1, sec: 10, max: 10, size: 3000 },
+    "마지막 답변": { count: 1, sec: 7, max: 7, size: 100 },
+  });
+  const text = t.format(s);
+  assert.match(text, /\*\*생각·답변 나눔\*\*/);
+  assert.match(text, /\| 전체 게이트 뒤 \| 1 \| 10초 \| 10초 \| 10초 \| 3000 \|/);
+});
+
+test("hook: editing without a task mark reminds once, until the next task or after a merge request", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "time-log-"));
+  const env = { ...process.env, CLAUDE_PROJECT_DIR: dir };
+  const run = (args, input) =>
+    execFileSync("node", [HOOK, ...args], { env, input: input ? JSON.stringify(input) : "" }).toString();
+  const edit = { session_id: "r", hook_event_name: "PostToolUse", tool_name: "Edit", tool_use_id: "e" };
+  const read = { ...edit, tool_name: "Read" };
+
+  run([], { session_id: "r", hook_event_name: "UserPromptSubmit" });
+  assert.strictEqual(run([], read), ""); // reading is not work on a task yet
+  const out = JSON.parse(run([], edit));
+  assert.strictEqual(out.hookSpecificOutput.hookEventName, "PostToolUse");
+  assert.match(out.hookSpecificOutput.additionalContext, /mark 작업/);
+  assert.strictEqual(run([], edit), ""); // once
+  run(["mark", "작업", "기능", "#1"]);
+  assert.strictEqual(run([], edit), "");
+  run(["mark", "병합요청"]);
+  assert.match(run([], edit), /mark 작업/); // the task ended with its merge request
+});
+
 test("end to end: hook writes the session log with tokens, mark and report read it", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "time-log-"));
   const transcript = path.join(dir, "t.jsonl");
