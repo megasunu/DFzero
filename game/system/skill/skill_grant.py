@@ -44,12 +44,14 @@ def 정수_평가(값, 전투상태, 참가자, 기본값=1):
     if 값 is None:
         return 기본값
     if isinstance(값, (int, float)):
-        return int(값)
+        return formula.올림(값)
     if isinstance(값, str):
         # "보정공격력"/"무기공격력"이 필요할 일은 없는 자리(공격횟수,
         # 턴당사용제한, 대상당피격제한, 중첩량, 지속턴 등)라 무기공격력
         # 컨텍스트는 채우지 않는다.
-        return int(round(formula.수식_평가(값, stats.기본_컨텍스트(전투상태, 참가자))))
+        return formula.올림(
+            formula.수식_평가(값, stats.기본_컨텍스트(전투상태, 참가자))
+        )
     return 기본값
 
 

@@ -67,7 +67,9 @@ def _반응_횟수규칙(전투상태, 참가자, 정의):
     def 정수(값):
         if 값 is None or isinstance(값, (int, float)):
             return 값
-        return int(formula.수식_평가(str(값), stats.기본_컨텍스트(전투상태, 참가자)))
+        return formula.올림(
+            formula.수식_평가(str(값), stats.기본_컨텍스트(전투상태, 참가자))
+        )
 
     return 정수(휴식당), 정수(전투당), 부여효과
 
@@ -414,7 +416,7 @@ def 피격피해_반응(전투상태, 공격자, 대상, 최종피해):
             continue
         감소 = max(
             0,
-            int(
+            formula.올림(
                 formula.수식_평가(
                     str(감소식),
                     stats.기본_컨텍스트(전투상태, 대상, 무기공격력필요=무기필요),

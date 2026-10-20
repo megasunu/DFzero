@@ -134,7 +134,7 @@ def 스킬_기대피해(게임상태, 참가자, 스킬이름, 적수=None):
         한번 = sum(formula.수식_평가(str(식), 컨텍스트, 평균=True) for 식 in 식들)
         횟수 = 상세.get("공격횟수", 1)
         if not isinstance(횟수, int):
-            횟수 = int(formula.수식_평가(str(횟수), 컨텍스트, 평균=True))
+            횟수 = formula.올림(formula.수식_평가(str(횟수), 컨텍스트, 평균=True))
     except (ValueError, ZeroDivisionError, SyntaxError, TypeError):
         return 0
     if isinstance(데미지, list):  # 타격마다 다른 식이면 리스트 합이 이미 전체 타수
