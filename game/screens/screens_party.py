@@ -401,7 +401,7 @@ class 파티관리화면(Screen):
         배분 = {이름: 0 for 이름 in self._능력치_목록}
         투자가능 = {
             이름: gameflow.약점스탯_투자가능(캐릭터, 이름)
-            and not (약점제외 and 이름 == 캐릭터.get("약점스탯"))
+            and not (약점제외 and 이름 in gameflow.성장불가_스탯(캐릭터))
             for 이름 in self._능력치_목록
         }
         한도 = 배분점수 if 스탯당최대 is None else 스탯당최대

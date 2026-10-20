@@ -22,6 +22,7 @@ from game.data.item.item_potion import 포션_데이터
 from game.data.job_skill.job_skill_0000 import 스킬목록 as 공용스킬
 from game.system import (
     character_creation_system as 캐릭터생성,
+    character_data_system as 캐릭터데이터,
     drink_system,
     equipment_system,
     magic_seal_system,
@@ -170,15 +171,22 @@ def 캐릭터_유효능력치(게임상태, 캐릭터):
     )
     상태이상 = 캐릭터.get("상태이상") or []
     for 이름 in 능력치:
-        능력치[이름] += drink_system.능력치_변동(
-            상태이상, 상태이상목록, 이름, 캐릭터.get("보유특성")
+        능력치[이름] = 캐릭터데이터.능력치_상한(
+            캐릭터,
+            이름,
+            능력치[이름]
+            + drink_system.능력치_변동(
+                상태이상, 상태이상목록, 이름, 캐릭터.get("보유특성")
+            ),
         )
     return 능력치
 
 
 def 캐릭터_능력치_보정치(게임상태, 캐릭터, 능력치이름):
     """던전 판정(오브젝트/함정 등)용 장비 반영 보정치."""
-    return (캐릭터_유효능력치(게임상태, 캐릭터)[능력치이름] - 10) // 2
+    return 캐릭터데이터.보정치_계산(
+        캐릭터, 능력치이름, 캐릭터_유효능력치(게임상태, 캐릭터)[능력치이름]
+    )
 
 
 def 캐릭터_최대HP(게임상태, 캐릭터):
