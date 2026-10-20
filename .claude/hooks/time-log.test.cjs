@@ -323,6 +323,31 @@ test("prompt kinds: a person, a background task's notification, hook feedback", 
   assert.deepStrictEqual(line, { t: at(1), ev: "UserPromptSubmit", kind: "알림" }); // no prompt text kept
 });
 
+// The queued notifications of PR activity and other sessions come in the same wrapper, with no task id (#276).
+const REMOTE =
+  "<task-notification>\n<task-type>queued-remote-notifications</task-type>\n<status>pending</status>\n" +
+  "<summary>1 unread notification</summary>\n</task-notification>";
+
+test("prompt kinds: a remote notification is not a background task's (#276)", () => {
+  assert.strictEqual(t.promptKind(REMOTE), "원격알림");
+  assert.deepStrictEqual(t.backgroundLines({ hook_event_name: "UserPromptSubmit", prompt: REMOTE }, at(1)), []);
+});
+
+test("summarize: a gap ended by a remote notification is its own wait, the turn shows (원격)", () => {
+  const s = t.summarize([
+    { t: at(0), ev: "UserPromptSubmit", kind: "사람" },
+    { t: at(10), ev: "Stop" },
+    { t: at(70), ev: "UserPromptSubmit", kind: "원격알림" },
+    { t: at(75), ev: "Stop" },
+    { t: at(95), ev: "UserPromptSubmit", kind: "알림" },
+    { t: at(100), ev: "Stop" },
+  ]);
+  assert.deepStrictEqual([s.waiting, s.bgWaiting, s.remoteWaiting], [0, 20, 60]);
+  const text = t.format(s);
+  assert.match(text, /백그라운드 대기: 20초 \/ 원격 알림 대기: 1분 0초 \//);
+  assert.match(text, /\| 2 \(원격\) \|/);
+});
+
 test("background lines: start from the tool's response, end from a notification or TaskStop", () => {
   const post = { hook_event_name: "PostToolUse", tool_name: "Bash", tool_use_id: "u1" };
   assert.deepStrictEqual(t.backgroundLines({ ...post, tool_response: { backgroundTaskId: "b7" } }, at(1)), [

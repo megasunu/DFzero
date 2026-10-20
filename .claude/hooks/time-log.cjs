@@ -179,11 +179,14 @@ function record(input, now) {
   return null;
 }
 
-// What started a turn: a person's message, a background task's notification, or a hook's feedback.
+// What started a turn: a person's message, a background task's notification, the queued remote
+// notifications (PR activity, other sessions - same wrapper, no task id, #276), or a hook's feedback.
 // Only the kind is kept - the log never holds message text (the repository is public).
 function promptKind(prompt) {
   const p = String(prompt || "").trimStart();
-  if (p.startsWith("<task-notification>")) return "알림";
+  if (p.startsWith("<task-notification>")) {
+    return /<task-type>queued-remote-notifications<\/task-type>/.test(p) ? "원격알림" : "알림";
+  }
   if (/^\w+ hook feedback:/i.test(p)) return "훅피드백";
   return "사람";
 }
@@ -264,6 +267,7 @@ function summarize(events) {
   let lastStop = null;
   let waiting = 0;
   let bgWaiting = 0;
+  let remoteWaiting = 0;
 
   const closeTurn = (end, stop, cut) => {
     turns.push({
@@ -289,9 +293,11 @@ function summarize(events) {
       const kind = e.kind || "사람"; // lines written before kinds were kept are people's messages
       if (open) closeTurn(e.t, e.prev || {}, true); // a message sent while Claude was still answering
       // A gap ended by a person is waiting on the user, one ended by a notification is waiting on a
-      // background task; hook feedback follows the turn at once.
+      // background task, one ended by a remote notification is mostly waiting on CI or review; hook
+      // feedback follows the turn at once.
       if (stopAt && kind === "사람") waiting += (ms(e.t) - ms(stopAt)) / 1000;
       if (stopAt && kind === "알림") bgWaiting += (ms(e.t) - ms(stopAt)) / 1000;
+      if (stopAt && kind === "원격알림") remoteWaiting += (ms(e.t) - ms(stopAt)) / 1000;
       open = e.t;
       openKind = kind;
       stopAt = null;
@@ -523,6 +529,7 @@ function summarize(events) {
     end,
     waiting: r1(waiting),
     bgWaiting: r1(bgWaiting),
+    remoteWaiting: r1(remoteWaiting),
     background,
     gateRuns,
     unfinished: Object.keys(pre).length,
@@ -550,12 +557,13 @@ const top = (cats) =>
     .map(([cat, sec]) => `${cat} ${dur(sec)}`)
     .join(", ") || "-";
 
-const STARTED_BY = { 알림: " (알림)", 훅피드백: " (훅)" };
+const STARTED_BY = { 알림: " (알림)", 원격알림: " (원격)", 훅피드백: " (훅)" };
 
 function format(s) {
   const out = [
     `기간: ${s.start} ~ ${s.end} (UTC)`,
     `사용자 대기: ${dur(s.waiting)} / 백그라운드 대기: ${dur(s.bgWaiting || 0)} / ` +
+      `원격 알림 대기: ${dur(s.remoteWaiting || 0)} / ` +
       `끝나지 않은 도구 호출(거부·중단): ${s.unfinished}`,
     "",
     "**작업별**",
@@ -579,7 +587,7 @@ function format(s) {
   out.push(
     "",
     "**턴별** (사용자 메시지부터 답을 마칠 때까지, `+`는 답하는 도중 새 메시지가 와서 나뉜 턴, " +
-      "(알림)은 백그라운드 작업의 알림으로 시작한 턴)",
+      "(알림)은 백그라운드 작업의 알림, (원격)은 PR 활동 같은 원격 알림, (훅)은 정지 훅 피드백으로 시작한 턴)",
     "",
     "| 턴 | 작업 | 시작(UTC) | 걸린 시간 | 생각·답변 | 도구 | 실패 | 맥락 | 출력 토큰 | 주요 도구 |",
     "|---|---|---|---|---|---|---|---|---|---|",
