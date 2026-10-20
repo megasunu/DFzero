@@ -5,6 +5,9 @@
 확정하려고 쓰며, 전투 규칙은 test_combat_*.py가 따로 검사한다.
 """
 
+import glob
+import json
+import os
 from collections import deque
 
 import gameflow as gf
@@ -254,4 +257,55 @@ def 스냅샷(상태, 캐릭터, 선택=None):
         "보유스킬": list(캐릭터["보유스킬"]),
         "보유퍽": list(gf.캐릭터_보유퍽(캐릭터)),
         "초상화": gf.초상화_코드(캐릭터),
+    }
+
+
+# ------------------------------------------------------------------ 골든
+
+문장_골든 = (
+    "battle_log_sentences"  # 다른 골든의 로그에서 만들어지는 골든(test_battle_log.py)
+)
+
+
+def 골든_쓰기(경로, 값):
+    """골든 파일 한 개를 쓴다 - 모든 골든이 같은 모양(LF, 키 정렬, 한 칸 들여쓰기)."""
+    with open(경로, "w", encoding="utf-8", newline="\n") as f:  # LF 규칙(Windows에서도)
+        json.dump(값, f, ensure_ascii=False, indent=1, sort_keys=True)
+        f.write("\n")
+
+
+def 골든_로그들(폴더):
+    """골든 파일마다 그 안의 "로그" 목록에 든 항목들(파일 순서, 항목 순서 그대로)."""
+    모음 = {}
+    for 경로 in sorted(glob.glob(os.path.join(폴더, "*.json"))):
+        이름 = os.path.splitext(os.path.basename(경로))[0]
+        if 이름 == 문장_골든:
+            continue
+        with open(경로, encoding="utf-8") as f:
+            값 = json.load(f)
+        항목들 = []
+
+        def 훑기(x):
+            if isinstance(x, dict):
+                for 키 in sorted(x):
+                    if 키 == "로그" and isinstance(x[키], list):
+                        # 로그 항목 안의 "로그"(효과 문장 목록)까지는 내려가지 않는다
+                        항목들.extend(x[키])
+                    else:
+                        훑기(x[키])
+            elif isinstance(x, list):
+                for 원소 in x:
+                    훑기(원소)
+
+        훑기(값)
+        if 항목들:
+            모음[이름] = 항목들
+    return 모음
+
+
+def 골든_문장들(폴더):
+    """골든 로그 항목 전부를 화면 문장으로 바꾼 것 - 문장 골든의 내용."""
+    return {
+        이름: [gf.로그_문장들(항목) for 항목 in 항목들]
+        for 이름, 항목들 in 골든_로그들(폴더).items()
     }
