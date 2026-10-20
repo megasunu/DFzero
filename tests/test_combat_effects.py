@@ -276,8 +276,11 @@ def 반응_전투(시드, 자동):
         gf.반응_자동_설정(False)
 
 
-def test_반응스킬은_직업_11종과_공용_탈이고_반응특성_분류는_없다():
-    assert set(반응스킬) == {n for 목록 in 반응_소유.values() for n in 목록} | {"탈"}
+def test_반응스킬은_직업_11종과_공용_탈_프렌드실드이고_반응특성_분류는_없다():
+    assert set(반응스킬) == {n for 목록 in 반응_소유.values() for n in 목록} | {
+        "탈",
+        "프렌드 실드",
+    }
     assert not [
         n for n, d in gf.전투용_캐릭터특성정의.items() if d.get("분류") == "반응특성"
     ]
