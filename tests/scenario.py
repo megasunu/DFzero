@@ -101,7 +101,9 @@ def _스킬_인수(상태, 시전자, 이름):
         부상 = [
             a
             for a in gf.아군_목록(상태)
-            if a["생존"] and a["현재HP"] * 2 <= gf.캐릭터_최대HP(상태, a["원본"])
+            if a["생존"]
+            and a["현재HP"] * 2 <= gf.캐릭터_최대HP(상태, a["원본"])
+            and not (데이터.get("타겟제한") == "자신제외" and a is 시전자)
         ]
         return {"중심대상": min(부상, key=lambda a: a["현재HP"])} if 부상 else None
     return {}
