@@ -620,7 +620,7 @@ class 파티관리화면(Screen):
         팝업.open()
 
     def _퍽선택_팝업(self, 캐릭터, 확인콜백):
-        목록 = gameflow.선택가능_퍽목록(캐릭터)
+        목록 = gameflow.퍽_표시목록(캐릭터)
 
         본문 = BoxLayout(orientation="vertical", spacing=8, padding=12)
         본문.add_widget(Label(text="퍽을 하나 선택하세요.", size_hint=(1, 0.1)))
@@ -635,7 +635,7 @@ class 파티관리화면(Screen):
             auto_dismiss=False,
         )
 
-        if not 목록:
+        if not any(not 이유 for _, _, 이유 in 목록):
             목록틀.add_widget(
                 Label(
                     text="(지금 고를 수 있는 퍽이 없습니다)",
@@ -644,11 +644,17 @@ class 파티관리화면(Screen):
                 )
             )
 
-        for 퍽이름, 퍽정의 in 목록:
+        for 퍽이름, 퍽정의, 이유 in 목록:
             행 = BoxLayout(
                 orientation="vertical", size_hint=(1, None), height=dp(64), spacing=2
             )
-            버튼 = Button(text=퍽이름, size_hint=(1, None), height=dp(40))
+            # 못 고르는 퍽은 회색(누를 수 없음)으로 이유와 함께 보인다(사용자 결정 2026-10-20)
+            버튼 = Button(
+                text=f"{퍽이름} ({이유})" if 이유 else 퍽이름,
+                size_hint=(1, None),
+                height=dp(40),
+                disabled=bool(이유),
+            )
             버튼.bind(
                 on_release=(
                     lambda inst, n=퍽이름, d=퍽정의: self._퍽_클릭(

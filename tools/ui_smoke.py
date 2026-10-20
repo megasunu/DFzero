@@ -818,6 +818,24 @@ class 스모크앱(main.DnfMobileApp):
         yield 0.6
         결과["단계"].append("능력치향상: 퍽 선택 -> 능력치 배분 팝업")
 
+        # 못 고르는 퍽은 회색(이유와 함께, 누를 수 없음), 전직이 다른 퍽은 숨김(사용자 결정 2026-10-20)
+        버서커["보유퍽"] = ["약점제거"]  # 배타묶음 "약점"
+        버서커["보유특성"].append("약점제거")
+        매니저.get_screen("파티관리")._퍽선택_팝업(버서커, 고른.append)
+        yield 0.5
+        _찍기("perk_gray")
+        글들 = {
+            w.text: w.disabled
+            for w in list(Window.children)[0].walk(restrict=True)
+            if isinstance(w, Button)
+        }
+        assert 글들.get("삼중극점 (3차수부터)") is True, 글들
+        assert 글들.get("능력치향상") is False, 글들
+        assert not any(t.startswith("약점제거") for t in 글들), 글들  # 이미 배움 - 숨김
+        list(Window.children)[0].dismiss()
+        yield 0.6
+        결과["단계"].append("퍽 선택: 차수 미달 퍽은 회색(이유), 배운 퍽은 숨김")
+
         # [스킬습득] 팝업: 직업 계열 스킬 목록 + 비용, 골드가 모자라면 버튼 잠금, 누르면 배운다
         파티관리 = 매니저.get_screen("파티관리")
         파티관리.갱신()
