@@ -6,7 +6,7 @@ import pytest
 
 import gameflow as gf
 from game.system import dice_utils, skill_system as ss
-from game.system.combat import damage
+from game.system.combat import attacks, damage
 from tests import support
 
 
@@ -128,3 +128,99 @@ def test_어둠의_친화는_무기_주사위가_없는_스킬에만_암속성�
     없음 = 피해(주문), 피해(무기)
     assert 친화[0] > 없음[0]  # 주문 피해는 암속성(취약 2배)으로 들어간다
     assert 친화[1] == 없음[1]  # 무기 주사위 피해는 무기 속성 그대로
+
+
+# ------------------------------------------------------------------ 잔영의 케이가
+
+
+def _케이가_걸기(전투상태, sb):
+    sb["행동자원"]["일반행동"] = max(1, sb["행동자원"].get("일반행동", 0))
+    ss.스킬_실행(전투상태, sb, "잔영의 케이가", _스킬("잔영의 케이가"))
+
+
+def _케이가_로그(전투상태):
+    return [
+        항목
+        for 항목 in 전투상태["로그"]
+        if isinstance(항목, dict)
+        and 항목.get("스킬") == "잔영의 케이가"
+        and "타격" in 항목
+    ]
+
+
+def test_잔영의_케이가는_레벨8_귀신_버프_스킬이다(소울브링어전장):
+    _, 전투상태, _, sb = 소울브링어전장
+    케이가 = _스킬("잔영의 케이가")
+    assert "잔영의 케이가" in sb["원본"]["보유스킬"]
+    assert 케이가["타입"] == ["스킬", "귀신"] and 케이가["습득방법"] == "레벨진행"
+    assert (케이가["행동"], 케이가["타겟"], 케이가["MP소모"]) == (None, "자신", 0)
+    MP = sb["현재MP"]
+    _케이가_걸기(전투상태, sb)
+    assert sb["현재MP"] == MP
+    assert [b["이름"] for b in sb["버프"]] == ["잔영의 케이가"]
+
+
+def test_케이가는_일반공격에_암속성을_더한다(소울브링어전장, monkeypatch):
+    _, 전투상태, 적, sb = 소울브링어전장
+    e = 적[0]
+    e["원본"] = dict(e["원본"], 취약=["암속성"], 저항=[])
+    _주사위고정(monkeypatch, 15)
+    monkeypatch.setattr(damage, "명중_판정", lambda *a, **k: _명중())
+
+    def 피해():
+        e["현재HP"] = 999
+        return attacks.일반공격_실행(전투상태, sb, e)["피해"]
+
+    없음 = 피해()
+    _케이가_걸기(전투상태, sb)
+    assert 피해() > 없음  # 무기 속성(무속성) + 암속성 중 암속성(취약)으로 들어간다
+
+
+def test_케이가_추가_피해는_지능_명중굴림을_따로_하고_본_공격이_빗나가도_굴린다(
+    소울브링어전장, monkeypatch
+):
+    _, 전투상태, 적, sb = 소울브링어전장
+    _케이가_걸기(전투상태, sb)
+    본굴림 = []
+
+    def 판정(전투상태, 공격자, 대상, 명중률종류, *a, **k):
+        본굴림.append(명중률종류)
+        return dict(_명중(), 성공=명중률종류 == "지능판정")
+
+    monkeypatch.setattr(damage, "명중_판정", 판정)
+    attacks.일반공격_실행(전투상태, sb, 적[0])
+    assert 본굴림 == ["보정명중률", "지능판정"]
+    (로그,) = _케이가_로그(전투상태)
+    (타격,) = 로그["타격"]
+    assert 타격["판정"]["성공"] and 타격["피해"] > 0
+
+
+def test_케이가는_무기_주사위_스킬의_타격마다_붙고_귀참과_주문에는_안_붙는다(
+    소울브링어전장, monkeypatch
+):
+    _, 전투상태, 적, sb = 소울브링어전장
+    _케이가_걸기(전투상태, sb)
+    monkeypatch.setattr(damage, "명중_판정", lambda *a, **k: _명중())
+
+    def 추가타격수(이름):
+        결과 = ss.공격스킬_실행(전투상태, sb, _스킬(이름), 적[0])
+        return sum(1 for t in 결과["타격"] if t.get("추가타격") == "잔영의 케이가")
+
+    assert 추가타격수("달빛베기") == 2  # 1타, 2타마다
+    문장 = gf.로그_문장들(전투상태["로그"][-1])
+    assert 문장[0] == f"{sb['이름']}의 달빛베기!!"
+    assert 문장.count("잔영의 케이가의 추가 공격!") == 2
+    assert 추가타격수("고어크로스") == 1  # 한 번 치는 무기공격력x2
+    assert 추가타격수("파동검 지열") == 0  # 무기 주사위가 없는 주문
+    assert (
+        추가타격수("귀참") == 0
+    )  # 보정공격력이지만 귀참은 뺀다(귀신 공격 쪽에 붙는다)
+
+
+def test_케이가_버프가_없으면_추가_피해도_없다(소울브링어전장, monkeypatch):
+    _, 전투상태, 적, sb = 소울브링어전장
+    monkeypatch.setattr(damage, "명중_판정", lambda *a, **k: _명중())
+    attacks.일반공격_실행(전투상태, sb, 적[0])
+    결과 = ss.공격스킬_실행(전투상태, sb, _스킬("달빛베기"), 적[0])
+    assert _케이가_로그(전투상태) == []
+    assert not any(t.get("추가타격") for t in 결과["타격"])
