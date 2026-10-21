@@ -27,6 +27,7 @@ tools/ui_smoke.py  화면 스모크(kivy + Xvfb, 스크린샷) - CI 밖, 화면 
 tools/fix_eol.py   줄끝을 LF로 통일 (pre-commit 훅이 부른다)
 tools/golden_diff.py  바뀐 골든 요약(파일마다 한 줄) - 큰 diff 대신 읽는다
 tools/project_bridge.py  이슈 <-> megasunu 작업 보드 브리지 (project-sync/-snapshot 워크플로가 부른다)
+tools/balance_sim.py  직업 밸런스 모의전투(승률·랜덤·변형 패턴) - 기록은 docs/balance/, 게이트 밖에서 직접
 .githooks/         pre-commit (줄끝 통일)
 docs/              빌드 노트, 구조 점검 보고서, 리뷰 보고서, 시나리오 장부, 게임 규칙(game-rules.md)
 README.md          입구(실행/개발/구조/빌드 요약)
