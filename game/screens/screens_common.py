@@ -531,6 +531,54 @@ class 스탯고르기판(GridLayout):
             칸.text = f"[color=9ea6b3]{이름}[/color] {능력치[이름]}"
 
 
+def 능력치역할_팝업(제목, 캐릭터, 기본구성, 확인콜백, 안내="", 취소콜백=None):
+    """주/보조/약점 역할을 다시 고르는 팝업(#351 - 전직, 레테의 강물·눈물, 옛 세이브의 한 번 고르기).
+    처음에는 기본구성이 골라져 있고, 칸을 누르면 역할이 바뀌며 점수는 역할끼리 값을 바꾼 미리보기
+    (gameflow.능력치_역할_미리보기)로 다시 그린다. 확인콜백(스탯구성)은 셋을 다 골랐을 때만 부른다.
+    취소콜백이 없으면 [취소]를 두지 않는다(옛 세이브의 한 번 고르기처럼 꼭 정해야 할 때)."""
+    본문 = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12))
+    if 안내:
+        안내라벨 = Label(text=안내, size_hint=(1, None), height=dp(72), halign="center")
+        안내라벨.bind(size=lambda inst, size: setattr(inst, "text_size", size))
+        본문.add_widget(안내라벨)
+    상태라벨 = Label(text="", size_hint=(1, None), height=dp(28), font_size="14sp")
+
+    def 바뀜(스탯구성):
+        판.설정(스탯구성, gameflow.능력치_역할_미리보기(캐릭터, 스탯구성))
+        확인.disabled = any(
+            스탯구성.get(r) is None for r in ("주스탯", "보조스탯", "약점스탯")
+        )
+        상태라벨.text = "" if not 확인.disabled else "주/보조/약점을 모두 골라 주세요."
+
+    판 = 스탯고르기판(바뀜=바뀜, font_size="15sp", size_hint=(1, 1))
+    본문.add_widget(판)
+    본문.add_widget(상태라벨)
+    버튼줄 = BoxLayout(size_hint=(1, None), height=dp(52), spacing=dp(8))
+    확인 = Button(text="확인")
+    버튼줄.add_widget(확인)
+    팝업 = Popup(title=제목, content=본문, size_hint=(0.9, 0.6), auto_dismiss=False)
+    if 취소콜백 is not None:
+        취소 = 뒤로키_버튼(Button(text="취소"))
+
+        def 취소하기(*_):
+            팝업.dismiss()
+            취소콜백()
+
+        취소.bind(on_release=취소하기)
+        버튼줄.add_widget(취소)
+    본문.add_widget(버튼줄)
+
+    def 확인하기(*_):
+        팝업.dismiss()
+        확인콜백(dict(판.스탯구성))
+
+    확인.bind(on_release=확인하기)
+    바뀜(dict(기본구성))
+    팝업.능력치판 = 판
+    팝업.open()
+    return 팝업
+
+
 # =====================================================
 # 기준 화면 틀 - 화면은 사용자 폰(갤럭시 S24 세로, 1080x2340 픽셀) 하나를 기준으로
 # 만든다. 비율이 다른 기기에서는 기준 화면 전체를 같은 배율로 줄이거나 키워 가운데에
