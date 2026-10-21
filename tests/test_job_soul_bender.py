@@ -498,51 +498,65 @@ def _라사_걸기(전투상태, sb):
     ss.스킬_실행(전투상태, sb, "귀신 : 라사", _스킬("귀신 : 라사"))
 
 
-def test_귀신_라사는_적_턴_시작마다_주문_명중으로_1d4_주문보정과_빙결을_3턴_건다(
+def _라사_내성(monkeypatch, 성공):
+    """라사의 건강 내성굴림 결과를 정한다 - 명중 굴림은 하지 않는다."""
+    굴림 = []
+
+    def 내성(전투상태, 대상, 내성스탯, 난이도, *a, **k):
+        굴림.append((내성스탯, 난이도))
+        return 성공, 20 if 성공 else 1, 0
+
+    def 명중(*a, **k):
+        raise AssertionError("라사는 명중 굴림을 하지 않는다")
+
+    monkeypatch.setattr(stats, "대상_내성굴림", 내성)
+    monkeypatch.setattr(damage, "명중_판정", 명중)
+    monkeypatch.setattr(stats, "장비_데미지보너스", lambda 참가자, 대상=None: 0)
+    return 굴림
+
+
+def test_귀신_라사는_적_턴_시작마다_건강_내성_실패면_1d4_주문보정_빼기1과_빙결을_3턴_건다(
     소울브링어전장, monkeypatch
 ):
     _, 전투상태, 적, sb = 소울브링어전장
     assert (_스킬("귀신 : 라사")["MP소모"], _스킬("귀신 : 라사")["행동"]) == (
-        20,
+        10,
         "일반행동",
     )
     _라사_걸기(전투상태, sb)
     e = 적[0]
-    굴림 = []
-
-    def 판정(전투상태, 공격자, 대상, 명중률종류, *a, **k):
-        굴림.append((공격자["이름"], 명중률종류))
-        return _명중()
-
-    monkeypatch.setattr(damage, "명중_판정", 판정)
-    monkeypatch.setattr(stats, "장비_데미지보너스", lambda 참가자, 대상=None: 0)
-    _주사위고정(monkeypatch, 1)  # 1d4 = 1, 내성 1 - 실패
-    _특성_빼기(sb, "어둠의 친화")  # 암속성 강화 배율 없이
+    굴림 = _라사_내성(monkeypatch, False)
+    _주사위고정(monkeypatch, 4)  # 1d4 = 4
     주문 = stats.주문시전_보정치(전투상태, sb)
     for 회 in range(3):
         e["상태이상"] = []
         e["현재HP"] = 999
         flow.턴_시작_처리(전투상태, e)
-        assert e["현재HP"] == 999 - max(0, 1 + 주문), 회
+        assert e["현재HP"] == 999 - max(0, 4 + 주문 - 1), 회
         assert any(s["이름"] == "빙결" for s in e["상태이상"])
-    assert 굴림 == [(sb["이름"], "주문시전명중률")] * 3
+    assert 굴림 == [("건강", 10 + 주문)] * 3
     assert all(d["이름"] != "귀신 : 라사" for d in e["디버프"])  # 3번 뒤 끝난다
     e["현재HP"] = 999
     flow.턴_시작_처리(전투상태, e)
     assert e["현재HP"] == 999
 
 
-def test_귀신_라사가_빗나가면_피해도_빙결도_없다(소울브링어전장, monkeypatch):
+def test_귀신_라사는_건강_내성에_성공하면_피해_절반이고_빙결이_없다(
+    소울브링어전장, monkeypatch
+):
     _, 전투상태, 적, sb = 소울브링어전장
     _라사_걸기(전투상태, sb)
-    monkeypatch.setattr(damage, "명중_판정", lambda *a, **k: dict(_명중(), 성공=False))
+    _라사_내성(monkeypatch, True)
+    _주사위고정(monkeypatch, 4)
+    주문 = stats.주문시전_보정치(전투상태, sb)
     e = 적[0]
     e["현재HP"] = 999
     flow.턴_시작_처리(전투상태, e)
-    assert e["현재HP"] == 999 and all(s["이름"] != "빙결" for s in e["상태이상"])
+    assert e["현재HP"] == 999 - max(0, 4 + 주문 - 1) // 2
+    assert all(s["이름"] != "빙결" for s in e["상태이상"])
 
 
-def test_툼스톤은_3x차수더하기1번_무작위_적을_10더하기_귀신수_명중으로_친다(
+def test_툼스톤은_2x차수더하기1번_무작위_적을_기본명중으로_친다(
     소울브링어전장, monkeypatch
 ):
     _, 전투상태, 적, sb = 소울브링어전장
@@ -567,8 +581,8 @@ def test_툼스톤은_3x차수더하기1번_무작위_적을_10더하기_귀신�
     sb["행동자원"]["일반행동"] = 1
     sb["현재MP"] = 999
     결과 = ss.스킬_실행(전투상태, sb, "툼스톤", 스킬)
-    assert 보너스 == [10 + 귀신] * 9  # 2차수: 3 x (1 + 2)
-    assert [t["피해"] for t in 결과["타격"]] == [2 + 귀신 - 1] * 9
+    assert 보너스 == [0] * 6  # 2차수: 2 x (1 + 2)
+    assert [t["피해"] for t in 결과["타격"]] == [2 + 귀신] * 6
 
 
 # ------------------------------------------------------------------ 2차수 퍽 귀영보 (#247)
