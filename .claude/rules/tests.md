@@ -45,6 +45,7 @@ paths:
 | `test_scenario_*.py` | 풀 시나리오(실제 전투로 처음부터 끝까지, scenarios.md) | 요약 골든 + 값 |
 | `test_auto_merge_gate.py`, `test_project_bridge.py` | 자동 병합 판정, 보드 브리지(명령 라벨·사건별 상태·STATUS.md) | 값 |
 | `test_rng.py` | 난수 흐름: 같은 시드면 같은 값, 흐름끼리 독립(한 흐름을 더 굴려도 다른 흐름은 그대로) | 값 |
+| `test_balance_sim.py` | `tools/balance_sim.py` 밸런스 모의전투: 승률패턴 계산(판수 모자란 슬롯은 이전 행동 유지)·변형, 규칙 지문, 규칙이 바뀐 기록은 남기고 참고하지 않음, 몇 판 이어서 실행 | 값 |
 | `test_golden_diff.py` | `tools/golden_diff.py` 골든 차이 요약(키별 개수, 로그 갈림 번호, 한글 경로) | 값 |
 | `test_tools_console.py` | `tools/*.py` CLI가 cp1252 콘솔에서도 한글을 찍고 끝나는지(#200) | 값 |
 | `test_imports.py`, `test_repo_hygiene.py` | 모듈 import, LF 줄끝, 비밀값 금지, 시나리오 장부 대조, 게이트(싼 검사 실패 시 멈춤, `--빠른`) | 규칙 |
