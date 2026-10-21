@@ -1,7 +1,7 @@
 # 컨트롤러 - 자동전투 - [자동전투] 한 턴(일반공격 방식 / 전력전투 방식), 전력전투 스킬 고르기
 # (ctl_battle.py에서 분리 - 품질 계획 P5. ctl_autobattle -> ctl_battle 한 방향. 설정 값(자동전투_방식)은 ctl_battle에 있다)
 
-from game.system import rng
+from game.system import rng, skill_system
 from game.system.combat import formula, stats
 from game.controller.ctl_party import 캐릭터_최대HP
 from game.controller.ctl_battle import (
@@ -28,6 +28,7 @@ __all__ = [
     "_전력전투_제외타겟",
     "_맞는_적_수",
     "스킬_기대피해",
+    "_기대피해",
     "일반공격_기대피해",
     "_전력전투_기록",
     "_전력전투_쓸만한가",
@@ -123,8 +124,18 @@ def _맞는_적_수(타겟, 적수):
 
 def 스킬_기대피해(게임상태, 참가자, 스킬이름, 적수=None):
     """공격 스킬의 기대 피해 - 데미지 수식의 평균(주사위를 굴리지 않는다) x 공격 횟수 x 맞는 적 수.
-    적수를 안 주면 지금 칠 수 있는 적 수. 계산할 수 없는 수식이면 0."""
+    적수를 안 주면 지금 칠 수 있는 적 수. 계산할 수 없는 수식이면 0. 패턴 스킬(#332)은 정해진 패턴(합격),
+    무작위면 패턴들의 평균(원귀)."""
     데이터 = 게임상태["스킬데이터모음"][스킬이름]
+    전투상태 = 게임상태["전투상태"]
+    데이터, 패턴 = skill_system.패턴_적용(전투상태, 참가자, 데이터)
+    if 패턴 is None and "무작위패턴" in (데이터.get("타입") or []):
+        목록 = [{**데이터, **덮어쓸것} for 덮어쓸것 in 데이터["패턴"].values()]
+        return sum(_기대피해(게임상태, 참가자, d, 적수) for d in 목록) / len(목록)
+    return _기대피해(게임상태, 참가자, 데이터, 적수)
+
+
+def _기대피해(게임상태, 참가자, 데이터, 적수):
     상세 = 데이터.get("공격단계1") or 데이터.get("지속공격") or 데이터
     전투상태 = 게임상태["전투상태"]
     데미지 = 상세.get("데미지", "0")
