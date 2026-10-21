@@ -14,7 +14,7 @@ from game.system import rng
 import gameflow as gf
 import scenario
 import support
-from tests.test_gameflow_scenarios import 구현된_전직
+from tests.support import 구현된_전직
 
 _D = {
     1: "dungeon_01A_D01_Lorien",

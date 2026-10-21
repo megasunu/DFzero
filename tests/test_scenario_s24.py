@@ -13,7 +13,7 @@ from game.system import rng
 from game.system.combat import stats
 import scenario
 import support
-from tests.test_gameflow_scenarios import 구현된_전직
+from tests.support import 구현된_전직
 
 로리엔 = "dungeon_01A_D01_Lorien"
 시드 = 0

@@ -14,7 +14,7 @@ import scenario
 import support
 from game.data.ability.job_ability_0000 import 특성목록
 from game.system import effect_engine
-from tests.test_gameflow_scenarios import 구현된_전직
+from tests.support import 구현된_전직
 
 독천둥 = "dungeon_01A_D06_poison_thunderland"
 시드 = 0

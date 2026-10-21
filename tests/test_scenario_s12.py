@@ -9,7 +9,7 @@
 불변식: 샹들리에 몬스터는 공중에뜸/넘어짐이 실제로 걸리지 않는다(거너 라이징 샷은 면역 로그로 막힌다).
 다중 폭탄 던지기는 범위가 겹쳐 한 턴에 같은 아군이 두 번 이상 맞는다. 표창(아이템과 카겔 패턴)에서만
 출혈이 걸린다. 홀리 스매쉬는 카겔에게 늘 "공중에뜸 대상" 추가 피해를 준다. 이긴 전투는 드랍(표창/폭탄 30%)이
-소지품에 들어온다. 수치 규칙은 test_combat_rules.py/test_gameflow_scenarios.py/test_data_integrity.py가 값으로 본다.
+소지품에 들어온다. 수치 규칙은 test_combat_rules.py/test_shop_loot.py/test_consumables.py/test_data_integrity.py가 값으로 본다.
 """
 
 from collections import Counter

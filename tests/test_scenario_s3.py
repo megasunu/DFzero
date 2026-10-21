@@ -13,7 +13,7 @@ from game.system import rng
 import gameflow as gf
 import scenario
 import support
-from tests.test_gameflow_scenarios import 구현된_전직
+from tests.support import 구현된_전직
 
 직업들 = list(구현된_전직)
 _던전 = {
