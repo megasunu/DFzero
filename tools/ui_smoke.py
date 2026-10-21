@@ -246,6 +246,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_축염포(상태, 매니저)
         yield from self._단계_합격(상태, 매니저)
         yield from self._단계_소지품(상태, 매니저)
+        yield from self._단계_레테(상태, 매니저)
         yield from self._단계_도감_업적(상태, 매니저)
         yield from self._단계_메뉴(상태, 매니저)
 
@@ -3278,6 +3279,194 @@ class 스모크앱(main.DnfMobileApp):
         결과["단계"].append(
             "소지품 - 마을 [소지품/창고](창고 못 누름), 항아리 [사용] 결과 팝업/데이터 없음은 그대로, "
             "[상세보기], 음식 [사용] -> 파티원 고르기 -> 회복, 던전 [소지품] -> 나가기 -> 던전"
+        )
+
+    def _단계_레테(self, 상태, 매니저):
+        """능력치 역할 다시 고르기(#351): 전직 -> (스타일) -> 능력치 팝업(전직별 표가 골라져 있음) -> 확인,
+        마을 소지품 [특수] 레테의 눈물 [사용] -> 파티원 -> 능력치판 터치 -> 확인, 레테의 강물 -> 확인 -> [예]
+        -> 레벨 1·골드 환급, 던전 소지품에는 [사용] 없음, 옛 세이브의 한 번 고르기(마을 화면, [취소] 없음)"""
+        import copy as _copy
+
+        앱 = App.get_running_app()
+        앱.게임상태 = 상태
+        상태["전투상태"] = None
+        상태["던전상태"] = None
+
+        def 버튼(위젯, 글):
+            return next(
+                w
+                for w in 위젯.walk(restrict=True)
+                if isinstance(w, Button) and _글(w.text) == 글
+            )
+
+        def 팝업():
+            return Window.children[0]
+
+        # 1) 전직 - 따로 만든 레벨 5 귀검사(난수는 되돌린다)
+        난수 = rng.상태()
+        전직상태 = support.새게임([("", "귀검사")])
+        귀검 = 전직상태["파티"]["파티원"][0]
+        support.성장(전직상태, 귀검, 5)
+        rng.상태_복원(난수)
+        매니저.current = "파티관리"
+        yield 0.3
+        매니저.get_screen("파티관리")._전직선택_팝업(귀검)
+        yield 0.3
+        버튼(팝업(), "소울브링어").trigger_action(duration=0)
+        yield 0.3
+        if "스타일 선택" in 팝업().title:
+            next(
+                w
+                for w in 팝업().walk(restrict=True)
+                if isinstance(w, Button) and _글(w.text) != "취소"
+            ).trigger_action(duration=0)
+            yield 0.3
+        assert 팝업().title == "소울브링어 - 능력치 다시 고르기", 팝업().title
+        판 = 팝업().능력치판
+        assert 판.스탯구성 == gf.전직_기본_스탯구성("소울브링어"), 판.스탯구성
+        _찍기("lethe_advancement_stats")
+        버튼(팝업(), "확인").trigger_action(duration=0)
+        yield 0.3
+        assert (귀검["전직"], 귀검["주스탯"]) == ("소울브링어", "지능"), 귀검["주스탯"]
+        결과["단계"].append(
+            "전직 -> 스타일 -> 능력치 다시 고르기(전직별 표가 골라져 있음) -> 확인 -> 주스탯 지능"
+        )
+
+        # 2) 마을 소지품 [특수] - 레테의 눈물/강물 (끝나면 캐릭터·소지품을 되돌린다)
+        c = 상태["파티"]["파티원"][0]
+        원래 = _copy.deepcopy(c)
+        원래소지품 = _copy.deepcopy(상태["소지품"])
+        상태["소지품"].setdefault("소모품", {}).update(
+            {"레테의 눈물": 1, "레테의 강물": 1}
+        )
+        매니저.current = "마을"
+        yield 0.3
+        버튼(매니저.current_screen, "소지품/창고").trigger_action(duration=0)
+        yield 0.3
+        버튼(팝업(), "소지품").trigger_action(duration=0)
+        yield 0.3
+        화면 = 매니저.current_screen
+        버튼(화면, "소모품").trigger_action(duration=0)
+        yield 0.3
+        버튼(화면, "특수").trigger_action(duration=0)
+        yield 0.3
+        _찍기("lethe_inventory")
+
+        def 행(이름):
+            return next(
+                w.parent
+                for w in 화면._목록틀.walk(restrict=True)
+                if isinstance(w, Label) and _글(w.text) == 이름
+            )
+
+        def 소지품_나가기(화면):
+            for _ in range(3):  # [뒤로]로 대분류까지, [나가기]로 연 화면
+                if 매니저.current != "소지품":
+                    return
+                글들 = {
+                    _글(w.text)
+                    for w in 화면.walk(restrict=True)
+                    if isinstance(w, Button)
+                }
+                뒤로 = "◀ 뒤로" if "◀ 뒤로" in 글들 else "◀ 나가기"
+                버튼(화면, 뒤로).trigger_action(duration=0)
+                yield 0.3
+
+        def 파티원_고르기():
+            next(
+                w
+                for w in 팝업().walk(restrict=True)
+                if isinstance(w, Button) and w.text.startswith(c["캐릭터명"] + " ")
+            ).trigger_action(duration=0)
+
+        버튼(행("레테의 눈물"), "사용").trigger_action(duration=0)
+        yield 0.3
+        파티원_고르기()
+        yield 0.3
+        판 = 팝업().능력치판
+        assert 판.스탯구성 == gf.능력치재선택_기본구성(c), 판.스탯구성
+        새주 = next(n for n in 판.능력치_목록 if gf.스탯역할(판.스탯구성, n) == "일반")
+        옛주 = 판.스탯구성["주스탯"]
+        판.터치(옛주)  # 주 -> (보조는 다른 칸이 맡아 건너뜀) 일반
+        판.터치(새주)  # 일반 -> 비어 있는 주
+        yield 0.2
+        _찍기("lethe_tears_board")
+        if any(판.스탯구성.get(r) is None for r in ("주스탯", "보조스탯", "약점스탯")):
+            판.터치(옛주)
+            yield 0.2
+        확인 = 버튼(팝업(), "확인")
+        assert not 확인.disabled, 판.스탯구성
+        구성 = dict(판.스탯구성)
+        확인.trigger_action(duration=0)
+        yield 0.3
+        assert {r: c[r] for r in 구성} == 구성, (구성, c["주스탯"])
+        assert "다시 골랐습니다" in 화면.안내라벨.text, 화면.안내라벨.text
+        assert "레테의 눈물" not in 상태["소지품"]["소모품"]
+
+        레벨전, 골드전 = c["레벨"], 상태["소지품"]["골드"]
+        환급 = gf.레테_환급골드(c)
+        버튼(행("레테의 강물"), "사용").trigger_action(duration=0)
+        yield 0.3
+        파티원_고르기()
+        yield 0.3
+        버튼(팝업(), "확인").trigger_action(duration=0)
+        yield 0.3
+        assert "레벨 1로 되돌립니다" in " ".join(
+            _글(w.text) for w in 팝업().walk(restrict=True) if isinstance(w, Label)
+        )
+        _찍기("lethe_river_confirm")
+        버튼(팝업(), "예").trigger_action(duration=0)
+        yield 0.3
+        assert 레벨전 > 1 and c["레벨"] == 1 and c["전직"] is None, c["레벨"]
+        assert 상태["소지품"]["골드"] == 골드전 + 환급
+        assert "레벨 1로 돌아갔습니다" in 화면.안내라벨.text, 화면.안내라벨.text
+
+        # 던전 소지품에서는 [사용]이 없다
+        상태["소지품"]["소모품"]["레테의 눈물"] = 1
+        yield from 소지품_나가기(화면)
+        assert 매니저.current == "마을", 매니저.current
+        gf.던전_진입(상태, "dungeon_01A_D01_Lorien")
+        매니저.get_screen("던전").갱신()
+        매니저.current = "던전"
+        yield 0.3
+        버튼(매니저.current_screen, "소지품").trigger_action(duration=0)
+        yield 0.3
+        화면 = 매니저.current_screen
+        버튼(화면, "소모품").trigger_action(duration=0)
+        yield 0.3
+        버튼(화면, "특수").trigger_action(duration=0)
+        yield 0.3
+        assert not any(
+            isinstance(w, Button) and _글(w.text) == "사용"
+            for w in 행("레테의 눈물").walk(restrict=True)
+        ), "던전에서는 레테를 못 쓴다"
+        yield from 소지품_나가기(화면)
+        assert 매니저.current == "던전", 매니저.current
+        상태["던전상태"] = None
+
+        # 3) 옛 세이브의 한 번 고르기 - 마을에 들어가면 묻는다([취소] 없음)
+        c.clear()
+        c.update(원래)
+        상태["소지품"] = 원래소지품
+        c["능력치재선택"] = True
+        매니저.get_screen("마을").갱신()
+        매니저.current = "마을"
+        yield 0.5
+        assert 팝업().title.endswith("능력치 다시 고르기"), 팝업().title
+        assert not any(
+            isinstance(w, Button) and _글(w.text) == "취소"
+            for w in 팝업().walk(restrict=True)
+        )
+        _찍기("lethe_old_save_repick")
+        버튼(팝업(), "확인").trigger_action(duration=0)
+        yield 0.3
+        assert "능력치재선택" not in c and gf.능력치재선택_대기(상태) == []
+        assert {k: c[k] for k in 원래 if k in ("근력", "지능", "주스탯")} == {
+            k: 원래[k] for k in ("근력", "지능", "주스탯")
+        }  # 지금 역할 그대로 확인하면 바뀌지 않는다
+        결과["단계"].append(
+            "레테: 마을 소지품 [특수] 눈물 -> 파티원 -> 능력치판 -> 확인, 강물 -> 확인 -> [예] -> 레벨 1·환급, "
+            "던전 소지품에는 [사용] 없음, 옛 세이브는 마을에서 한 번 묻기([취소] 없음)"
         )
 
     def _단계_도감_업적(self, 상태, 매니저):
