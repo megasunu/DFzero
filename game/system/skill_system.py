@@ -137,6 +137,7 @@ from game.system.skill.skill_target import (
     타겟_확장,
     조건_확인,
     조건부효과_평가,
+    하단공격_빗나감인가,
 )
 from game.system.skill.skill_apply import (
     효과_적용,
@@ -171,6 +172,7 @@ __all__ = [
     "휴식_남은횟수",
     "자원_소비_처리",
     "대상_검증",
+    "하단공격_빗나감인가",
     "타겟_확장",
     "조건_확인",
     "조건부효과_평가",

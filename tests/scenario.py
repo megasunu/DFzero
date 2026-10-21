@@ -95,7 +95,9 @@ def _스킬_인수(상태, 시전자, 이름):
     if 타겟 in _정책_제외_타겟:
         return None
     if 타겟 and 타겟.startswith("적"):
-        적들 = _살아있는_적(상태)
+        적들 = [
+            e for e in _살아있는_적(상태) if not gf.스킬_지정불가인가(상태, 데이터, e)
+        ]
         return {"중심대상": 적들[0]} if 적들 else None
     if 타겟 == "아군단일":
         부상 = [
