@@ -3,7 +3,7 @@
 레벨 6 전직 캐릭터(직업마다 하나)가 카탈로그의 모든 무기 종류를 사서 끼우고, 다섯 몬스터 종족(고블린, 루가루,
 타우, 좀비, 인간)과 각각 **일반공격만으로** 실제로 싸운다. 스킬을 안 쓰므로 무기(주사위/명중/특성)만 드러난다.
 무기 사기 -> 착용 -> 전투까지의 이어짐과, 판정 로그의 일관성(명중/치명타/자동실패/피해), 무기 고유 효과
-(둔기의 기절은 둔기에서만)를 본다. 무기 하나하나의 수치 규칙은 test_gameflow_scenarios.py가 값으로 검사한다.
+(둔기의 기절은 둔기에서만)를 본다. 무기 하나하나의 수치 규칙은 test_growth.py가 값으로 검사한다.
 종족은 던전을 걷지 않고 전투를 직접 연다 - 던전마다 종족이 무작위로 섞여 나와서 특정 종족을 고를 수 없기 때문이다.
 """
 
@@ -12,7 +12,7 @@ import pytest
 from game.system import rng
 import gameflow as gf
 import support
-from tests.test_gameflow_scenarios import 구현된_전직
+from tests.support import 구현된_전직
 
 직업들 = list(구현된_전직)
 # 종족 -> 대표 몬스터(레벨 3, 차수 1로 연다)

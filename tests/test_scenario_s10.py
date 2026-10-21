@@ -15,7 +15,7 @@ import gameflow as gf
 import scenario
 import support
 from game.system.combat import damage
-from tests.test_gameflow_scenarios import 구현된_전직
+from tests.support import 구현된_전직
 
 선더랜드 = "dungeon_01A_D05_thunderland"
 시드 = 2  # 난수 흐름 분리(2026-10-20) 뒤 시드 0은 이 시나리오의 효과가 안 나온다

@@ -13,7 +13,7 @@ from game.system import rng
 from game.system.combat import stats, traits
 import scenario
 import support
-from tests.test_gameflow_scenarios import 구현된_전직
+from tests.support import 구현된_전직
 
 서리 = "dungeon_01A_D07_frost_mirkwood"
 시드 = 0

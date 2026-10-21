@@ -12,7 +12,7 @@ from collections import deque
 
 import gameflow as gf
 from game.system import rng
-from game.system.combat import core, damage
+from game.system.combat import core, damage, flow
 
 기본_파티 = [("", "귀검사"), ("", "격투가"), ("", "거너"), ("", "프리스트")]
 
@@ -64,6 +64,48 @@ def 추가행동_전장(직업="귀검사", 전직="웨펀마스터", 레벨=6):
     적 = [e for e in gf.적_목록(상태) if e["생존"]][0]
     적["현재HP"] = 적["최대HP"] = 10**6  # 공격으로 끝나지 않게
     return 상태, p, 적
+
+
+# ---- gameflow 주제별 테스트(test_gameflow_scenarios / test_shop_loot / test_consumables / test_growth /
+# test_golden_goblin)와 시나리오(test_scenario_s*) 공용
+
+
+def 던전파일명(n):
+    return {
+        1: "dungeon_01A_D01_Lorien",
+        2: "dungeon_01A_D02_Hollow_Lorien",
+        3: "dungeon_01A_D03_mirkwood",
+        4: "dungeon_01A_D04_Hollow_mirkwood",
+        5: "dungeon_01A_D05_thunderland",
+        6: "dungeon_01A_D06_poison_thunderland",
+        7: "dungeon_01A_D07_frost_mirkwood",
+        8: "dungeon_01A_D08_grakquarak",
+        9: "dungeon_01A_D09_blazing_grakquarak",
+        10: "dungeon_01A_D10_shadow_thunderland",
+    }[n]
+
+
+def 전투_열기(상태, 몬스터들):
+    gf.던전_진입(상태, 던전파일명(1))
+    gf.전투_시작(상태, 몬스터들, 레벨=1, 차수=1)
+    반응_처리(상태)
+
+
+def 아군_차례로(상태, 직업):
+    전투상태 = 상태["전투상태"]
+    현재 = next(p for p in gf.아군_목록(상태) if p["원본"]["직업"] == 직업)
+    전투상태["현재턴"] = 전투상태["참가자"].index(현재)
+    flow.턴_시작_처리(전투상태, 현재)
+    return 현재
+
+
+구현된_전직 = {
+    "귀검사": "웨펀마스터",
+    "격투가": "스트라이커",
+    "거너": "레인저",
+    "마법사": "엘리멘탈마스터",
+    "프리스트": "크루세이더",
+}
 
 
 # ------------------------------------------------------------------ 전투
