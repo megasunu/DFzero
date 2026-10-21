@@ -244,6 +244,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_인형(상태, 매니저)
         yield from self._단계_란마(상태, 매니저)
         yield from self._단계_축염포(상태, 매니저)
+        yield from self._단계_합격(상태, 매니저)
         yield from self._단계_소지품(상태, 매니저)
         yield from self._단계_도감_업적(상태, 매니저)
         yield from self._단계_메뉴(상태, 매니저)
@@ -1152,7 +1153,7 @@ class 스모크앱(main.DnfMobileApp):
             assert [b.스킬이름 for b in 줄버튼] == p["원본"]["보유스킬"]
             for b in 줄버튼:
                 줄 = gf.스킬_팝업_줄(상태, p, b.스킬이름)
-                assert _스킬줄_글(b) == [b.스킬이름, 줄["남은"], 줄["MP"], 줄["행동"]]
+                assert _스킬줄_글(b) == [줄["이름"], 줄["남은"], 줄["MP"], 줄["행동"]]
                 assert _스킬줄_칸(b)[0].halign == "left"
                 for 칸 in _스킬줄_칸(b)[1:]:  # 남은/MP/행동은 잘리지 않는다
                     칸.texture_update()
@@ -2976,6 +2977,66 @@ class 스모크앱(main.DnfMobileApp):
                 "축염포: 쓰면 턴이 끝나고 밀린 차례에 발사, 넨마스터 차례로 돌아와 보조행동이 남음"
             )
         finally:
+            self.게임상태 = 원래
+            매니저.current = "마을"
+
+    def _단계_합격(self, 상태, 매니저):
+        """합격(검귀 #332): 원귀(회천)를 쓰면 스킬 목록의 합격이 "합격 : 월령참"으로 보이고, 누르면 대상을
+        고르지 않고 적 전체를 친다(원귀 상태가 사라진다)."""
+        다른 = support.새게임([("", "귀검사")])
+        c = 다른["파티"]["파티원"][0]
+        support.성장(다른, c, 8, 전직="검귀", 스킬습득=True)
+        원래 = self.게임상태
+        원래선택 = rng.대상.choice
+        try:
+            self.게임상태 = 다른
+            gf.전투_시작(다른, ["고블린", "고블린", "고블린"], 레벨=2, 차수=1)
+            support.반응_처리(다른)
+            전투상태 = 다른["전투상태"]
+            for e in 전투상태["참가자"]:
+                if e["진영"] == "적":
+                    e["현재HP"] = e["최대HP"] = 999
+            g = next(p for p in 전투상태["참가자"] if p["원본"] is c)
+            for _ in range(40):
+                if gf.현재_턴_참가자(다른) is g:
+                    break
+                gf.턴_넘기기(다른)
+            assert gf.현재_턴_참가자(다른) is g
+            g["현재MP"] = 50
+            전투 = 매니저.get_screen("전투")
+            전투.갱신(신규=True)
+            매니저.current = "전투"
+            yield 0.5
+            _팝업_닫기()
+            적 = next(p for p in 전투상태["참가자"] if p["진영"] == "적")
+            rng.대상.choice = lambda 목록: "회천"
+            전투._스킬_실행("원귀", 적)
+            rng.대상.choice = 원래선택
+            yield 0.5
+            전투._스킬_버튼_클릭(g)
+            yield 0.5
+            합격 = next(b for b in _스킬줄_버튼들() if b.스킬이름 == "합격")
+            assert _스킬줄_글(합격)[0] == "합격 : 월령참" and not 합격.disabled
+            for w in Window.children[0].walk(
+                restrict=True
+            ):  # 합격 줄이 보이게 맨 아래로
+                if isinstance(w, ScrollView):
+                    w.scroll_y = 0
+            yield 0.3
+            _찍기("battle_skill_popup_hapgyeok")
+            로그수 = len(전투상태["로그"])
+            합격.trigger_action(duration=0)
+            yield 0.5
+            assert _팝업수() == 0, "월령참은 대상을 고르지 않는다"
+            새로그 = [e for e in 전투상태["로그"][로그수:] if isinstance(e, dict)]
+            [타격] = [e for e in 새로그 if e.get("스킬") == "합격 : 월령참"]
+            assert len({t["대상"] for t in 타격["타격"]}) == 3
+            assert not any(b["이름"] == "원귀" for b in g["버프"])
+            결과["단계"].append(
+                "합격: 원귀(회천) 뒤 스킬 목록에 '합격 : 월령참', 누르면 대상 없이 적 전체"
+            )
+        finally:
+            rng.대상.choice = 원래선택
             self.게임상태 = 원래
             매니저.current = "마을"
 
