@@ -37,6 +37,7 @@ from game.data.monster.monster_race_goblin import 몬스터목록 as _고블린�
 from game.data.monster.monster_race_human import 몬스터목록 as _인간몬스터
 from game.data.monster.monster_race_lugaru import 몬스터목록 as _루가루몬스터
 from game.data.monster.monster_race_tau import 몬스터목록 as _타우몬스터
+from game.data.monster.monster_race_test import 몬스터목록 as _시험몬스터
 from game.data.monster.monster_race_zombie import 몬스터목록 as _좀비몬스터
 from game.data.town.town_01A_T01_Elvengard import 마을정보 as _엘븐가드
 from game.data.town.town_01A_T02_hendonmyre import 마을정보 as _헨돈마이어
@@ -69,6 +70,7 @@ _몬스터파일목록 = [
     ("monster_race_human", _인간몬스터),
     ("monster_race_zombie", _좀비몬스터),
     ("monster_race_dragon", _용족몬스터),
+    ("monster_race_test", _시험몬스터),
 ]
 
 
