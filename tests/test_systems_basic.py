@@ -364,9 +364,9 @@ def test_초기습득은_골드로_사지_않고_골드_스킬은_차수_시작_
         차수 = 1 if os.path.basename(경로)[12] == "0" else 2  # job_skill_010m: 1차 계열
         for 이름, 스킬 in 모듈.스킬목록.items():
             if 스킬.get("습득방법") == "구매습득":
-                assert 스킬.get("습득레벨") == skill_learn_system.구매습득_레벨(차수), (
-                    이름
-                )
+                assert 스킬.get("습득레벨") == skill_learn_system.구매습득_레벨(
+                    스킬.get("습득차수", 차수)
+                ), 이름
             if 스킬.get("습득방법") == "초기습득":
                 시작[이름] = 스킬
     assert sorted(시작) == sorted(

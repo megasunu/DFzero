@@ -364,6 +364,21 @@ def test_구매습득은_차수의_시작_레벨부터_살_수_있다():
     assert [n for n, *_ in skill_learn_system.습득가능_스킬목록(c, 목록)] == ["류심"]
 
 
+def test_습득차수가_적힌_구매습득은_그_차수의_값과_레벨로_산다():
+    """전직 목록(차수 2)에 있어도 "습득차수"가 3이면 150골드, 레벨 11부터(넨마스터 뇌명)."""
+    from game.system import skill_learn_system
+
+    목록 = [(2, {"뇌명": {"습득방법": "구매습득", "습득레벨": 11, "습득차수": 3}})]
+    c = {"레벨": 10, "보유스킬": [], "보유특성": []}
+    assert skill_learn_system.습득가능_스킬목록(c, 목록) == []
+    c["레벨"] = 11
+    assert [
+        (n, 비용) for n, _, 비용, _ in skill_learn_system.습득가능_스킬목록(c, 목록)
+    ] == [("뇌명", 150)]
+    c["보유스킬"].append("뇌명")
+    assert skill_learn_system.배운스킬_골드(c, 목록) == 150
+
+
 @pytest.fixture
 def 버서커6():
     rng.시드(1)
