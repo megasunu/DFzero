@@ -5,7 +5,7 @@ import pytest
 from game.system import rng
 import gameflow as gf
 from game.system import skill_system as ss
-from game.system.combat import damage, stats
+from game.system.combat import damage, flow, stats
 from tests import support
 
 
@@ -124,12 +124,24 @@ def test_수플렉스가_빗나가면_썬더도_없다(넨전장, monkeypatch):
 # ------------------------------------------------------------------ 기공장
 
 
-def test_기공장은_2배차수_d6에_주문시전보정치_명속성(넨전장, monkeypatch):
+def test_기공장은_차수더하기2_d4에_주문시전보정치_3분의1을_3회(넨전장, monkeypatch):
+    # 2026-10-22 사용자 결정 - 3회 합이 스킬 밸런스 기준(일반공격 x 차수 + 20MP 몫)의 110% 안팎
     _, 전투상태, 적, n, _ = 넨전장
-    _주사위고정(monkeypatch, 15)  # 명중굴림 15, d6은 6
+    굴림 = []
+
+    def 고정(a, b):
+        굴림.append(b)
+        return min(max(15, a), b)  # 명중굴림 15, 피해 주사위는 가장 큰 눈
+
+    monkeypatch.setattr(rng.주사위, "randint", 고정)
     HP = 적[0]["현재HP"]
     결과 = _쓰기(전투상태, n, "기공장", 적[0])
-    assert 결과["타격"][0]["판정"]["성공"]
+    assert len(결과["타격"]) == 3 and all(t["판정"]["성공"] for t in 결과["타격"])
+    주사위 = [b for b in 굴림 if b != 20]
+    assert set(주사위) == {4} and len(주사위) in (
+        3 * 4,
+        2 * 3 * 4,
+    )  # 2차수 -> 4d4, 강타면 두 번
     assert HP - 적[0]["현재HP"] == 결과["총피해"] > 0
     assert _스킬("기공장")["MP소모"] == 20
 
@@ -186,6 +198,26 @@ def test_환영폭쇄는_분신마다_무작위_적을_치고_분신이_사라�
     assert not any(b["이름"] == "분신" for b in n["버프"])
 
 
+def test_환영폭쇄는_분신마다_1d8에_주문시전보정치(넨전장, monkeypatch):
+    # 분신 수가 차수를 담으므로 한 번의 피해에는 차수가 없다(2026-10-22 사용자 결정)
+    _, 전투상태, _, n, _ = 넨전장
+    _쓰기(전투상태, n, "분신")
+    굴림 = []
+
+    def 고정(a, b):
+        굴림.append(b)
+        return min(max(15, a), b)  # 명중굴림 15, 피해 주사위는 가장 큰 눈
+
+    monkeypatch.setattr(rng.주사위, "randint", 고정)
+    결과 = _쓰기(전투상태, n, "환영폭쇄")
+    assert all(t["판정"]["성공"] for t in 결과["타격"])
+    assert {b for b in 굴림 if b != 20} == {
+        8
+    }  # 피해 주사위는 d8(강타 스타일이면 두 번 굴린다)
+    피해 = {t["피해"] for t in 결과["타격"]}
+    assert len(피해) == 1 and 피해.pop() >= 8 + _보정치(전투상태, n)
+
+
 # ------------------------------------------------------------------ 나선의 넨
 
 
@@ -215,7 +247,7 @@ def test_나선의넨은_MP5가_없으면_켤_수_없다(넨전장):
     assert not ss.사용_가능여부(전투상태, n, _스킬("나선의 넨"))[0]
 
 
-def test_나선의넨은_피격되면_때린_적에게_반격하고_턴당_2회(넨전장, monkeypatch):
+def test_나선의넨은_피격되면_때린_적에게_반격하고_스택_2개까지(넨전장, monkeypatch):
     _, 전투상태, 적, n, _ = 넨전장
     n["원본"]["켜진특성"] = ["나선의 넨"]
     _주사위고정(monkeypatch, 15)
@@ -231,6 +263,43 @@ def test_나선의넨은_피격되면_때린_적에게_반격하고_턴당_2회(
     assert len(로그) == 2  # 세 번 맞아도 두 번만
     assert HP - 적[0]["현재HP"] == sum(e["피해"] for e in 로그) > 0
     assert 로그[0]["대상"] == 적[0]["이름"]
+
+
+def _반격수(전투상태, n, 적, 번):
+    for _ in range(번):
+        damage.피해_적용(전투상태, n, 1, 공격자=적, 피해감소무시=True)
+    return sum(
+        1
+        for e in 전투상태["로그"]
+        if isinstance(e, dict) and "나선의 넨 반격" in str(e.get("비고", ""))
+    )
+
+
+def test_나선의넨_스택은_자기_턴마다_1씩만_찬다(넨전장, monkeypatch):
+    # 2026-10-22 사용자 결정 - 전투 시작에 최대 2, 자기 턴마다 +1(최대 2), 반격마다 -1
+    _, 전투상태, 적, n, _ = 넨전장
+    n["원본"]["켜진특성"] = ["나선의 넨"]
+    _주사위고정(monkeypatch, 15)
+    n["현재HP"] = 999
+    assert _반격수(전투상태, n, 적[0], 3) == 2
+    flow.턴_시작_처리(전투상태, n)
+    assert _반격수(전투상태, n, 적[0], 3) == 2 + 1  # 다 쓴 뒤 자기 턴 한 번이면 1개
+    flow.턴_시작_처리(전투상태, n)
+    flow.턴_시작_처리(전투상태, n)
+    assert _반격수(전투상태, n, 적[0], 3) == 3 + 2  # 쌓여도 2개까지
+
+
+def test_나선의넨을_전투에서_켜면_스택이_최대로_찬다(넨전장, monkeypatch):
+    _, 전투상태, 적, n, _ = 넨전장
+    n["원본"]["켜진특성"] = ["나선의 넨"]
+    _주사위고정(monkeypatch, 15)
+    n["현재HP"] = 999
+    assert _반격수(전투상태, n, 적[0], 2) == 2
+    for _ in range(2):  # 껐다가 다시 켠다
+        n["이번턴_스킬사용횟수"] = {}
+        _쓰기(전투상태, n, "나선의 넨")
+    assert _켜짐(n)
+    assert _반격수(전투상태, n, 적[0], 3) == 2 + 2
 
 
 def test_나선의넨은_턴이_끝날때_MP5_모자라면_꺼진다(넨전장):
