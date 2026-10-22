@@ -14,6 +14,7 @@ from game.system import dice_utils, settings_system, skill_system
 from game.system.combat import (
     attacks,
     core,
+    damage,
     flow,
     formula,
     monster_actions,
@@ -52,6 +53,8 @@ __all__ = [
     "전투_시작",
     "현재_턴_참가자",
     "아군_차례인가",
+    "채널링_확인대기",
+    "채널링_선택",
     "적_목록",
     "공격대상_목록",
     "감옥_그림",
@@ -263,6 +266,28 @@ def 아군_차례인가(게임상태):
         and not 참가자.get("인형")
         and not 무작위행동_상태인가(게임상태, 참가자)
     )
+
+
+def 채널링_확인대기(게임상태):
+    """지금 차례 아군의, 아직 유지할지 묻지 않은 채널링 버프 이름들(넨가드 - 쓴 다음 턴 시작에 묻는다)."""
+    참가자 = 현재_턴_참가자(게임상태)
+    if 참가자 is None or 참가자.get("진영") != "아군":
+        return []
+    return [
+        b["이름"]
+        for b in damage.채널링_목록(참가자)
+        if not b.get("채널링시전턴") and not b.get("채널링확인")
+    ]
+
+
+def 채널링_선택(게임상태, 유지):
+    """채널링 유지 여부 - 유지하면 이번 턴이 끝날 때까지 남고(다른 행동을 하면 풀린다), 아니면 바로 푼다."""
+    전투상태 = 게임상태["전투상태"]
+    참가자 = 현재_턴_참가자(게임상태)
+    for 항목 in damage.채널링_목록(참가자):
+        항목["채널링확인"] = True
+    if not 유지:
+        damage.채널링_행동해제(전투상태, 참가자, 까닭="해제")
 
 
 def 적_목록(게임상태):

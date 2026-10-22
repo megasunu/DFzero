@@ -471,6 +471,9 @@ class 전투화면(Screen):
             Clock.schedule_once(self._자동전투_진행, 0)
         elif 아군차례:
             self.안내라벨.text = f"{참가자['이름']}의 턴 - 행동을 선택하세요."
+            채널링 = gameflow.채널링_확인대기(게임상태)
+            if 채널링:  # 넨가드 - 쓴 다음 턴 시작에 유지할지 묻는다
+                self._채널링_팝업(참가자, 채널링)
         else:
             self.안내라벨.text = f"{참가자['이름']}의 턴 (자동 진행 중...)"
             Clock.schedule_once(self._자동진행, 0.4)
@@ -1188,6 +1191,37 @@ class 전투화면(Screen):
         )
         예버튼.bind(on_release=lambda *_: self._도망_확인(팝업))
         아니오버튼.bind(on_release=lambda *_: 팝업.dismiss())
+        팝업.open()
+
+    def _채널링_팝업(self, 참가자, 이름들):
+        """채널링(넨가드)을 유지할지 묻는다. 유지하면 이번 턴이 끝날 때까지 남지만 다른 행동을 하면 풀린다."""
+        목록 = ", ".join(이름들)
+        안내 = Label(
+            text=f"{목록} 채널링을 유지할까요?\n유지해도 이번 턴에 다른 행동을 하면 풀립니다.",
+            halign="center",
+        )
+        본문 = BoxLayout(orientation="vertical", spacing=12, padding=12)
+        본문.add_widget(안내)
+        팝업 = Popup(
+            title=f"채널링 - {참가자['이름']}",
+            content=본문,
+            size_hint=(0.85, 0.4),
+            auto_dismiss=False,
+        )
+
+        def 고름(유지):
+            팝업.dismiss(animation=False)
+            gameflow.채널링_선택(App.get_running_app().게임상태, 유지=유지)
+            self.갱신()
+
+        버튼줄 = BoxLayout(spacing=12, size_hint=(1, 0.4))
+        for 글, 유지 in (("유지", True), ("해제", False)):
+            버튼 = Button(text=글)
+            버튼.bind(on_release=lambda *_, 유지=유지: 고름(유지))
+            if 유지:
+                뒤로키_버튼(버튼)  # [뒤로] 키는 유지(아무것도 바꾸지 않는 쪽)
+            버튼줄.add_widget(버튼)
+        본문.add_widget(버튼줄)
         팝업.open()
 
     def _도망불가_팝업(self, 막힘):

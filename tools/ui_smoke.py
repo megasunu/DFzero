@@ -245,6 +245,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_란마(상태, 매니저)
         yield from self._단계_축염포(상태, 매니저)
         yield from self._단계_연계_팝업(매니저)
+        yield from self._단계_넨가드_채널링(매니저)
         yield from self._단계_합격(상태, 매니저)
         yield from self._단계_소지품(상태, 매니저)
         yield from self._단계_레테(상태, 매니저)
@@ -3057,6 +3058,67 @@ class 스모크앱(main.DnfMobileApp):
         finally:
             self.게임상태, 연계, rng.주사위.randint = 원래
             gf.연계_자동_설정(연계)
+            매니저.current = "마을"
+
+    def _단계_넨가드_채널링(self, 매니저):
+        """넨가드(채널링, 2026-10-22): 쓴 다음 자기 턴이 오면 "채널링 - 이름" 팝업이 뜨고 [유지]/[해제]를 고른다.
+        [해제]를 누르면 넨가드가 바로 사라진다."""
+        다른 = support.새게임([("", "격투가"), ("", "귀검사")])
+        nm = 다른["파티"]["파티원"][0]
+        for c in 다른["파티"]["파티원"]:
+            support.성장(
+                다른,
+                c,
+                8,
+                전직={"격투가": "넨마스터", "귀검사": "웨펀마스터"}[c["직업"]],
+                스킬습득=c is nm,
+            )
+        원래 = self.게임상태
+        try:
+            self.게임상태 = 다른
+            gf.전투_시작(다른, ["고블린", "고블린", "고블린"], 레벨=2, 차수=1)
+            support.반응_처리(다른)
+            전투상태 = 다른["전투상태"]
+            for e in 전투상태["참가자"]:
+                if e["진영"] == "적":
+                    e["현재HP"] = e["최대HP"] = 999
+            n = next(p for p in 전투상태["참가자"] if p["원본"] is nm)
+
+            def n의_차례():
+                for _ in range(40):
+                    if gf.현재_턴_참가자(다른) is n:
+                        return
+                    gf.턴_넘기기(다른)
+                raise AssertionError("넨마스터 차례가 오지 않았다")
+
+            n의_차례()
+            n["현재MP"] = 50
+            gf.아군_스킬사용(다른, "넨가드")
+            gf.턴_넘기기(다른)
+            n의_차례()
+            assert any(b["이름"] == "넨가드" for b in n["버프"])
+            전투 = 매니저.get_screen("전투")
+            _팝업_닫기()
+            전투.갱신(신규=True)
+            매니저.current = "전투"
+            for _ in range(20):
+                yield 0.05
+                if _팝업수() == 1:
+                    break
+            팝업 = Window.children[0]
+            assert 팝업.title.startswith("채널링 - "), 팝업.title
+            글들 = [b.text for b in _대상버튼들()]
+            assert 글들 == ["유지", "해제"], 글들
+            _찍기("battle_channeling_popup")
+            _대상버튼들()[1].trigger_action(duration=0)
+            yield 0.3
+            assert _팝업수() == 0, _팝업수()
+            assert not any(b["이름"] == "넨가드" for b in n["버프"])
+            결과["단계"].append(
+                "넨가드 채널링: 쓴 다음 자기 턴에 '채널링' 팝업(유지/해제), 해제를 누르면 넨가드가 사라짐"
+            )
+        finally:
+            self.게임상태 = 원래
             매니저.current = "마을"
 
     def _단계_합격(self, 상태, 매니저):
