@@ -541,24 +541,24 @@ class 전투화면(Screen):
     # -------------------------------------------------
     # 반응 선택
     # -------------------------------------------------
-    # 반응 자동 사용이 꺼져 있으면 전투 동작(공격/스킬/턴 넘기기/적 턴/도망/
-    # 전투시작 반응)을 작업 스레드에서 실행한다. 엔진이 반응 후보를 만나면
-    # 전투상태["반응선택"](= _반응_묻기)을 부르고, 이 함수가 화면 스레드에
+    # 반응 자동 사용이나 연계 자동 사용이 꺼져 있으면 전투 동작(공격/스킬/턴 넘기기/적 턴/도망/
+    # 전투시작 반응)을 작업 스레드에서 실행한다. 엔진이 반응 후보나 연계스킬을 만나면
+    # 전투상태["반응선택"](= _반응_묻기)/["연계선택"](= _연계_묻기)을 부르고, 이 함수가 화면 스레드에
     # 팝업을 띄운 뒤 고를 때까지 작업 스레드를 기다리게 한다. 작업 중에는
-    # 화면 입력을 막는다. 켜져 있으면 화면 스레드에서 바로 실행하고 자동으로 쓴다.
+    # 화면 입력을 막는다. 둘 다 켜져 있으면 화면 스레드에서 바로 실행하고 자동으로 쓴다.
 
     def _엔진_실행(self, 작업, 완료=None):
         if self._엔진중:
             return
         게임상태 = App.get_running_app().게임상태
         전투상태 = 게임상태["전투상태"]
-        if gameflow.반응_자동_여부():
-            전투상태["반응선택"] = None
+        전투상태["반응선택"] = None if gameflow.반응_자동_여부() else self._반응_묻기
+        전투상태["연계선택"] = None if gameflow.연계_자동_여부() else self._연계_묻기
+        if 전투상태["반응선택"] is None and 전투상태["연계선택"] is None:
             결과 = 작업()
             if 완료:
                 완료(결과)
             return
-        전투상태["반응선택"] = self._반응_묻기
         self._엔진중 = True
         self.disabled = True
 
@@ -566,6 +566,7 @@ class 전투화면(Screen):
             self._엔진중 = False
             self.disabled = False
             전투상태["반응선택"] = None
+            전투상태["연계선택"] = None
             if isinstance(오류, ValueError):
                 self.안내라벨.text = str(오류)
                 self.갱신()
@@ -584,7 +585,7 @@ class 전투화면(Screen):
 
         threading.Thread(target=일, daemon=True).start()
 
-    def _반응_묻기(self, 참가자, 후보, 상황):
+    def _반응_묻기(self, 참가자, 후보, 상황, 제목=None):
         """작업 스레드에서 불린다 - 팝업 결과(후보 번호 또는 None)를 기다렸다 돌려준다."""
         이벤트 = threading.Event()
         결과 = {}
@@ -593,21 +594,32 @@ class 전투화면(Screen):
             게임상태 = App.get_running_app().게임상태
             self._표시_갱신(게임상태)
             self._반응_팝업(
-                참가자, 후보, 상황, lambda 번호: (결과.update(값=번호), 이벤트.set())
+                참가자,
+                후보,
+                상황,
+                lambda 번호: (결과.update(값=번호), 이벤트.set()),
+                제목,
             )
 
         Clock.schedule_once(열기)
         이벤트.wait()
         return 결과.get("값")
 
-    def _반응_팝업(self, 참가자, 후보, 상황, 끝):
+    def _연계_묻기(self, 참가자, 후보, 상황):
+        """연계스킬(수플렉스 썬더·귀참드라이브)을 쓸지 묻는다 - 반응 팝업과 같은 창, 제목만 다르다."""
+        보조행동 = 참가자.get("행동자원", {}).get("보조행동", 0)
+        return self._반응_묻기(
+            참가자, 후보, 상황, f"연계 - {참가자['이름']} (보조행동 {보조행동})"
+        )
+
+    def _반응_팝업(self, 참가자, 후보, 상황, 끝, 제목=None):
         본문 = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12))
         상황라벨 = Label(text=상황, halign="left", valign="middle", size_hint=(1, 0.3))
         상황라벨.bind(size=lambda inst, size: setattr(inst, "text_size", size))
         본문.add_widget(상황라벨)
         반응행동 = 참가자.get("행동자원", {}).get("반응행동", 0)
         팝업 = Popup(
-            title=f"반응 - {참가자['이름']} (반응행동 {반응행동})",
+            title=제목 or f"반응 - {참가자['이름']} (반응행동 {반응행동})",
             content=본문,
             size_hint=(0.92, None),
             height=dp(200 + 64 * len(후보)),
@@ -1077,6 +1089,7 @@ class 전투화면(Screen):
         ):
             return
         게임상태["전투상태"]["반응선택"] = None  # 반응 자동 사용
+        게임상태["전투상태"]["연계선택"] = None  # 연계 자동 사용
         try:
             gameflow.자동전투_한_턴(게임상태)
         except ValueError as 오류:
