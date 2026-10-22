@@ -568,7 +568,7 @@ def test_뇌명은_명중마다_건강내성_실패하면_감전3턴(넨전장11
     monkeypatch.setattr(
         stats,
         "대상_내성굴림",
-        lambda 전투상태, 대상, 스탯, 난이도, *a: (
+        lambda 전투상태, 대상, 스탯, 난이도, *a, **kw: (
             False,
             2,
             0,
@@ -587,7 +587,7 @@ def test_뇌명_감전은_내성굴림에_성공하면_걸리지_않는다(넨�
     monkeypatch.setattr(rng.주사위, "randint", lambda a, b: 15 if b == 20 else b)
     난이도 = []
 
-    def 내성(전투상태, 대상, 스탯, dc, *a):
+    def 내성(전투상태, 대상, 스탯, dc, *a, **kw):
         난이도.append((스탯, dc))
         return True, 20, 0
 
