@@ -9,7 +9,7 @@ from game.system.combat import (
     monster_actions,
     stats,
 )
-from game.system import dice_utils, skill_system as ss
+from game.system import dice_utils, rng, skill_system as ss
 from tests import support
 
 
@@ -301,3 +301,17 @@ def test_내아내몬이면_전투에서_쓰러진_인형은_HP_0으로_남고_�
     assert not any(p.get("인형") for p in gf.아군_목록(상태))
     gf.휴식(상태)
     assert 상태["파티"]["인형"]["현재HP"] == 상태["파티"]["인형"]["기본최대HP"]
+
+
+def test_인형의_넨탄이_맞으면_피해를_준다(monkeypatch):
+    """넨탄((차수)d8+주문시전보정치)은 일반공격 보정치를 쓰지 않는다 - 맞아도 피해 계산이 멈추지 않는다(#367)."""
+    상태, 인형 = _인형_전투()
+    전투상태 = 상태["전투상태"]
+    전투상태["현재턴"] = 전투상태["참가자"].index(인형)
+    flow.턴_시작_처리(전투상태, 인형)
+    # d6 1 -> 넨탄, 명중 d20 15(치명타 아님), 피해 주사위는 최대
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: 1 if b == 6 else min(15, b))
+    적 = gf.적_목록(상태)[0]
+    적HP = 적["현재HP"]
+    gf.인형_턴(상태, 인형)
+    assert 적["현재HP"] < 적HP
