@@ -244,6 +244,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_인형(상태, 매니저)
         yield from self._단계_란마(상태, 매니저)
         yield from self._단계_축염포(상태, 매니저)
+        yield from self._단계_연계_팝업(매니저)
         yield from self._단계_합격(상태, 매니저)
         yield from self._단계_소지품(상태, 매니저)
         yield from self._단계_레테(상태, 매니저)
@@ -2257,6 +2258,7 @@ class 스모크앱(main.DnfMobileApp):
         경로 = os.path.join(폴더, "설정.json")
         원래경로 = screens_common._설정_경로
         원래반응 = gf.반응_자동_여부()
+        원래연계 = gf.연계_자동_여부()
         screens_common._설정_경로 = lambda: 경로
         try:
             assert screens_common.설정_불러오기() == {}  # 파일 없음
@@ -2289,6 +2291,7 @@ class 스모크앱(main.DnfMobileApp):
                 ("자동전투방식", "전력전투", gf.자동전투_방식),
                 ("전투로그방식", "자세하게", gf.전투로그_방식),
                 ("반응자동", True, gf.반응_자동_여부),
+                ("연계자동", False, gf.연계_자동_여부),
             ):
                 설정.체크박스[(키, 값)].active = True
                 yield 0.1
@@ -2300,11 +2303,12 @@ class 스모크앱(main.DnfMobileApp):
             _찍기("settings_checked")
             결과["단계"].append(
                 "설정 파일(없음/깨짐/딕셔너리 아님/쓰기 실패) - 기본값으로 계속, "
-                "설정 화면 체크박스(반응 자동/자동전투/전투로그) 하나씩 골라 저장"
+                "설정 화면 체크박스(반응 자동/연계 자동/자동전투/전투로그) 하나씩 골라 저장"
             )
         finally:
             screens_common._설정_경로 = 원래경로
             gf.반응_자동_설정(원래반응)
+            gf.연계_자동_설정(원래연계)
             gf.자동전투_방식_설정("일반공격")
             gf.전투로그_방식_설정("간략하게")
             shutil.rmtree(폴더, ignore_errors=True)
@@ -2979,6 +2983,72 @@ class 스모크앱(main.DnfMobileApp):
             )
         finally:
             self.게임상태 = 원래
+            매니저.current = "마을"
+
+    def _단계_연계_팝업(self, 매니저):
+        """연계스킬(2026-10-22): 연계 자동을 끄면 수플렉스가 맞았을 때 "연계 - 이름" 팝업이 뜨고, 수플렉스
+        썬더를 고르면 보조행동을 써서 같은 적에게 이어 친다."""
+        다른 = support.새게임([("", "격투가"), ("", "귀검사")])
+        nm = 다른["파티"]["파티원"][0]
+        for c in 다른["파티"]["파티원"]:
+            support.성장(
+                다른,
+                c,
+                8,
+                전직={"격투가": "넨마스터", "귀검사": "웨펀마스터"}[c["직업"]],
+                스킬습득=c is nm,
+            )
+        원래 = (self.게임상태, gf.연계_자동_여부(), rng.주사위.randint)
+        try:
+            self.게임상태 = 다른
+            gf.전투_시작(다른, ["고블린", "고블린", "고블린"], 레벨=2, 차수=1)
+            support.반응_처리(다른)
+            전투상태 = 다른["전투상태"]
+            for e in 전투상태["참가자"]:
+                if e["진영"] == "적":
+                    e["현재HP"] = e["최대HP"] = 999
+            n = next(p for p in 전투상태["참가자"] if p["원본"] is nm)
+            for _ in range(40):
+                if gf.현재_턴_참가자(다른) is n:
+                    break
+                gf.턴_넘기기(다른)
+            assert gf.현재_턴_참가자(다른) is n
+            n["현재MP"] = 50
+            전투 = 매니저.get_screen("전투")
+            전투.갱신(신규=True)
+            매니저.current = "전투"
+            yield 0.5
+            _팝업_닫기()
+            gf.연계_자동_설정(False)
+            rng.주사위.randint = lambda a, b: min(max(15, a), b)  # 수플렉스가 맞게
+            적 = next(p for p in 전투상태["참가자"] if p["진영"] == "적")
+            전투._스킬_실행("수플렉스", 적)
+            for _ in range(40):
+                yield 0.05
+                if _팝업수() == 1:
+                    break
+            팝업 = Window.children[0]
+            assert 팝업.title.startswith("연계 - "), 팝업.title
+            글들 = [b.text for b in _대상버튼들()]
+            assert 글들[0].startswith("수플렉스 썬더") and 글들[-1] == "사용 안 함", (
+                글들
+            )
+            _찍기("battle_chain_skill_popup")
+            _대상버튼들()[0].trigger_action(duration=0)
+            for _ in range(40):
+                yield 0.05
+                if not 전투._엔진중:
+                    break
+            assert not 전투._엔진중
+            로그 = [e for e in 전투상태["로그"] if isinstance(e, dict)]
+            assert any(e.get("스킬") == "수플렉스 썬더" and "타격" in e for e in 로그)
+            assert n["행동자원"]["보조행동"] == 0
+            결과["단계"].append(
+                "연계 팝업: 연계 자동을 끄면 수플렉스 명중 뒤 '연계' 팝업, 고르면 수플렉스 썬더가 보조행동으로 나감"
+            )
+        finally:
+            self.게임상태, 연계, rng.주사위.randint = 원래
+            gf.연계_자동_설정(연계)
             매니저.current = "마을"
 
     def _단계_합격(self, 상태, 매니저):
