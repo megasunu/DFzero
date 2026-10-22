@@ -4,6 +4,7 @@ import math
 
 import pytest
 
+from game.data.ability import job_ability_010m
 from game.system import rng
 import gameflow as gf
 from game.system import skill_system as ss
@@ -739,6 +740,32 @@ def test_귀참은_일반행동_MP5에_보정공격력더하기_1d8_암속성이
     귀참 = _스킬("귀참")
     assert (귀참["행동"], 귀참["MP소모"]) == ("일반행동", 5)
     assert (귀참["데미지"], 귀참["속성"]) == ("보정공격력+1d8", "암속성")
+
+
+def test_귀참드라이브는_소울브링어_레벨6에_얻는_연계스킬이다(소울브링어전장):
+    # 2026-10-22 사용자 결정 - 사슬 해제 특성의 효과에서 연계스킬로(동작은 그대로)
+    _, 전투상태, _, sb = 소울브링어전장
+    assert "귀참드라이브" in sb["원본"]["보유스킬"]
+    데이터 = _스킬("귀참드라이브")
+    assert 데이터["분류"] == "공격스킬" and "연계스킬" in 데이터["타입"]
+    assert (데이터["연계"], 데이터["연계조건"]) == ("귀참", "사용")
+    sb["행동자원"].update(일반행동=1, 보조행동=1)
+    sb["현재MP"] = 100
+    assert not ss.사용_가능여부(전투상태, sb, 데이터)[0]
+    사슬 = job_ability_010m.특성목록["사슬 해제"]["효과"]
+    assert not any(e.get("변동대상") == "귀참드라이브" for e in 사슬)
+
+
+def test_연계_수동에서_거절하면_귀참드라이브는_나가지_않는다(
+    소울브링어전장, monkeypatch
+):
+    _, 전투상태, 적, sb = 소울브링어전장
+    _명중보너스_기록(monkeypatch)
+    전투상태["연계선택"] = lambda p, 후보, 상황: None
+    sb["행동자원"].update(일반행동=1, 보조행동=1)
+    sb["현재MP"] = 100
+    ss.스킬_실행(전투상태, sb, "귀참", _스킬("귀참"), 적[0])
+    assert sb["행동자원"]["보조행동"] == 1 and not _드라이브_로그(전투상태)
 
 
 def test_귀참드라이브는_귀참_뒤_보조행동과_MP10을_써서_자동으로_나간다(

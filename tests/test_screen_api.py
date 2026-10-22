@@ -525,6 +525,19 @@ def test_설정_파일_불러오기는_세_값을_컨트롤러에_넣고_읽은_
     )
 
 
+def test_연계_자동은_기본_켜짐이고_설정_파일에서_끌_수_있다(tmp_path):
+    # 연계스킬(수플렉스 썬더·귀참드라이브) - 끄면 전투 화면이 쓸지 묻는다(2026-10-22 사용자 결정)
+    경로 = str(tmp_path / "설정.json")
+    assert gf.연계_자동_여부() is True
+    gf.연계_자동_설정(0)
+    assert gf.연계_자동_여부() is False
+    gf.연계_자동_설정(True)
+    with open(경로, "w", encoding="utf-8") as f:
+        json.dump({"연계자동": False}, f)
+    gf.설정_파일_불러오기(경로)
+    assert gf.연계_자동_여부() is False
+
+
 def test_설정_파일_저장은_다른_키를_남기고_한_키만_바꾼다(tmp_path):
     경로 = str(tmp_path / "설정.json")
     assert gf.설정_파일_저장(경로, "반응자동", True) is True
