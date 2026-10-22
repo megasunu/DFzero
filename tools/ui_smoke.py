@@ -784,31 +784,38 @@ class 스모크앱(main.DnfMobileApp):
         assert 고른 == ["귀참"] and len(Window.children) == 1, 고른
         결과["단계"].append("스킬강화 팝업(보유 스킬 버튼 -> 그 스킬로 확정)")
 
-        # 훔쳐배우기(#279): 퍽 선택에서 고르면 다른 전직의 스킬/특성 고르기 팝업, 누르면 그것으로 확정
+        # 훔쳐배우기(#365): 퍽이 아니라 [스킬습득]에서 다른 전직의 스킬을 5배 값(500골드)에 산다
         다른 = support.새게임([("", "귀검사")])
         버서커 = 다른["파티"]["파티원"][0]
         support.성장(다른, 버서커, 8, 전직="버서커")
         고른 = []
         매니저.get_screen("파티관리")._퍽선택_팝업(버서커, 고른.append)
         yield 0.5
-        _팝업_버튼("훔쳐배우기").dispatch("on_release")
-        yield 0.6
+        퍽글 = [getattr(w, "text", "") for w in list(Window.children)[0].walk()]
+        assert not any(글.startswith("훔쳐배우기") for 글 in 퍽글), 퍽글
+        _팝업_닫기()
+        yield 0.3
+        원래골드 = 상태["소지품"].get("골드", 0)
+        상태["소지품"]["골드"] = 500
+        매니저.get_screen("파티관리")._스킬습득_팝업(버서커)
+        yield 0.5
         _찍기("steal_learn_popup")
         팝업 = list(Window.children)[0]
-        버튼들 = [
-            w
+        [행] = [
+            w.parent
             for w in 팝업.walk(restrict=True)
-            if isinstance(w, Button) and w.text.startswith("귀신 : 브레멘 (소울브링어")
+            if isinstance(w, Label) and w.text == "귀신 : 브레멘"
         ]
-        assert len(버튼들) == 1, [getattr(w, "text", "") for w in 팝업.walk()]
-        버튼들[0].dispatch("on_release")
-        yield 0.6
-        assert len(고른) == 1 and 고른[0]["선택스킬"] == "귀신 : 브레멘", 고른
-        assert len(Window.children) == 1
-        gf.캐릭터_레벨업_적용(버서커, **고른[0])
-        assert "귀신 : 브레멘" in 버서커["보유스킬"]
+        [가격] = [w for w in 행.children if getattr(w, "text", "").endswith("골드")]
+        assert 가격.text == "500골드" and not 가격.disabled, 가격.text
+        가격.dispatch("on_release")
+        yield 0.3
+        assert "귀신 : 브레멘" in 버서커["보유스킬"] and 상태["소지품"]["골드"] == 0
+        _팝업_닫기()
+        yield 0.3
+        상태["소지품"]["골드"] = 원래골드
         결과["단계"].append(
-            "훔쳐배우기: 퍽 선택 -> 다른 전직 스킬/특성 팝업 -> 고른 것(귀신 : 브레멘)을 배움"
+            "훔쳐배우기: 퍽 목록에 없음, [스킬습득]에서 다른 전직 스킬(귀신 : 브레멘)을 500골드에 삼"
         )
 
         # 퍽 "타입"(#289): 스탯획득 퍽(능력치향상)을 고르면 능력치 배분 팝업이 열린다
@@ -920,10 +927,10 @@ class 스모크앱(main.DnfMobileApp):
             for w in 팝업.walk(restrict=True)
             if isinstance(w, Button) and w.text.endswith("골드")
         ]
-        # 골드 50: 50골드(1차 계열) 스킬만 누를 수 있고 100골드(전직) 스킬은 잠김
-        assert 스킬버튼 and all(
-            b.disabled == (b.text == "100골드") for b in 스킬버튼
-        ), [(b.text, b.disabled) for b in 스킬버튼]
+        # 골드 50: 50골드(1차 계열) 스킬만 누를 수 있고 100골드(전직)·500골드(훔쳐배우기) 스킬은 잠김
+        assert 스킬버튼 and all(b.disabled == (b.text != "50골드") for b in 스킬버튼), [
+            (b.text, b.disabled) for b in 스킬버튼
+        ]
         보유전 = list(귀검사["보유스킬"])
         스킬버튼[0].dispatch("on_release")
         yield 0.3
