@@ -84,6 +84,7 @@ STEPS = [
             "--test",
             ".claude/hooks/context-guard.test.cjs",
             ".claude/hooks/time-log.test.cjs",
+            ".claude/hooks/output-guard.test.cjs",
         ],
     ),
 ]
@@ -92,7 +93,10 @@ STEPS = [
 앞_단계 = ("compileall", "ruff check", "ruff format")
 빠른_플래그 = "--빠른"
 골든_플래그 = "--골든"
-골든_로그 = os.path.join(tempfile.gettempdir(), "dfzero-golden-update.log")
+게이트_로그_폴더 = tempfile.gettempdir()
+골든_로그 = os.path.join(게이트_로그_폴더, "dfzero-golden-update.log")
+# 로컬에서는 출력을 요약하는 단계 - 전체는 게이트_로그_폴더에 남는다. CI(환경변수 CI)는 그대로 찍는다.
+요약_단계 = ("pytest", "pytest(빠른)", "node --test")
 
 # 작업시간 기록(임시, #239 - 지울 때 #237 목록대로): 단계마다 걸린 시간을 .claude/hooks/time-log.cjs의 세션 기록에 남긴다.
 TIME_LOG = os.path.join(ROOT, ".claude", "time-log")
@@ -115,10 +119,36 @@ def 시간_기록(폴더, 단계, 초, 성공):
 
 
 def 출력_요약(출력):
-    """긴 pytest 출력에서 FAILED/ERROR 줄과 끝 요약 줄만 남긴다 - 통째로 찍으면 맥락에 수천 자가 쌓인다."""
+    """긴 테스트 출력에서 실패 줄(pytest FAILED/ERROR, node --test `not ok`), 개수 줄(`# pass`/`# fail`),
+    끝 줄만 남긴다 - 통째로 찍으면 맥락에 수천 자가 쌓인다."""
     줄들 = [줄 for 줄 in 출력.splitlines() if 줄.strip()]
-    핵심 = [줄 for 줄 in 줄들[:-1] if 줄.startswith(("FAILED", "ERROR"))]
+    핵심 = [
+        줄
+        for 줄 in 줄들[:-1]
+        if 줄.startswith(("FAILED", "ERROR", "not ok", "# pass ", "# fail "))
+    ]
     return 핵심 + 줄들[-1:]
+
+
+def 요약_실행(name, cmd):
+    """출력을 받아 로그 파일에 쓰고 요약만 찍는다."""
+    result = subprocess.run(
+        cmd,
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    출력 = (result.stdout or "") + (result.stderr or "")
+    로그 = os.path.join(
+        게이트_로그_폴더, f"dfzero-gate-{name.split('(')[0].replace(' ', '-')}.log"
+    )
+    with open(로그, "w", encoding="utf-8", newline="\n") as f:
+        f.write(출력)
+    print("\n".join(출력_요약(출력)))
+    print(f"   (전체 출력: {로그})")
+    return result
 
 
 def 골든_갱신():
@@ -194,7 +224,10 @@ def main(argv=None):
         if name == "pytest" and "-n" not in cmd:
             print("   (pytest-xdist 없음 - 직렬로 돈다: pip install pytest-xdist)")
         시작 = time.monotonic()
-        result = subprocess.run(cmd, cwd=ROOT)
+        if name in 요약_단계 and not os.environ.get("CI"):
+            result = 요약_실행(name, cmd)
+        else:
+            result = subprocess.run(cmd, cwd=ROOT)
         초 = time.monotonic() - 시작
         print(f"   ({초:.1f}초)")
         시간_기록(TIME_LOG, name, 초, result.returncode == 0)

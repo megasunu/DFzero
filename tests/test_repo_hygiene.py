@@ -618,8 +618,8 @@ def test_게이트는_단계별_시간을_작업시간_기록에_남긴다(tmp_p
     assert (tmp_path / "옛.jsonl").read_text(encoding="utf-8") == ""
 
 
-def _게이트_실행(monkeypatch, tmp_path, 단계들, 인자=()):
-    """check.main을 가짜 단계로 돌리고 (종료 코드, 실제로 돈 명령들)을 돌려준다."""
+def _게이트_실행(monkeypatch, tmp_path, 단계들, 인자=(), 출력=""):
+    """check.main을 가짜 단계로 돌리고 (종료 코드, 실제로 돈 명령들)을 돌려준다. 단계마다 `출력`을 찍는다."""
     import subprocess
     from types import SimpleNamespace
 
@@ -627,14 +627,57 @@ def _게이트_실행(monkeypatch, tmp_path, 단계들, 인자=()):
 
     돈_명령 = []
 
-    def 가짜_실행(cmd, cwd=None):
+    def 가짜_실행(cmd, cwd=None, **kw):
         돈_명령.append(cmd)
-        return SimpleNamespace(returncode=1 if "실패" in cmd else 0)
+        if not kw.get("capture_output"):
+            print(출력)
+        return SimpleNamespace(
+            returncode=1 if "실패" in cmd else 0, stdout=출력, stderr=""
+        )
 
     monkeypatch.setattr(check, "STEPS", 단계들)
     monkeypatch.setattr(check, "TIME_LOG", str(tmp_path))  # 세션 기록을 더럽히지 않는다
+    monkeypatch.setattr(check, "게이트_로그_폴더", str(tmp_path))
     monkeypatch.setattr(subprocess, "run", 가짜_실행)
     return check.main(list(인자)), 돈_명령
+
+
+def test_게이트는_테스트_출력을_요약하고_전체는_로그에_남긴다(
+    monkeypatch, tmp_path, capsys
+):
+    """테스트 점과 훅 시험 출력(한 번에 약 11k자)이 게이트를 돌릴 때마다 맥락에 쌓이던 것을 막는다."""
+    monkeypatch.delenv("CI", raising=False)
+    점들 = "." * 80
+    출력 = "\n".join(
+        [점들] * 50
+        + [
+            "ok 1 - 통과한 시험",
+            "not ok 2 - 깨진 시험",
+            "FAILED tests/test_a.py::test_b - assert 1 == 2",
+        ]
+        + ["# pass 1", "# fail 1", "1 failed, 99 passed in 3.0s"]
+    )
+    단계들 = [("pytest", ["테스트", "실패"]), ("node --test", ["훅"])]
+    코드, _ = _게이트_실행(monkeypatch, tmp_path, 단계들, 출력=출력)
+    찍힘 = capsys.readouterr().out
+    assert 코드 == 1
+    for 줄 in (
+        "not ok 2",
+        "FAILED tests/test_a.py::test_b",
+        "# pass 1",
+        "# fail 1",
+        "1 failed, 99 passed",
+    ):
+        assert 줄 in 찍힘
+    assert 점들 not in 찍힘 and "ok 1 - 통과한 시험" not in 찍힘
+    assert (tmp_path / "dfzero-gate-pytest.log").read_text(encoding="utf-8") == 출력
+
+
+def test_게이트는_CI에서는_테스트_출력을_그대로_찍는다(monkeypatch, tmp_path, capsys):
+    """CI 로그는 맥락에 들어가지 않고, 실패를 볼 때 전체가 있어야 한다."""
+    monkeypatch.setenv("CI", "true")
+    _게이트_실행(monkeypatch, tmp_path, [("pytest", ["테스트"])], 출력="." * 80)
+    assert "." * 80 in capsys.readouterr().out
 
 
 def test_게이트는_싼_검사가_실패하면_테스트로_넘어가지_않는다(monkeypatch, tmp_path):
@@ -758,3 +801,20 @@ def test_게이트_골든_갱신은_서식을_먼저_고치고_통과하면_차�
     ]
     assert 순서 == ["format", "fix", "pytest", "diff"]
     assert "tools/golden_diff.py" in 돈[-1][0]
+
+
+def test_출력_경고_훅이_읽기와_셸에_걸려_있고_게이트가_시험한다():
+    """output-guard(#388): 큰 파일 통째 읽기·제한 없는 검색·긴 편집 스크립트를 실행 전에 경고한다."""
+    import json
+
+    from tools import check
+
+    설정 = json.loads(_읽기(os.path.join(fix_eol.ROOT, ".claude", "settings.json")))
+    명령 = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/output-guard.cjs"'
+    걸린_도구 = {
+        묶음.get("matcher")
+        for 묶음 in 설정["hooks"]["PreToolUse"]
+        if 명령 in [h["command"] for h in 묶음["hooks"]]
+    }
+    assert 걸린_도구 == {"Bash|Read"}
+    assert ".claude/hooks/output-guard.test.cjs" in dict(check.STEPS)["node --test"]
