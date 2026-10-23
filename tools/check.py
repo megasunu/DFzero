@@ -2,6 +2,7 @@
 
     python tools/check.py                            # 전체: 커버리지 하한 포함 - CI의 판정
     python tools/check.py --빠른 [테스트 파일 ...]   # 커버리지 없음 - 파일 없이 주면 push 전 로컬 확인
+    python tools/check.py --골든                     # 서식 고침 + 골든 갱신(직렬) + 차이 요약, 출력은 요약만
 
 1. compileall  : 모든 .py 파일 문법 검사
 2. ruff check  : 정의 안 된 이름, 안 쓰는 import 등 (pyproject.toml 설정)
@@ -14,6 +15,7 @@
 
 앞의 싼 검사(1, 2)가 실패하면 테스트로 넘어가지 않고 멈춘다 - 고친 뒤 어차피 다시 돌린다.
 `--빠른`은 커버리지 없이 테스트(파일을 주면 그 파일만)를 돌린다. 파일 없이 주면 push 전 로컬 확인이고, 하한은 CI가 판정한다.
+`--골든`은 골든이 바뀐 작업의 마무리 한 줄이다: pytest 출력 전체는 임시 폴더 로그에 쓰고 FAILED/ERROR 줄과 끝 줄만 찍는다.
 하나라도 실패하면 0이 아닌 코드로 끝난다. Windows/리눅스 어디서나 돈다.
 필요한 도구: pip install pytest pytest-cov pytest-xdist==3.8.0 ruff==0.16.9 (CI와 같은 버전 - 서식 결과가 버전마다 다르다)
 """
@@ -26,6 +28,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -81,6 +84,7 @@ STEPS = [
             "--test",
             ".claude/hooks/context-guard.test.cjs",
             ".claude/hooks/time-log.test.cjs",
+            ".claude/hooks/output-guard.test.cjs",
         ],
     ),
 ]
@@ -88,6 +92,11 @@ STEPS = [
 # 싼 검사 - 실패하면 비싼 단계(pytest, node --test)로 넘어가지 않는다.
 앞_단계 = ("compileall", "ruff check", "ruff format")
 빠른_플래그 = "--빠른"
+골든_플래그 = "--골든"
+게이트_로그_폴더 = tempfile.gettempdir()
+골든_로그 = os.path.join(게이트_로그_폴더, "dfzero-golden-update.log")
+# 로컬에서는 출력을 요약하는 단계 - 전체는 게이트_로그_폴더에 남는다. CI(환경변수 CI)는 그대로 찍는다.
+요약_단계 = ("pytest", "pytest(빠른)", "node --test")
 
 # 작업시간 기록(임시, #239 - 지울 때 #237 목록대로): 단계마다 걸린 시간을 .claude/hooks/time-log.cjs의 세션 기록에 남긴다.
 TIME_LOG = os.path.join(ROOT, ".claude", "time-log")
@@ -109,12 +118,79 @@ def 시간_기록(폴더, 단계, 초, 성공):
         f.write(json.dumps(줄, ensure_ascii=False) + "\n")
 
 
+def 출력_요약(출력):
+    """긴 테스트 출력에서 실패 줄(pytest FAILED/ERROR, node --test `not ok`), 개수 줄(`# pass`/`# fail`),
+    끝 줄만 남긴다 - 통째로 찍으면 맥락에 수천 자가 쌓인다."""
+    줄들 = [줄 for 줄 in 출력.splitlines() if 줄.strip()]
+    핵심 = [
+        줄
+        for 줄 in 줄들[:-1]
+        if 줄.startswith(("FAILED", "ERROR", "not ok", "# pass ", "# fail "))
+    ]
+    return 핵심 + 줄들[-1:]
+
+
+def 요약_실행(name, cmd):
+    """출력을 받아 로그 파일에 쓰고 요약만 찍는다."""
+    result = subprocess.run(
+        cmd,
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    출력 = (result.stdout or "") + (result.stderr or "")
+    로그 = os.path.join(
+        게이트_로그_폴더, f"dfzero-gate-{name.split('(')[0].replace(' ', '-')}.log"
+    )
+    with open(로그, "w", encoding="utf-8", newline="\n") as f:
+        f.write(출력)
+    print("\n".join(출력_요약(출력)))
+    print(f"   (전체 출력: {로그})")
+    return result
+
+
+def 골든_갱신():
+    """서식 고침 -> UPDATE_GOLDEN=1 테스트 전체(직렬 - 병렬이면 쓰는 도중의 골든을 다른 테스트가 읽는다) -> 차이 요약.
+    갱신 실행은 골든 비교 말고는 모두 단언하므로 마지막 테스트를 겸한다."""
+    for cmd in (
+        [sys.executable, "-m", "ruff", "format", "."],
+        [sys.executable, "-m", "ruff", "check", "--fix", "."],
+    ):
+        result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+        if result.returncode != 0:
+            print("\n".join(출력_요약(result.stdout + result.stderr)))
+            print(f"FAIL: {' '.join(cmd[2:])}")
+            return 1
+    result = subprocess.run(
+        PYTEST_BASE + ["-p", "no:cacheprovider"],
+        cwd=ROOT,
+        env=dict(os.environ, UPDATE_GOLDEN="1"),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    출력 = result.stdout + result.stderr
+    with open(골든_로그, "w", encoding="utf-8", newline="\n") as f:
+        f.write(출력)
+    print("\n".join(출력_요약(출력)))
+    print(f"   (전체 출력: {골든_로그})")
+    if result.returncode != 0:
+        print("FAIL: 골든 갱신 실행")
+        return 1
+    return subprocess.run([sys.executable, "tools/golden_diff.py"], cwd=ROOT).returncode
+
+
 def main(argv=None):
     # Windows에서 리디렉션된 출력은 cp1252라 한글 print가 죽는다(#200) - 콘솔 인코딩과 상관없이 UTF-8로.
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8", errors="replace")
     인자 = sys.argv[1:] if argv is None else argv
+    if 골든_플래그 in 인자:
+        return 골든_갱신()
     빠른 = 빠른_플래그 in 인자
     테스트_파일 = [a for a in 인자 if a != 빠른_플래그]
     if 테스트_파일 and not 빠른:
@@ -148,7 +224,10 @@ def main(argv=None):
         if name == "pytest" and "-n" not in cmd:
             print("   (pytest-xdist 없음 - 직렬로 돈다: pip install pytest-xdist)")
         시작 = time.monotonic()
-        result = subprocess.run(cmd, cwd=ROOT)
+        if name in 요약_단계 and not os.environ.get("CI"):
+            result = 요약_실행(name, cmd)
+        else:
+            result = subprocess.run(cmd, cwd=ROOT)
         초 = time.monotonic() - 시작
         print(f"   ({초:.1f}초)")
         시간_기록(TIME_LOG, name, 초, result.returncode == 0)
