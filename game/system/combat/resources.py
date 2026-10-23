@@ -5,7 +5,7 @@ from game.data.buff import buff
 from game.data.buff import debuff
 from game.data.buff import skill_effects
 from game.data.buff import summon_00
-from game.system.combat import status
+from game.system.combat import core, formula, status
 
 # =====================================================
 # 효과 정의 조회 / 자원 (원래 skill_system.py에 있던 함수들)
@@ -24,6 +24,25 @@ def 효과정의_조회(이름):
     if 이름 in debuff.디버프목록:
         return debuff.디버프목록[이름], "디버프"
     return None, None
+
+
+def 클래스자원_채우기(전투상태, 참가자):
+    """클래스 공유 자원(skill_effects.클래스자원목록 - 탄약/수류탄)을 최대값으로 채운다. "사용태그" 타입의
+    스킬을 가진 아군만(장전 -> 탄약, 류탄 -> 수류탄, #393). 전투를 시작할 때 부르고, 전투가 끝나면
+    core.전투종료시_보유자원_초기화가 이 시작값으로 되돌린다 - 그래서 전투마다 가득 찬 채로 시작한다."""
+    스킬정의 = 전투상태.get("스킬정의") or {}
+    태그들 = {
+        태그
+        for 이름 in 참가자["원본"].get("보유스킬") or []
+        for 태그 in (스킬정의.get(이름) or {}).get("타입") or []
+    }
+    보유자원 = 참가자.setdefault("보유자원", {})
+    for 이름, 정의 in skill_effects.클래스자원목록.items():
+        if 정의.get("사용태그") in 태그들:
+            보유자원[이름] = formula.올림(
+                formula.수식_평가(정의["최대값"], {"차수": core.차수(참가자)})
+            )
+    참가자["보유자원_전투시작값"] = dict(보유자원)
 
 
 def 자원_보유량(전투상태, 참가자, 이름):
@@ -146,10 +165,12 @@ def 추가행동_남은수(참가자):
     return (참가자.get("기타행동") or {}).get("추가행동", 0)
 
 
-def 추가행동_열기(참가자):
-    """일반행동으로 일반공격(취급)을 했을 때 부른다. 추가공격이 없으면 칸을 만들지 않는다."""
+def 추가행동_열기(참가자, 보너스=0):
+    """일반행동으로 일반공격(취급)을 했을 때 부른다. 추가공격이 없으면 칸을 만들지 않는다.
+    보너스: 버프/특성 "추가공격"(stats.추가공격_보너스 - 니트로모터 #391) - 열 때 더한다."""
     수 = 참가자.get("추가공격_사용가능", 0)
     if 수 > 0:
+        수 += 보너스
         참가자.setdefault("기타행동", {})["추가행동"] = 수
         참가자["추가공격_사용가능"] = 0  # 한 턴에 한 번만 열린다
 
