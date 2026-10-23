@@ -687,3 +687,74 @@ def test_게이트는_병렬_도구가_있으면_테스트를_나눠_돌린다()
     assert "-n" not in 고름 and 고름[-1] == "tests/a.py"
     assert not [a for a in 고름 if a.startswith("--cov")]
     assert "-n" in check.pytest_명령(빠른=True, 파일=[], 병렬=True, 커버리지=True)
+
+
+def _골든_갱신_실행(monkeypatch, tmp_path, pytest_코드, pytest_출력):
+    """check.main(["--골든"])을 가짜 실행으로 돌리고 (종료 코드, 돈 (명령, UPDATE_GOLDEN)들, 로그 경로)를 돌려준다."""
+    import subprocess
+    from types import SimpleNamespace
+
+    from tools import check
+
+    돈 = []
+
+    def 가짜_실행(cmd, **kw):
+        돈.append((cmd, (kw.get("env") or {}).get("UPDATE_GOLDEN")))
+        if "pytest" in cmd:
+            return SimpleNamespace(
+                returncode=pytest_코드, stdout=pytest_출력, stderr=""
+            )
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    로그 = tmp_path / "골든.log"
+    monkeypatch.setattr(subprocess, "run", 가짜_실행)
+    monkeypatch.setattr(check, "골든_로그", str(로그))
+    return check.main(["--골든"]), 돈, 로그
+
+
+def test_게이트_골든_갱신은_요약만_찍고_전체_출력은_파일에_남긴다(
+    monkeypatch, tmp_path, capsys
+):
+    """갱신 출력을 통째로 읽으면 한 번에 수천 자가 맥락에 쌓인다 - 실패 줄과 끝 줄만 찍는다."""
+    점들 = "." * 80
+    출력 = "\n".join(
+        [점들] * 200
+        + [
+            "FAILED tests/test_a.py::test_b - assert 1 == 2",
+            "1 failed, 999 passed in 30.0s",
+        ]
+    )
+    코드, 돈, 로그 = _골든_갱신_실행(monkeypatch, tmp_path, 1, 출력)
+    찍힘 = capsys.readouterr().out
+    assert 코드 == 1
+    assert "FAILED tests/test_a.py::test_b" in 찍힘
+    assert "1 failed, 999 passed" in 찍힘
+    assert 점들 not in 찍힘
+    assert 로그.read_text(encoding="utf-8") == 출력
+    테스트 = [(c, 값) for c, 값 in 돈 if "pytest" in c]
+    assert len(테스트) == 1 and 테스트[0][1] == "1"
+    assert (
+        "-n" not in 테스트[0][0]
+    )  # 직렬 - 병렬이면 쓰는 도중의 골든을 다른 테스트가 읽는다
+    assert not [
+        c for c, _ in 돈 if "tools/golden_diff.py" in c
+    ]  # 실패하면 차이 요약은 건너뛴다
+
+
+def test_게이트_골든_갱신은_서식을_먼저_고치고_통과하면_차이를_요약한다(
+    monkeypatch, tmp_path
+):
+    코드, 돈, _ = _골든_갱신_실행(monkeypatch, tmp_path, 0, "999 passed in 30.0s")
+    assert 코드 == 0
+    순서 = [
+        "format"
+        if "format" in c
+        else "fix"
+        if "--fix" in c
+        else "pytest"
+        if "pytest" in c
+        else "diff"
+        for c, _ in 돈
+    ]
+    assert 순서 == ["format", "fix", "pytest", "diff"]
+    assert "tools/golden_diff.py" in 돈[-1][0]

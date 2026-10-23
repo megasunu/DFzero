@@ -21,8 +21,8 @@ game/system/       전투, 스킬, 장비, 세이브 등 게임 로직
 game/system/rng.py 모든 무작위의 출처 - 용도별 흐름(주사위/확률/대상/던전/보상). 전역 random을 직접 쓰지 않는다
 game/data/         직업, 몬스터, 맵, 아이템 데이터(파이썬 딕셔너리)
 game/assets/       폰트, 이미지
-tests/             헤드리스 테스트 + golden/*.json (kivy 없이 돈다, tests.md "테스트 지도")
-tools/check.py     완료 기준 게이트 (CLAUDE.md "완료 기준")
+tests/             헤드리스 테스트 + golden/*.json (kivy 없이 돈다, 테스트 지도는 docs/test-map.md)
+tools/check.py     완료 기준 게이트 (CLAUDE.md "완료 기준"), --골든은 골든 갱신 요약
 tools/ui_smoke.py  화면 스모크(kivy + Xvfb, 스크린샷) - CI 밖, 화면 바꿀 때 직접
 tools/fix_eol.py   줄끝을 LF로 통일 (pre-commit 훅이 부른다)
 tools/golden_diff.py  바뀐 골든 요약(파일마다 한 줄) - 큰 diff 대신 읽는다
@@ -45,3 +45,10 @@ README.md          입구(실행/개발/구조/빌드 요약)
 - **전투 엔진이 작업 스레드에서 도는 동안 화면은 게임상태를 쓰지 않는다**(`screens_battle._엔진_실행`: 전투 화면을 `disabled`로
   막고 `_엔진중`이면 새 작업을 받지 않는다). 그사이 화면 쪽 일은 반응 팝업(`_반응_묻기`, 엔진은 `Event`로 기다림)의 읽기뿐이고,
   끝 처리는 `Clock.schedule_once`로 메인 스레드에서 한다. 반응 자동이면 스레드 없이 바로 돈다. 테스트는 이 규약을 못 본다.
+
+## 데이터(`game/data/`)를 고칠 때
+
+- `test_data_integrity.py`가 오타(수식 변수, 특성/버프 이름, 그림 파일, 던전 연결)를 잡는다. 런타임은 평가할 수 없는
+  수식을 0으로, 정의 없는 특성을 건너뛰어 조용히 넘어가므로 이 테스트가 유일한 안전망이다. 새 변수/예외는 허용 목록에 이유와 함께 더한다.
+- 새 스킬/몬스터/버프/상태이상은 전수 스윕이 자동으로 포함해 골든이 바뀐다 - `python tools/check.py --골든`으로 다시 쓰고
+  요약을 본다(필요한 파일만 diff를 읽는다). 어느 테스트가 무엇을 지키는지는 `docs/test-map.md`에서 검색한다.

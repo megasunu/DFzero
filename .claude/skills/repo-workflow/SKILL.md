@@ -40,10 +40,9 @@ description: 이 저장소에서 코드·설정·CI·문서를 고치는 모든 
 - **커버리지 하한은 로컬에서 재지 않는다** - CI(`check`)가 모든 push/PR에서 `python tools/check.py` 전체로 판정한다(로컬 pytest 93초 -> 32초).
   CI가 하한으로 빨갛게 되면 그 PR에서 테스트를 더한다.
 - **마무리 한 줄, 골든이 안 바뀐 작업:** `python -m ruff format . && python -m ruff check --fix . && python tools/check.py --빠른`
-- **마무리 한 줄, 골든이 바뀐 작업:** `python -m ruff format . && python -m ruff check --fix . && UPDATE_GOLDEN=1 python -m pytest -q -p no:cacheprovider && python tools/golden_diff.py`.
-  갱신 실행은 테스트 전체를 돌며 골든 비교 말고는 모두 단언하므로 마지막 테스트를 겸한다 - 테스트를 다시 돌리지 않는다.
-  바뀐 골든이 의도대로인지는 `golden_diff.py`(파일마다 한 줄 요약 - 큰 diff를 읽지 않는다)로 본다. 문장 골든은 세션 끝에 자동으로 맞춰진다.
-  갱신은 직렬로 돌린다(병렬이면 다른 골든을 읽는 테스트가 쓰는 도중의 파일을 읽는다). 문법 오류는 `ruff`가 잡는다.
+- **마무리 한 줄, 골든이 바뀐 작업:** `python tools/check.py --골든` - 서식 고침 + `UPDATE_GOLDEN=1` 테스트 전체(직렬) + `golden_diff.py`.
+  출력은 FAILED/ERROR 줄과 끝 줄, 파일마다 한 줄 차이 요약뿐이고 전체 출력은 찍힌 로그 경로에 있다(필요할 때만 `grep`).
+  갱신 실행은 골든 비교 말고는 모두 단언하므로 마지막 테스트를 겸한다 - 테스트를 다시 돌리지 않는다. 문장 골든은 세션 끝에 자동으로 맞춰진다.
   `.claude/hooks/`를 바꿨으면 끝에 `&& node --test .claude/hooks/context-guard.test.cjs .claude/hooks/time-log.test.cjs`를 붙인다.
 - **같은 실패에 두 번 넘게 매달리지 않는다.** 한 검사가 고칠 때마다 다른 곳에서 깨지면 세 번째를 고치기 전에 멈추고
   공통 원인을 묶어 본 뒤(예: 수치 변경으로 굴림 순서가 밀림), 하나씩 고치기와 한 번에 고치기(예: 굴림 고정)를 비교해 사용자에게 제안한다.
