@@ -87,6 +87,9 @@ def test_수식_평가_문법(monkeypatch):
     assert formula.수식_평가("(0)d6+1", ctx) == 1  # 개수 0이면 0
     assert formula.수식_평가("(귀신보유수)d8", dict(ctx, 귀신보유수=2)) == 3 * 2
     assert formula.수식_평가("(귀신보유수)d8+1", ctx) == 1  # 없으면 0개
+    # 일발화약성의 대상 상태이상 종류 수(skill_attack이 컨텍스트에 넣는다)
+    assert formula.수식_평가("(대상상태이상수)d8", dict(ctx, 대상상태이상수=2)) == 3 * 2
+    assert formula.수식_평가("(대상상태이상수)d8+1", ctx) == 1  # 없으면 0개
     with pytest.raises(ValueError, match="처리할 수 없는"):
         formula.수식_평가("미지의값", ctx)
 
