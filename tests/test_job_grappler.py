@@ -9,7 +9,7 @@ import pytest
 import gameflow as gf
 from game.system import rng
 from game.system import skill_system as ss
-from game.system.combat import core, damage, stats, traits
+from game.system.combat import core, damage, flow, stats, traits
 from tests import support
 
 
@@ -133,6 +133,15 @@ def test_강렬한_테이크다운은_네_스킬을_쓰면_지정한_적과_양�
     assert not _충격파_로그(전투상태)
 
 
+def test_강렬한_테이크다운은_스킬이_빗나가면_충격파가_없다(그플전장, monkeypatch):
+    _, 전투상태, 적, g = 그플전장
+    support.주사위고정(monkeypatch, 1)  # 대실패 눈
+    for 이름 in ("수플렉스", "로플링", "에어슈타이너", "스파이어"):
+        전투상태["로그"].clear()
+        _쓰기(전투상태, g, 이름, 적[1])
+        assert not _충격파_로그(전투상태), 이름
+
+
 # ------------------------------------------------------------------ 골드 스킬
 
 
@@ -154,6 +163,24 @@ def test_로플링은_잡기_홀딩이고_다른_적_하나에게_바로_피해�
     assert "몹몰이" not in _상태(다른)
 
 
+def test_로플링의_두번째_적도_명중굴림을_하고_빗나가면_피해도_몹몰이도_없다(
+    그플전장, monkeypatch
+):
+    _, 전투상태, 적, g = 그플전장
+    눈들 = iter([15])  # 붙잡기만 맞고 그 뒤 d20은 모두 1(대실패)
+
+    def 굴림(a, b):
+        return next(눈들, 1) if (a, b) == (1, 20) else b
+
+    monkeypatch.setattr(rng.주사위, "randint", 굴림)
+    결과 = _쓰기(전투상태, g, "로플링", 적[0])
+    assert "홀딩" in _상태(적[0])
+    던지기 = 결과["던지기"]["타격"][0]
+    assert 던지기["판정"]["자연눈"] == 1 and not 던지기["판정"]["성공"]
+    assert all(p["현재HP"] == 999 and "넘어짐" not in _상태(p) for p in 적[1:])
+    assert not any("몹몰이" in _상태(p) for p in 적)
+
+
 def test_로플링은_다른_적이_없으면_붙잡은_적만(그플전장, monkeypatch):
     _, 전투상태, 적, g = 그플전장
     for p in 적[1:]:
@@ -168,6 +195,7 @@ def test_에어슈타이너는_공중에뜸인_적에게_d12(그플전장, monke
     _, 전투상태, 적, g = 그플전장
     스킬 = _스킬("에어슈타이너")
     assert (스킬["MP소모"], 스킬["타겟"]) == (10, "적단일")
+    assert "잡기" in 스킬["타입"]
     support.주사위고정(monkeypatch, 15)
     보통 = _쓰기(전투상태, g, "에어슈타이너", 적[0])["타격"][0]["피해"]
     ss.상태이상_부여(전투상태, 적[2], "공중에뜸", 1)
@@ -191,6 +219,8 @@ def test_넥스냅은_보조행동_MP10_보정공격력x2_경직20(그플전장,
     ss.스킬_실행(전투상태, g, "넥스냅", 스킬, 적[1])
     assert g["행동자원"]["보조행동"] == 0 and g["행동자원"]["일반행동"] == 1
     assert 적[1]["이니셔티브"] == 이니 - 20
+    flow.이니셔티브_재계산_및_정렬(전투상태)  # 다음 라운드에는 본래 순서
+    assert 적[1]["이니셔티브"] == 이니
 
 
 def test_스파이어는_MP20_범위_잡기이고_맞은_적_모두_넘어짐과_몹몰이(
@@ -234,6 +264,7 @@ def test_반드시_잡는다는_휴식당_1회_10턴_버프이고_잡기_스킬�
     assert not _쓰기(전투상태, g, "넥스냅", 적[1])["타격"][0]["판정"][
         "성공"
     ]  # 잡기가 아니면 그대로
+    assert _쓰기(전투상태, g, "에어슈타이너", 적[1])["타격"][0]["판정"]["성공"]
 
 
 def test_반드시_잡는다_중에는_치명타는_굴림으로(그플전장, monkeypatch):
