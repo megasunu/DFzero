@@ -8,6 +8,7 @@ from game.system.combat import (
     resources,
     stats,
     status,
+    traits,
 )
 from game.system.skill.skill_grant import (
     정수_평가,
@@ -222,8 +223,17 @@ def 사용_가능여부(
         or _자원소모_사유(전투상태, 참가자, 스킬데이터, 자원소모오버라이드)
         or _사용횟수_사유(전투상태, 참가자, 스킬데이터)
         or _체이서_사유(참가자, 스킬데이터)
+        or _사용무기_사유(참가자, 스킬데이터)
     )
     return (False, 사유) if 사유 else (True, None)
+
+
+def _사용무기_사유(참가자, 스킬데이터):
+    """ "사용무기"(마도학자 파우더 - 빗자루)가 있으면 그 무기를 들어야 쓴다."""
+    무기 = 스킬데이터.get("사용무기")
+    if 무기 and traits.장착무기_타입(참가자) != 무기:
+        return f"무기 '{무기}'를 들어야 쓸 수 있다."
+    return None
 
 
 def _체이서_사유(참가자, 스킬데이터):
