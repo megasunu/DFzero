@@ -14,7 +14,8 @@ import scenario
 import support
 from tests.support import 구현된_전직
 
-시드 = 0
+# 0 -> 1(2026-10-26): 추천 주/보조/약점(#420)으로 능력치가 바뀌어 옛 시드는 효과가 안 나온다
+시드 = 1
 고를특성 = {"귀검사": "잔비", "격투가": "가뭄"}
 
 
