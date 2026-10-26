@@ -8,6 +8,7 @@ from game.system import rng
 import gameflow as gf
 from game.data.ability.job_ability_0000 import 특성목록
 from game.data.perks.perks_class_0000 import 퍽목록
+from game.data.ability.job_ability_030f import 특성목록 as 거너특성목록
 from game.system import effect_engine
 from game.system.combat import attacks, damage, monster_actions, stats, status, traits
 from game.system import skill_system as ss
@@ -1197,3 +1198,39 @@ def test_도발에_걸린_적은_건_사람을_노린다(monkeypatch):
     assert _몬스터가_친_대상(전투상태, 적[0]) == {귀검사["이름"]}
     귀검사["생존"] = False  # 건 사람이 쓰러지면 원래대로
     assert 귀검사["이름"] not in _몬스터가_친_대상(전투상태, 적[1])
+
+
+# ------------------------------------------------------------------ 공중사격(거너 퍽) - #395
+
+
+def _거너_전장(퍽=True):
+    rng.시드(5)
+    상태 = support.새게임([("", "거너"), ("", "귀검사")])
+    거너 = 상태["파티"]["파티원"][0]
+    if 퍽:
+        effect_engine.특성_부여(거너, "공중사격", 거너특성목록["공중사격"])
+    gf.전투_시작(상태, ["고블린"], 레벨=2, 차수=1)
+    support.반응_처리(상태)
+    전투상태 = 상태["전투상태"]
+    고블린 = next(p for p in 전투상태["참가자"] if p["진영"] == "적")
+    거너참가자 = next(p for p in 전투상태["참가자"] if p["원본"] is 거너)
+    return 전투상태, 고블린, 거너참가자
+
+
+def test_공중사격_퍽은_공중에뜸에_걸리지_않는다():
+    전투상태, 고블린, 거너 = _거너_전장()
+    assert status.상태이상_면역(전투상태, 거너, "공중에뜸")
+    assert not status.상태이상_면역(전투상태, 거너, "넘어짐")
+    traits.상태이상_효과_적용(
+        전투상태, 고블린, 거너, {"종류": "상태이상", "이름": "공중에뜸"}, "시험"
+    )
+    assert not any(s["이름"] == "공중에뜸" for s in 거너["상태이상"])
+
+
+def test_공중사격_퍽이_없으면_공중에뜸에_걸린다():
+    전투상태, 고블린, 거너 = _거너_전장(퍽=False)
+    assert not status.상태이상_면역(전투상태, 거너, "공중에뜸")
+    traits.상태이상_효과_적용(
+        전투상태, 고블린, 거너, {"종류": "상태이상", "이름": "공중에뜸"}, "시험"
+    )
+    assert any(s["이름"] == "공중에뜸" for s in 거너["상태이상"])

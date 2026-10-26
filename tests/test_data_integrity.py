@@ -1121,3 +1121,30 @@ def test_퍽은_분류가_퍽이고_타입에_처리종류가_하나다():
             ):
                 틀림.append((모듈이름, 이름, 정의.get("분류"), 타입))
     assert 틀림 == []
+
+
+def test_특성의_면역은_효과_원소로_적는다():
+    """엔진(combat.status.상태이상_면역)은 특성 "효과"/"상시효과"의 {"변동대상": "상태이상면역"}만 본다 -
+    최상위 "면역"/"면역획득" 키는 읽는 곳이 없어 조용히 무시된다(#395 공중사격). "면역특성" 타입은
+    면역 원소를 하나 이상 가진다."""
+    틀림 = []
+    for 모듈이름 in ("0000", "010m", "020f", "030f", "040f", "050f"):
+        모듈 = importlib.import_module(f"game.data.ability.job_ability_{모듈이름}")
+        for 이름, 정의 in 모듈.특성목록.items():
+            if "면역" in 정의 or "면역획득" in 정의:
+                틀림.append((모듈이름, 이름, "최상위 면역 키"))
+            타입 = 정의.get("타입")
+            타입들 = 타입 if isinstance(타입, list) else [타입]
+            원소들 = [
+                원소
+                for 키 in ("효과", "상시효과")
+                if isinstance(정의.get(키), list)
+                for 원소 in 정의[키]
+            ]
+            if "면역특성" in 타입들 and not any(
+                isinstance(원소, dict)
+                and 원소.get("변동대상") in ("상태이상면역", "면역")
+                for 원소 in 원소들
+            ):
+                틀림.append((모듈이름, 이름, "면역특성인데 면역 원소 없음"))
+    assert 틀림 == []
