@@ -254,6 +254,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_화면_배치(상태, 매니저)
         yield from self._단계_던전목록(상태, 매니저)
         yield from self._단계_던전_스킬(상태, 매니저)
+        yield from self._단계_마을_전환스킬(상태, 매니저)
         yield from self._단계_화면_틀(매니저)
         yield from self._단계_공격연출(상태, 매니저)
         yield from self._단계_감옥_대상팝업(상태, 매니저)
@@ -2676,6 +2677,58 @@ class 스모크앱(main.DnfMobileApp):
             귀검사.pop("켜진특성", None)
             gf.파티_최대치로_회복(상태)
             매니저.current = "마을"
+
+    def _단계_마을_전환스킬(self, 상태, 매니저):
+        """마을 [스킬](#283): 전환스킬 줄 "이름 - 스킬  (꺼짐)"을 누르면 MP 없이 켜지고 다시 열면 (켜짐),
+        한 번 더 누르면 꺼진다. 전환스킬이 없으면 팝업 없이 안내 문구."""
+        귀검사 = next(c for c in 상태["파티"]["파티원"] if c["직업"] == "귀검사")
+        원래 = list(귀검사["보유스킬"])
+        try:
+            마을 = 매니저.get_screen("마을")
+            매니저.current = "마을"
+            yield 0.4
+            스킬버튼 = next(
+                w
+                for w in 마을.walk(restrict=True)
+                if isinstance(w, Button) and w.text == "스킬"
+            )
+            스킬버튼.trigger_action(duration=0)
+            yield 0.3
+            assert _팝업수() == 0, _팝업수()
+            assert "없습니다" in 마을.메시지라벨.text, 마을.메시지라벨.text
+            귀검사["보유스킬"].append("나선의 넨")
+            MP = 귀검사["현재MP"]
+            스킬버튼.trigger_action(duration=0)
+            yield 0.3
+            줄 = [b for b in _대상버튼들() if " - 나선의 넨" in b.text]
+            assert len(줄) == 1 and "(꺼짐)" in 줄[0].text, [
+                b.text for b in _대상버튼들()
+            ]
+            _찍기("town_toggle_skill_popup")
+            줄[0].trigger_action(duration=0)
+            yield 0.4
+            assert _팝업수() == 0, _팝업수()
+            assert 귀검사.get("켜진특성") == ["나선의 넨"], 귀검사.get("켜진특성")
+            assert 귀검사["현재MP"] == MP
+            assert "켰다" in 마을.메시지라벨.text, 마을.메시지라벨.text
+            스킬버튼.trigger_action(duration=0)
+            yield 0.3
+            줄 = [b for b in _대상버튼들() if " - 나선의 넨" in b.text]
+            assert "(켜짐)" in 줄[0].text, 줄[0].text
+            _찍기("town_toggle_skill_on")
+            줄[0].trigger_action(duration=0)
+            yield 0.4
+            assert 귀검사.get("켜진특성") == [], 귀검사.get("켜진특성")
+            assert "껐다" in 마을.메시지라벨.text, 마을.메시지라벨.text
+            결과["단계"].append(
+                "마을 [스킬]: 전환스킬이 없으면 안내 문구. 나선의 넨 (꺼짐) -> MP 없이 켜짐, "
+                "다시 열면 (켜짐) -> 누르면 꺼짐"
+            )
+        finally:
+            _팝업_닫기()
+            귀검사["보유스킬"][:] = 원래
+            귀검사.pop("켜진특성", None)
+            마을.메시지라벨.text = ""
 
     def _단계_화면_틀(self, 매니저):
         """기준 화면 틀 - 비율이 다른 창에서 검정 여백, 터치 위치, 팝업 크기"""
