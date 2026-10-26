@@ -374,7 +374,7 @@ class 파티관리화면(Screen):
 
         for 전직명, 설명, 구현 in 목록:
             행 = BoxLayout(
-                orientation="vertical", size_hint=(1, None), height=dp(64), spacing=2
+                orientation="vertical", size_hint=(1, None), height=dp(90), spacing=2
             )
             # 미구현 전직은 목록에는 보이되 누를 수 없다.
             버튼 = Button(
@@ -394,6 +394,16 @@ class 파티관리화면(Screen):
             )
             설명라벨.bind(size=lambda inst, size: setattr(inst, "text_size", size))
             행.add_widget(설명라벨)
+            # 전직하기 전에 추천 주/보조/약점을 보여 준다(#420)
+            추천라벨 = Label(
+                text=gameflow.전직_추천_문구(전직명),
+                font_size="14sp",
+                size_hint=(1, None),
+                height=dp(22),
+                halign="left",
+            )
+            추천라벨.bind(size=lambda inst, size: setattr(inst, "text_size", size))
+            행.add_widget(추천라벨)
             목록틀.add_widget(행)
 
         닫기버튼 = Button(text="취소", size_hint=(1, 0.1))

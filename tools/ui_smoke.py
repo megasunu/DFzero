@@ -713,13 +713,19 @@ class 스모크앱(main.DnfMobileApp):
         ]
         assert [b.text for b in 전직버튼] == list(gf.전직_레지스트리["귀검사"])
         assert len(전직버튼) == 5 and not any(b.disabled for b in 전직버튼)
+        # 전직마다 추천 주/보조/약점 한 줄(#420)
+        글들 = {w.text for w in 팝업.walk(restrict=True) if isinstance(w, Label)}
+        for 전직 in gf.전직_레지스트리["귀검사"]:
+            assert gf.전직_추천_문구(전직) in 글들, 전직
         _찍기("advancement_popup")
         _팝업_닫기()
         yield 0.3
-        결과["단계"].append("전직 선택 팝업(귀검사 전직 5개 모두 선택 가능)")
+        결과["단계"].append(
+            "전직 선택 팝업(귀검사 전직 5개 모두 선택 가능, 추천 능력치 표시)"
+        )
 
-        # 표에 없는 전직(#403): 격투가가 넨마스터를 누르면 능력치 다시 고르기 팝업이 지금 역할로 뜬다
-        # (전에는 전직_기본_스탯구성의 KeyError로 멈췄다)
+        # 격투가 전직(#403): 넨마스터를 누르면 능력치 다시 고르기 팝업이 뜬다
+        # (전에는 표에 없어 전직_기본_스탯구성의 KeyError로 멈췄다 - 지금은 표에 있다, #420)
         난수 = rng.상태()
         전직상태 = support.새게임([("", "격투가")])
         전직격 = 전직상태["파티"]["파티원"][0]
@@ -741,7 +747,7 @@ class 스모크앱(main.DnfMobileApp):
         assert (
             전직격.get("전직") is None and 전직격["레벨"] == 5
         )  # 닫으면 전직하지 않는다
-        결과["단계"].append("표에 없는 전직(넨마스터)의 능력치 다시 고르기 팝업")
+        결과["단계"].append("격투가 전직(넨마스터)의 능력치 다시 고르기 팝업")
 
         # 마스터리 선택 팝업: 줄마다 이름 토글 + [상세보기](설명은 상세보기 창에만)
         from kivy.uix.togglebutton import ToggleButton
