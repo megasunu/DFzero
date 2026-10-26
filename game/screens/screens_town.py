@@ -162,6 +162,11 @@ class 마을화면(Screen):
         창고버튼.bind(on_release=self._소지품창고_클릭)
         버튼그리드.add_widget(창고버튼)
 
+        # [스킬] - 전환스킬(나선의 넨·프렌지) 켜고 끄기(#283, 던전 [스킬]과 같은 처리)
+        스킬버튼 = Button(text="스킬")
+        스킬버튼.bind(on_release=self._스킬_클릭)
+        버튼그리드.add_widget(스킬버튼)
+
         나머지.add_widget(버튼그리드)
 
         타이틀버튼 = Button(text="타이틀로 돌아가기", size_hint=(1, 0.2))
@@ -232,6 +237,46 @@ class 마을화면(Screen):
 
     def _마을이동(self, *args):
         self.manager.current = "마을이동목록"
+
+    def _스킬_클릭(self, *args):
+        """[스킬] - 파티원의 전환스킬 목록 팝업. 줄을 누르면 MP 없이 켜고 끈다."""
+        줄들 = gameflow.전환스킬_목록(App.get_running_app().게임상태)
+        if not 줄들:
+            self.메시지라벨.text = "마을에서 켜고 끌 스킬이 없습니다."
+            return
+        본문 = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12))
+        팝업 = Popup(
+            title="전환 스킬", content=본문, size_hint=(0.9, None), height=dp(480)
+        )
+        스크롤, 목록틀 = 스크롤_목록(0.85, 간격=dp(6))
+        for 줄 in 줄들:
+            캐릭터 = 줄["캐릭터"]
+            이름 = 캐릭터.get("캐릭터명") or 캐릭터.get("직업", "")
+            글 = f"{이름} - {줄['스킬']}  ({줄['전환']})"
+            if not 줄["가능"]:
+                글 += f"\n({줄['사유']})"
+            버튼 = Button(
+                text=글,
+                size_hint_y=None,
+                height=dp(72),
+                halign="center",
+                disabled=not 줄["가능"],
+            )
+            버튼.bind(
+                on_release=lambda *_, 캐릭터=캐릭터, 스킬=줄["스킬"]: self._스킬_전환(
+                    팝업, 캐릭터, 스킬
+                )
+            )
+            목록틀.add_widget(버튼)
+        본문.add_widget(스크롤)
+        본문.add_widget(닫기_버튼(팝업, size_hint=(1, 0.15)))
+        팝업.open()
+        self._스킬_팝업 = 팝업
+
+    def _스킬_전환(self, 팝업, 캐릭터, 스킬이름):
+        팝업.dismiss()
+        결과 = gameflow.전환스킬_사용(App.get_running_app().게임상태, 캐릭터, 스킬이름)
+        self.메시지라벨.text = 결과["문구"]
 
     def _파티_클릭(self, *args):
         self.manager.get_screen("파티관리").복귀화면 = "마을"
