@@ -718,6 +718,31 @@ class 스모크앱(main.DnfMobileApp):
         yield 0.3
         결과["단계"].append("전직 선택 팝업(귀검사 전직 5개 모두 선택 가능)")
 
+        # 표에 없는 전직(#403): 격투가가 넨마스터를 누르면 능력치 다시 고르기 팝업이 지금 역할로 뜬다
+        # (전에는 전직_기본_스탯구성의 KeyError로 멈췄다)
+        난수 = rng.상태()
+        전직상태 = support.새게임([("", "격투가")])
+        전직격 = 전직상태["파티"]["파티원"][0]
+        support.성장(전직상태, 전직격, 5)
+        rng.상태_복원(난수)
+        매니저.get_screen("파티관리")._전직선택_팝업(전직격)
+        yield 0.5
+        넨버튼 = next(
+            w
+            for w in Window.children[0].walk(restrict=True)
+            if isinstance(w, Button) and w.text == "넨마스터"
+        )
+        넨버튼.dispatch("on_release")
+        yield 0.5
+        assert Window.children[0].title == "넨마스터 - 능력치 다시 고르기"
+        _찍기("advancement_stat_popup")
+        _팝업_닫기()
+        yield 0.3
+        assert (
+            전직격.get("전직") is None and 전직격["레벨"] == 5
+        )  # 닫으면 전직하지 않는다
+        결과["단계"].append("표에 없는 전직(넨마스터)의 능력치 다시 고르기 팝업")
+
         # 마스터리 선택 팝업: 줄마다 이름 토글 + [상세보기](설명은 상세보기 창에만)
         from kivy.uix.togglebutton import ToggleButton
 
