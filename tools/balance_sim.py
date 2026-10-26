@@ -62,7 +62,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         [["귀검사", "웨펀마스터"], ["거너", "레인저"], ["마법사", "엘리멘탈마스터"]],
     ],
     "대신할전직": ["귀검사", "소울브링어"],
-    "전직무기": {"검귀": "예리한 카타나"},
+    # 전직 스킬에 필요한 무기 - 마도학자의 파우더는 빗자루를 들어야 쓴다
+    "전직무기": {"검귀": "예리한 카타나", "마도학자": "낡은 빗자루"},
 }
 
 
@@ -188,6 +189,10 @@ class 측정:
 
         self.gf, self.scenario, self.support, self.rng = gf, scenario, support, rng
         self.직업 = 직업
+        # 시험자는 전직의 1차 직업으로 만든다(배틀메이지면 마법사)
+        self.기본직업 = next(
+            j for j, 전직들 in gf.전직_레지스트리.items() if 직업 in 전직들
+        )
         self.기본파티 = [tuple(x) for x in 조건["기본파티"]]
         대신 = tuple(조건["대신할전직"])
         self.다른파티 = [
@@ -204,8 +209,10 @@ class 측정:
         if 키 not in self.상태모음:
             gf, support = self.gf, self.support
             self.rng.시드(1)
-            상태 = support.새게임([("", "귀검사")] + [("", 직업) for 직업, _ in 나머지])
-            구성 = [("귀검사", self.직업)] + list(나머지)
+            상태 = support.새게임(
+                [("", self.기본직업)] + [("", 직업) for 직업, _ in 나머지]
+            )
+            구성 = [(self.기본직업, self.직업)] + list(나머지)
             for c, (_, 전직) in zip(상태["파티"]["파티원"], 구성):
                 support.성장(상태, c, 조건["파티레벨"], 전직=전직, 스킬습득=True)
                 무기 = 조건["전직무기"].get(전직)
