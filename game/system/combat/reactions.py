@@ -113,14 +113,16 @@ def _반응_소모(전투상태, 참가자, 이름, 정의):
             참가자["원본"].setdefault("횟수제한스킬", {}).setdefault("휴식제한스킬", {})
         )
         칸[이름] = max(0, min(칸.get(이름, 휴식당), 휴식당) - 1)
-    if isinstance(부여효과, dict) and 부여효과.get("이름"):
-        지속턴 = 부여효과.get("지속턴")
-        resources.몬스터_버프_부여(
-            전투상태,
-            참가자,
-            부여효과["이름"],
-            지속턴 if isinstance(지속턴, int) else None,
-        )
+    # "부여효과"는 하나(dict) 또는 여럿(list - 배틀메이지 강화위상변화)
+    for 효과 in 부여효과 if isinstance(부여효과, list) else [부여효과]:
+        if isinstance(효과, dict) and 효과.get("이름"):
+            지속턴 = 효과.get("지속턴")
+            resources.몬스터_버프_부여(
+                전투상태,
+                참가자,
+                효과["이름"],
+                지속턴 if isinstance(지속턴, int) else None,
+            )
 
 
 def _반응_선택(전투상태, 참가자, 후보, 상황):
