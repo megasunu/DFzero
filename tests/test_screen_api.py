@@ -15,7 +15,7 @@ from game.system import rng
 import gameflow as gf
 from game.system.combat import flow, stats
 from game.system import skill_system as ss
-from tests import support
+from tests import scenario, support
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -686,6 +686,61 @@ def test_자세하게_명중_AC_데미지_계산줄은_합이_맞고_버프_이�
         assert "+오버드라이브(3)" in 피해계산, 피해계산
         assert f"= {내역['합']}" in 피해계산, 피해계산
         assert _괄호값_합(피해계산.split(" = ")[0]) == 내역["합"], 피해계산
+
+
+def test_자세하게_반응자동이면_선제_공격도_계산줄이_남는다(자세하게):
+    """반응 자동이면 전투시작 반응(패스티스트 건)이 전투_시작 안에서 굴러간다 - 그때도 상세로그가 켜져 있다(#181)."""
+    원래 = gf.반응_자동_여부()
+    gf.반응_자동_설정(True)
+    try:
+        상태 = _전투()
+    finally:
+        gf.반응_자동_설정(원래)
+    선제 = [
+        h
+        for h in 상태["전투상태"]["로그"]
+        if h.get("반응") == "패스티스트 건" and "판정" in h
+    ]
+    assert 선제
+    for 항목 in 선제:
+        assert "명중내역" in 항목["판정"], 항목
+        줄 = gf.로그_문장들(항목)
+        assert any(z.startswith("주사위(") for z in 줄), 줄
+        if 항목["판정"]["성공"]:
+            assert any(z.startswith("피해 계산: ") for z in 줄), 줄
+
+
+def test_자세하게_피해_계산의_데미지보너스는_기타_없이_출처_이름으로_나온다(자세하게):
+    """스킬·역할군·조건부 특성·일반공격 추가피해 몫도 이름으로 나온다 - "기타"로 묶이지 않는다(#181)."""
+    전직 = {
+        "귀검사": "웨펀마스터",
+        "격투가": "스트라이커",
+        "거너": "레인저",
+        "마법사": "엘리멘탈마스터",
+    }
+    추가들 = []
+    for 시드 in range(4):
+        rng.시드(시드)
+        상태 = support.새게임(
+            [("", "귀검사"), ("", "격투가"), ("", "거너"), ("", "마법사")]
+        )
+        for c in 상태["파티"]["파티원"]:
+            support.성장(상태, c, 10, 전직=전직[c["직업"]], 스킬습득=True)
+        gf.파티_최대치로_회복(상태)
+        gf.전투_시작(상태, ["타우 비스트", "고블린 전사", "굴 구위시"], 레벨=6, 차수=2)
+        scenario.스킬_실전(상태, [])
+        남은 = list(상태["전투상태"]["로그"])
+        while 남은:  # 로그 항목 안의 타격/결과 목록까지 훑는다
+            값 = 남은.pop()
+            if isinstance(값, dict):
+                if "피해내역" in 값:
+                    추가들.append(값["피해내역"]["추가"])
+                남은 += [v for k, v in 값.items() if k != "피해내역"]
+            elif isinstance(값, list):
+                남은 += 값
+    이름들 = {이름 for 추가 in 추가들 for 이름, _ in 추가}
+    assert len(추가들) > 20 and "역할군" in 이름들, 이름들
+    assert "기타" not in 이름들, [a for a in 추가들 if any(n == "기타" for n, _ in a)]
 
 
 def _몬스터_AC_계산줄(상태, 몬스터, 차수):
