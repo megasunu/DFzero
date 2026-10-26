@@ -8,7 +8,7 @@ from game.data.buff.buff import 버프목록
 from game.data.buff.debuff import 디버프목록
 from game.data.buff.status_effects import 상태이상목록
 from game.data.equipment.eq_02_armor_set import 방어구세트목록
-from game.data.item.item_doll import 인형_데이터
+from game.data.item.item_doll import 인형정의
 from game.data.monster.monster_title import 칭호목록
 from game.system import dice_utils, settings_system, skill_system
 from game.system.combat import (
@@ -24,7 +24,7 @@ from game.system.combat import (
     status,
     traits,
 )
-from game.controller.ctl_party import 장비데이터모음_생성, 인형_동기화
+from game.controller.ctl_party import 장비데이터모음_생성, 인형_동기화, 인형_만들기
 from game.controller.ctl_registry import (
     몬스터목록,
     전투용_몬스터특성정의,
@@ -32,6 +32,7 @@ from game.controller.ctl_registry import (
 )
 
 __all__ = [
+    "스킬_인형소환",
     "양쪽대상_목록",
     "_몬스터항목_정규화",
     "_몬스터원본목록_생성",
@@ -425,8 +426,26 @@ def 아군_스킬사용(게임상태, 스킬이름, 중심대상=None, 지정대
         지정대상목록=지정대상목록,
         행동지불=행동지불,
     )
+    if 스킬데이터.get("인형소환"):  # 인챈트리스 인형 : 매드
+        스킬_인형소환(게임상태, 시전자, 스킬데이터["인형소환"])
     core.종료판정_갱신(전투상태)  # B9
     return 결과
+
+
+def 스킬_인형소환(게임상태, 시전자, 이름):
+    """스킬로 인형(매드)을 부른다 - 소모품 인형처럼 파티 인형 칸을 바꾸고 아군 맨 뒤 칸으로 들어온다."""
+    인형 = 인형_만들기(게임상태, 이름, 소환자=시전자["원본"])
+    게임상태["파티"]["인형"] = 인형
+    게임상태["장비데이터모음"] = 장비데이터모음_생성(
+        게임상태["파티"], 게임상태["상점카탈로그"]
+    )
+    전투상태 = 게임상태["전투상태"]
+    flow.인형_참가(전투상태, 인형, 게임상태["장비데이터모음"][인형["캐릭터명"]])
+    core.로그(
+        전투상태,
+        {"공격자": 시전자["이름"], "행동": f"인형 '{이름}' 등장"},
+        종류="행동",
+    )
 
 
 def 도망_막는_상태이상(게임상태):
@@ -566,7 +585,7 @@ def 인형_턴(게임상태, 참가자):
     전투상태["현재턴_행동완료"] = True
     if status.상태이상_플래그(전투상태, 참가자, "행동불가"):
         return
-    인형 = 인형_데이터[참가자["원본"]["인형"]]
+    인형 = 인형정의(참가자["원본"]["인형"])
     횟수 = 1 if 인형.get("스타일", "캐스터") == "캐스터" else core.차수(참가자)
     for 번째 in range(횟수):
         대상후보 = 공격대상_목록(게임상태)
@@ -577,6 +596,8 @@ def 인형_턴(게임상태, 참가자):
         if 스킬데이터 is None or not 대상후보:
             core.로그(전투상태, {"공격자": 참가자["이름"], "쉼": True}, 종류="행동")
             continue
+        # 밀리 인형은 패턴마다 일반행동을 다시 받는다(매드 - 차수만큼 행동)
+        참가자["행동자원"]["일반행동"] = max(1, 참가자["행동자원"].get("일반행동", 0))
         skill_system.스킬_실행(
             전투상태,
             참가자,
