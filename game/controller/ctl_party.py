@@ -15,7 +15,7 @@ from game.data.equipment.eq_04_special_09_subequipment import 보조장비목록
 from game.data.equipment.eq_04_special_10_magicstone import 마법석목록
 from game.data.equipment.eq_04_special_11_earring import 귀걸이목록
 from game.data.item.item_consumable import 소모품_데이터
-from game.data.item.item_doll import 인형_데이터
+from game.data.item.item_doll import 인형_데이터, 인형정의
 from game.data.item.item_food import 음식_데이터
 from game.data.item.item_materials import 재료_데이터
 from game.data.item.item_potion import 포션_데이터
@@ -35,6 +35,8 @@ from game.controller.ctl_registry import 전직_레지스트리, 직업_레지�
 파티_최대인원 = party_system.파티_최대인원  # 화면의 파티원 상자 폭(4칸 기준)
 
 __all__ = [
+    "인형바구니_보유",
+    "_인형바구니_반영",
     "파티_최대인원",
     "캐릭터_생성",
     "캐릭터_미리보기",
@@ -227,20 +229,43 @@ def _인형_능력치증가(게임상태):
 
 def 인형_무기데이터(상점카탈로그, 이름):
     """인형(item_doll.py 이름)이 늘 드는 "인형무기"의 무기 데이터 - 없으면 None."""
-    무기이름 = 인형_데이터[이름].get("인형무기")
+    무기이름 = 인형정의(이름).get("인형무기")
     return 상점카탈로그["장비"].get("무기", {}).get(무기이름) if 무기이름 else None
 
 
-def 인형_만들기(게임상태, 이름):
-    """item_doll.py 인형 하나를 지금 플레이어 레벨로 만든다(HP 가득). 파티에 붙이지는 않는다."""
-    인형데이터 = 인형_데이터[이름]
-    return party_system.인형_만들기(
-        인형데이터,
+def 인형_만들기(게임상태, 이름, 소환자=None):
+    """item_doll.py 인형 하나를 지금 플레이어 레벨로 만든다(HP 가득). 파티에 붙이지는 않는다.
+    소환자(캐릭터)를 주면 스킬로 부른 인형(매드) - 그 캐릭터의 능력치를 "기준능력치"로 쓰고 "소환자"에 이름을 남긴다."""
+    인형데이터 = 인형정의(이름)
+    기준 = (
+        {n: 소환자[n] for n in ("근력", "민첩", "건강", "지능", "지혜", "매력")}
+        if 소환자 is not None
+        else None
+    )
+    인형 = party_system.인형_만들기(
+        {**인형데이터, "능력치": 기준} if 기준 else 인형데이터,
         게임상태["진행도"]["플레이어레벨"],
         _인형_레벨당체력(인형데이터),
         _인형_능력치증가(게임상태),
         인형_무기데이터(게임상태["상점카탈로그"], 이름),
     )
+    if 기준:
+        인형["기준능력치"] = 기준
+        인형["소환자"] = 소환자["캐릭터명"]
+    _인형바구니_반영(게임상태, 인형)
+    return 인형
+
+
+def 인형바구니_보유(게임상태):
+    """파티원 중 퍽 "인형 바구니"(인챈트리스) 보유자가 있나 - 인형에 "인형 바구니 효과", 인형 소모품이 줄지 않는다."""
+    return any("인형 바구니" in c["보유특성"] for c in 게임상태["파티"]["파티원"])
+
+
+def _인형바구니_반영(게임상태, 인형):
+    특성 = [n for n in 인형["보유특성"] if n != "인형 바구니 효과"]
+    if 인형바구니_보유(게임상태):
+        특성.append("인형 바구니 효과")
+    인형["보유특성"] = 특성
 
 
 def 인형_동기화(게임상태):
@@ -249,7 +274,8 @@ def 인형_동기화(게임상태):
     인형 = 게임상태["파티"].get("인형")
     if not 인형:
         return
-    인형데이터 = 인형_데이터[인형["인형"]]
+    인형데이터 = 인형정의(인형["인형"])
+    _인형바구니_반영(게임상태, 인형)
     party_system.인형_갱신(
         인형,
         인형데이터,
