@@ -73,9 +73,12 @@ def test_수식_평가_문법(monkeypatch):
     assert formula.수식_평가("보정공격력x2", ctx) == (3 + 4) * 2
     assert formula.수식_평가("무기공격력+추가공격+레벨", ctx) == 3 + 1 + 5
     assert formula.수식_평가("(차수+1)d6÷2", ctx) == 3 * 3 / 2
-    assert formula.수식_평가("1d6", ctx, 치명타=True) == 6  # 치명타: 주사위 1개 추가
+    # 치명타: 주사위 개수 x (1 + 치명타주사위), 고정 값은 1회분(#440)
+    assert formula.수식_평가("1d6", ctx, 치명타=True) == 2 * 3
+    assert formula.수식_평가("3d10+5", ctx, 치명타=True) == 6 * 3 + 5
+    assert formula.수식_평가("3d10+5", ctx, 치명타=0) == 3 * 3 + 5  # 0이면 그대로
     assert (
-        formula.수식_평가("(차수)d8", ctx, 치명타=2) == (2 + 2) * 3
+        formula.수식_평가("(차수)d8", ctx, 치명타=2) == 2 * 3 * 3
     )  # 무기 없으면 NdM에
     # 무기 주사위가 있으면 치명타 주사위는 무기 주사위에만(귀참): 1d6 -> 3d6, 2d8 그대로
     귀참식 = "보정공격력+(귀신보유수)d8"
@@ -104,6 +107,7 @@ def test_수식_평균은_주사위를_굴리지_않고_기대값으로(monkeypa
     assert 평("(차수+1)d6÷2", {"차수": 2}, 평균=True) == 3 * 3.5 / 2
     assert 평("보정공격력", {"무기공격력": "1d8", "보정치": 2}, 평균=True) == 4.5 + 2
     assert 평("0d8+1", {}, 평균=True) == 1
+    assert 평("3d10+5", {}, 평균=True, 치명타=True) == 6 * 5.5 + 5
 
 
 def test_무기공격력_굴림(monkeypatch):
@@ -111,6 +115,8 @@ def test_무기공격력_굴림(monkeypatch):
     assert (
         formula.무기공격력_굴림("2d6") == 8
         and formula.무기공격력_굴림("1d6", 치명타=True) == 8
+        and formula.무기공격력_굴림("2d6", 치명타=True) == 4 * 4  # 배수(#440)
+        and formula.무기공격력_굴림("2d6", 치명타=2) == 6 * 4
     )
     with pytest.raises(ValueError, match="무기공격력"):
         formula.무기공격력_굴림("d6")
