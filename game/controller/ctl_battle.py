@@ -7,7 +7,7 @@ from game.system import rng
 from game.data.buff.buff import 버프목록
 from game.data.buff.debuff import 디버프목록
 from game.data.buff.status_effects import 상태이상목록
-from game.data.equipment.eq_02_armor_set import 방어구세트목록
+from game.data.equipment.eq_03_accessory_set import 장비세트목록
 from game.data.item.item_doll import 인형정의
 from game.data.monster.monster_title import 칭호목록
 from game.system import dice_utils, settings_system, skill_system
@@ -254,7 +254,7 @@ def 전투_시작(게임상태, 몬스터항목목록, 클리어위치=None, 레
             "특성정의": 전투용_몬스터특성정의,
             "캐릭터특성정의": 전투용_캐릭터특성정의,
             "칭호정의": 칭호목록,
-            "세트정의": 방어구세트목록,
+            "세트정의": 장비세트목록,
             "스킬정의": 게임상태["스킬데이터모음"],
         },
         시작반응_보류=not _설정["반응자동"],

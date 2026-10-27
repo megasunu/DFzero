@@ -5,7 +5,7 @@ import copy
 from game.data.buff.buff import 버프목록
 from game.data.buff.debuff import 디버프목록
 from game.data.buff.status_effects import 상태이상목록
-from game.data.equipment.eq_02_armor_set import 방어구세트목록
+from game.data.equipment.eq_03_accessory_set import 장비세트목록
 from game.data.job_level.job_level_000x_style import 전투스타일
 from game.data.monster.monster_title import 칭호목록
 from game.system import (
@@ -102,13 +102,13 @@ def _상세용_참가자(게임상태, 캐릭터):
         "특성정의": 전투용_몬스터특성정의,
         "캐릭터특성정의": 전투용_캐릭터특성정의,
         "칭호정의": 칭호목록,
-        "세트정의": 방어구세트목록,
+        "세트정의": 장비세트목록,
     }
     참가자 = participants.아군_참가자_생성(
         copy.deepcopy(캐릭터), 캐릭터_장비데이터(게임상태, 캐릭터)
     )
     참가자["장비보너스"] = equipment_system.캐릭터_장비_보너스(
-        캐릭터, 참가자["장비데이터"], 방어구세트목록
+        캐릭터, 참가자["장비데이터"], 장비세트목록
     )
     전투상태["참가자"].append(참가자)
     return 전투상태, 참가자
@@ -235,7 +235,7 @@ def 캐릭터_상세정보(게임상태, 캐릭터):
             "능력치 " + "  ".join(f"{k} {_부호(v)}" for k, v in 스탯보너스.items())
         )
     세트 = equipment_system.세트효과_목록(
-        캐릭터_장비데이터(게임상태, 캐릭터), 방어구세트목록
+        캐릭터_장비데이터(게임상태, 캐릭터), 장비세트목록
     )
     if 세트:
         장비줄.append(
