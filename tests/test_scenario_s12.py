@@ -20,7 +20,7 @@ from game.system import rng
 import gameflow as gf
 import scenario
 import support
-from game.system.combat import status
+from game.system.combat import damage, status
 
 로리엔 = "dungeon_01A_D01_Lorien"
 # 9 -> 15(2026-10-26): 추천 주/보조/약점(#420)으로 능력치가 바뀌어 옛 시드는 효과가 안 나온다
@@ -46,10 +46,13 @@ def _던지기(상태, 참가자, 던짐):
             (e for e in gf.적_목록(상태) if e["생존"]), key=lambda e: e["대형위치"]
         )
         일반, 개수 = 참가자["행동자원"]["일반행동"], 상태["소지품"]["소모품"][이름]
-        결과 = gf.아군_투척아이템사용(상태, 이름, 적[len(적) // 2])
+        중심 = 적[len(적) // 2]
+        # 폭탄은 중심과 바로 옆 칸의 산 적 - 옆 칸이 죽어 비었으면 그만큼 적다
+        범위 = 1 + len(damage.양옆_이웃(상태["전투상태"], 중심))
+        결과 = gf.아군_투척아이템사용(상태, 이름, 중심)
         assert 참가자["행동자원"]["일반행동"] == 일반 - 1
         assert 상태["소지품"]["소모품"].get(이름, 0) == 개수 - 1
-        assert len(결과["타격"]) == (1 if 이름 == "표창" else min(3, len(적)))
+        assert len(결과["타격"]) == (1 if 이름 == "표창" else 범위)
         던짐.append(이름)
         return
 
