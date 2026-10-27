@@ -4,7 +4,7 @@
 
 from game.system import rng
 
-from game.system import dice_utils, effect_engine
+from game.system import dice_utils, effect_engine, equipment_system
 from game.system.combat import (
     core,
     damage,
@@ -905,6 +905,10 @@ def 스킬_실행(
     스킬데이터 = 대체_적용(전투상태, 스킬데이터, 중심대상)
     스킬데이터 = 잡기필중_적용(전투상태, 시전자, 스킬데이터)
     스킬데이터 = 특성강화_적용(시전자, 스킬데이터)
+    # 레어 무기의 "스킬강화"(데스 바이 수플렉스·강룡완 등 - #437)
+    스킬데이터 = equipment_system.스킬강화_적용(
+        시전자.get("장비데이터"), 스킬이름, 스킬데이터
+    )
     스킬데이터 = 양쪽대상_적용(시전자, 스킬데이터, 중심대상)
     강화 = 스킬강화(시전자, 스킬데이터)
     if 강화:

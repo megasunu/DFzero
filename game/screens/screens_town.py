@@ -949,7 +949,8 @@ class 상점화면(Screen):
     # 자세히 보기 팝업
     # -------------------------------------------------
 
-    _상세_제외키 = {"이름", "마봉효과", "봉인원본"}
+    # 레어 무기의 고유효과/오라/스킬강화는 원소를 그대로 보이지 않고 "설명"으로 보인다(#437)
+    _상세_제외키 = {"이름", "마봉효과", "봉인원본", "고유효과", "오라", "스킬강화"}
 
     def _자세히보기(self, 아이템):
         본문 = BoxLayout(orientation="vertical", spacing=6, padding=12)
@@ -978,8 +979,15 @@ class 상점화면(Screen):
                 size_hint=(1, None),
                 height=dp(32),
                 halign="left",
+                valign="middle",
             )
-            라벨.bind(size=lambda inst, size: setattr(inst, "text_size", size))
+            # 긴 글(레어 무기 "설명" - #437)은 줄을 바꿔 그만큼 높아진다(겹치지 않게)
+            라벨.bind(width=lambda inst, w: setattr(inst, "text_size", (w, None)))
+            라벨.bind(
+                texture_size=lambda inst, ts: setattr(
+                    inst, "height", max(dp(32), ts[1])
+                )
+            )
             내용틀.add_widget(라벨)
 
         닫기버튼 = Button(text="닫기", size_hint=(1, None), height=_버튼_높이)

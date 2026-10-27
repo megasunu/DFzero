@@ -45,6 +45,7 @@ from kivy.clock import Clock  # noqa: E402
 from kivy.core.window import Window  # noqa: E402
 from kivy.uix.button import Button  # noqa: E402
 from kivy.uix.label import Label  # noqa: E402
+from kivy.metrics import dp  # noqa: E402
 from kivy.uix.scrollview import ScrollView  # noqa: E402
 from kivy.uix.togglebutton import ToggleButton  # noqa: E402
 
@@ -1092,7 +1093,38 @@ class 스모크앱(main.DnfMobileApp):
         yield 0.5
         _찍기("equip_detail")
         _팝업_닫기()
-        결과["단계"].append("장비 교체 팝업(무기/상의) + 상세보기")
+        yield 0.3
+        # 레어 무기(#437): 파티 상세보기와 상점 자세히 보기에 "설명"이 보이고, 효과 원소 칸은 그대로 안 보인다
+        레어 = 상태["상점카탈로그"]["장비"]["무기"]["복수의 영혼도"]
+        for 이름, 열기 in (
+            ("equip_detail_rare", lambda: screens_party._아이템_상세_팝업(레어)),
+            ("shop_detail_rare", lambda: 매니저.get_screen("상점")._자세히보기(레어)),
+        ):
+            열기()
+            yield 0.5
+            _찍기(이름)
+            글들 = [
+                w.text
+                for w in Window.children[0].walk(restrict=True)
+                if hasattr(w, "text")
+            ]
+            assert any(레어["설명"] in 글 for 글 in 글들), (이름, 글들)
+            assert not any("고유효과" in 글 for 글 in 글들), (이름, 글들)
+            if (
+                이름 == "shop_detail_rare"
+            ):  # 긴 설명 줄은 글 높이만큼 늘어나 윗줄과 겹치지 않는다
+                [설명] = [
+                    w
+                    for w in Window.children[0].walk(restrict=True)
+                    if isinstance(w, Label) and w.text.startswith("설명:")
+                ]
+                assert 설명.height + 1 >= 설명.texture_size[1] > dp(32), (
+                    설명.height,
+                    설명.texture_size,
+                )
+            _팝업_닫기()
+            yield 0.3
+        결과["단계"].append("장비 교체 팝업(무기/상의) + 상세보기(레어 무기 설명)")
         yield 0.3
         return 무기
 
@@ -3337,17 +3369,38 @@ class 스모크앱(main.DnfMobileApp):
 
         assert 연출들() == [], [w.공격연출 for w in 연출들()]
         적 = next(p for p in 전투상태["참가자"] if p["진영"] == "적" and p["생존"])
+        # 연출이 뜨는 순간을 기록한다 - 느린 CI 실행기에서는 화면 한 장 사이에 0.5초 연출이 떴다가
+        # 사라져 나중에 훑어보면 없다(#439). 뜬 그림의 종류와 칸 위인지는 뜬 그 자리에서 잰다.
+        띄운 = []
+
+        def 기록하며_띄우기(연출, 원래=전투._공격연출_하나):
+            원래(연출)
+            그림 = 전투._떠있는_연출.get(연출["대상id"])
+            띄운.append(
+                (
+                    연출["종류"],
+                    getattr(그림, "공격연출", None),
+                    그림 is not None and 칸_위인가(그림, 적),
+                )
+            )
+
+        전투._공격연출_하나 = 기록하며_띄우기
         전투._일반공격_실행(적)  # 명중이면 무기 종류, 빗나가면 실패
         # 반응 자동 사용이 꺼져 있으면 공격이 작업 스레드에서 돌고 끝난 뒤에야 화면이 연출을
-        # 예약한다 - 정한 시간 한 번이 아니라 뜰 때까지(최대 1초) 기다린다
-        for _ in range(20):
+        # 예약한다 - 정한 시간 한 번이 아니라 뜰 때까지(최대 3초) 기다린다
+        for _ in range(60):
             yield 0.05
-            if 연출들():
+            if 띄운:
                 break
-        그림들 = 연출들()
+        del 전투._공격연출_하나  # 클래스의 원래 함수로 되돌린다
         # 귀검사 녹슨 소검(공격타입 참격, 무속성): 명중이면 참격:무, 빗나가면 실패
-        assert len(그림들) == 1 and 그림들[0].공격연출 in ("참격:무", "실패"), 그림들
-        assert 칸_위인가(그림들[0], 적), "적 그림 칸 위에 뜬다"
+        assert len(띄운) == 1 and 띄운[0][0] in ("참격:무", "실패"), (
+            띄운,
+            getattr(전투, "_엔진중", None),
+            전투상태["로그"][-3:],
+        )
+        assert 띄운[0][1] == 띄운[0][0], ("그림이 떴다", 띄운)
+        assert 띄운[0][2], "적 그림 칸 위에 뜬다"
         # 전투 기록 칸: "공격자의 일반공격!!" / "명중 값 vs AC 값, 결과!" / 결과 줄(gameflow.로그_문장들)
         기록 = 전투.로그라벨.text.strip().split("\n")[-3:]
         assert 기록[0].endswith("의 일반공격!!"), 기록

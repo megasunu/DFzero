@@ -90,23 +90,31 @@ def _다이스_치환(match, 치명타=False, 평균=False):
     return str(dice_utils.주사위_합(개수, 면수))
 
 
+def _무기_주사위항(무기공격력_수식):
+    """무기공격력 수식을 [(개수, 면수)]로 - "1d6" 하나 또는 "1d12+1d6"처럼 "+"로 이은 여럿(광창 브류나크 #437)."""
+    항들 = []
+    for 항 in 무기공격력_수식.split("+"):
+        match = re.fullmatch(r"(\d+)d(\d+)", 항.strip())
+        if not match:
+            raise ValueError(f"알 수 없는 무기공격력 표기: {무기공격력_수식!r}")
+        항들.append((int(match.group(1)), int(match.group(2))))
+    return 항들
+
+
 def 무기공격력_평균(무기공격력_수식):
     """무기공격력 수식(예: "1d6")의 기대값 - 굴리지 않는다(전력전투의 기대 피해 비교)."""
-    match = re.fullmatch(r"(\d+)d(\d+)", 무기공격력_수식)
-    if not match:
-        raise ValueError(f"알 수 없는 무기공격력 표기: {무기공격력_수식!r}")
-    return int(match.group(1)) * (int(match.group(2)) + 1) / 2
+    return sum(개수 * (면수 + 1) / 2 for 개수, 면수 in _무기_주사위항(무기공격력_수식))
 
 
 def 무기공격력_굴림(무기공격력_수식, 치명타=False):
     """무기공격력 수식(예: "1d6")을 굴린다. 치명타면 주사위 개수를
     1개 추가한다(표준 D&D처럼 2배가 아님) - 보정치/데미지보너스는
-    그대로 1회분. 치명타가 정수면 그 개수만큼 추가한다(stats.피해_굴림)."""
-    match = re.fullmatch(r"(\d+)d(\d+)", 무기공격력_수식)
-    if not match:
-        raise ValueError(f"알 수 없는 무기공격력 표기: {무기공격력_수식!r}")
-    개수 = int(match.group(1)) + int(치명타)
-    return dice_utils.주사위_합(개수, int(match.group(2)))
+    그대로 1회분. 치명타가 정수면 그 개수만큼 추가한다(stats.피해_굴림).
+    주사위 항이 여럿이면("1d12+1d6") 치명타 주사위는 첫 항에만 붙는다."""
+    return sum(
+        dice_utils.주사위_합(개수 + (int(치명타) if 순번 == 0 else 0), 면수)
+        for 순번, (개수, 면수) in enumerate(_무기_주사위항(무기공격력_수식))
+    )
 
 
 def 평타_보정치(컨텍스트):

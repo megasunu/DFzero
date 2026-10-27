@@ -2,7 +2,7 @@
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
 import math
-from game.system import rng
+from game.system import equipment_system, rng
 import re
 
 from game.system.combat import (
@@ -152,6 +152,8 @@ def _반응공격_실행(전투상태, 시전자, 대상, 효과, 이름):
     1회 공격한다. 다른 반응을 다시 부르지 않도록 명중_판정_계산을 쓴다."""
     if not 대상["생존"]:
         return
+    # 레어 무기의 "스킬강화"(맥기의 개조 데저트스톰 - 패스티스트 건, #437)
+    효과 = equipment_system.스킬강화_적용(시전자.get("장비데이터"), 이름, 효과)
     명중률 = 효과.get("명중률", "보정명중률")
     명중보너스 = 효과.get("명중보너스", 0) or 0
     데미지식 = str(효과.get("데미지", "보정공격력"))
@@ -185,6 +187,10 @@ def _반응공격_실행(전투상태, 시전자, 대상, 효과, 이름):
         스킬 = 효과.get("데미지보너스", 0) or 0
         장비 = stats.장비_수치(시전자, "데미지보너스")
         피해 += 스킬 + 장비
+        피해 += sum(
+            stats.무기추가피해_굴림(전투상태, 시전자, 식, 판정["치명타"])
+            for 식 in 효과.get("무기추가피해") or ()
+        )
         피해 += stats.버프디버프_수치(전투상태, 시전자, "데미지보너스")
         피해 += traits.특성_수치(
             전투상태, 시전자, "데미지보너스", 명중률종류=명중률, 대상=대상, 속성=속성
