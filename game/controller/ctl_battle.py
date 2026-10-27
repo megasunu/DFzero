@@ -7,6 +7,7 @@ from game.system import rng
 from game.data.buff.buff import 버프목록
 from game.data.buff.debuff import 디버프목록
 from game.data.buff.status_effects import 상태이상목록
+from game.data.equipment.eq_03_accessory_set import 장비세트목록
 from game.data.item.item_doll import 인형정의
 from game.data.monster.monster_title import 칭호목록
 from game.system import dice_utils, settings_system, skill_system
@@ -23,12 +24,7 @@ from game.system.combat import (
     status,
     traits,
 )
-from game.controller.ctl_party import (
-    장비데이터모음_생성,
-    장비세트목록,
-    인형_동기화,
-    인형_만들기,
-)
+from game.controller.ctl_party import 장비데이터모음_생성, 인형_동기화, 인형_만들기
 from game.controller.ctl_registry import (
     몬스터목록,
     전투용_몬스터특성정의,

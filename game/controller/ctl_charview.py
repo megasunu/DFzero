@@ -5,6 +5,7 @@ import copy
 from game.data.buff.buff import 버프목록
 from game.data.buff.debuff import 디버프목록
 from game.data.buff.status_effects import 상태이상목록
+from game.data.equipment.eq_03_accessory_set import 장비세트목록
 from game.data.job_level.job_level_000x_style import 전투스타일
 from game.data.monster.monster_title import 칭호목록
 from game.system import (
@@ -24,7 +25,6 @@ from game.controller.ctl_party import (
     캐릭터_직업스타일,
     캐릭터_최대HP,
     캐릭터_최대MP,
-    장비세트목록,
 )
 from game.controller.ctl_registry import 전투용_몬스터특성정의, 전투용_캐릭터특성정의
 
