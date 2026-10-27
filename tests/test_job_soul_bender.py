@@ -330,7 +330,9 @@ def test_잔영의_케이가는_휴식당_1회다(소울브링어전장):
 
 def _장비_보너스(monkeypatch, 값):
     """장비 데미지보너스를 값으로 고정한다(기본 장비는 -1)."""
-    monkeypatch.setattr(stats, "장비_데미지보너스", lambda 참가자, 대상=None: 값)
+    monkeypatch.setattr(
+        stats, "장비_데미지보너스", lambda 참가자, 대상=None, 전투상태=None: 값
+    )
 
 
 def _장비버프_보너스(전투상태, sb, monkeypatch):
@@ -462,7 +464,9 @@ def _사야_내성(monkeypatch, 성공):
 
     monkeypatch.setattr(stats, "대상_내성굴림", 내성)
     monkeypatch.setattr(damage, "명중_판정", 명중)
-    monkeypatch.setattr(stats, "장비_데미지보너스", lambda 참가자, 대상=None: 0)
+    monkeypatch.setattr(
+        stats, "장비_데미지보너스", lambda 참가자, 대상=None, 전투상태=None: 0
+    )
     return 굴림
 
 
@@ -588,7 +592,9 @@ def test_툼스톤은_6번_무작위_적을_주문시전명중으로_차수d4_�
         return _명중()
 
     monkeypatch.setattr(damage, "명중_판정", 판정)
-    monkeypatch.setattr(stats, "장비_데미지보너스", lambda 참가자, 대상=None: 0)
+    monkeypatch.setattr(
+        stats, "장비_데미지보너스", lambda 참가자, 대상=None, 전투상태=None: 0
+    )
     _주사위고정(monkeypatch, 2)
     _특성_빼기(sb, "어둠의 친화")
     sb["행동자원"]["일반행동"] = 1
