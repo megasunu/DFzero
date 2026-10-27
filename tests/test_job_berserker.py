@@ -415,7 +415,9 @@ def test_블러드_러스트는_1타_1d8을_바로_주고_2타_2차수_d12는_�
         return _명중()
 
     monkeypatch.setattr(damage, "명중_판정", 판정)
-    monkeypatch.setattr(stats, "장비_데미지보너스", lambda 참가자, 대상=None: 0)
+    monkeypatch.setattr(
+        stats, "장비_데미지보너스", lambda 참가자, 대상=None, 전투상태=None: 0
+    )
     _주사위고정(monkeypatch, 6)
     e = 적[0]
     e["현재HP"] = 999
@@ -502,7 +504,9 @@ def test_피폭발은_적1체를_3번_명중마다_굴리고_1더하기차수_d1
         return _명중()
 
     monkeypatch.setattr(damage, "명중_판정", 판정)
-    monkeypatch.setattr(stats, "장비_데미지보너스", lambda 참가자, 대상=None: 0)
+    monkeypatch.setattr(
+        stats, "장비_데미지보너스", lambda 참가자, 대상=None, 전투상태=None: 0
+    )
     _주사위고정(monkeypatch, 1)  # 내성 1 - 실패, d12 = 1
     for e in 적:
         e["현재HP"] = 999
