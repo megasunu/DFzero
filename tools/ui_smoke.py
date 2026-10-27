@@ -1124,7 +1124,24 @@ class 스모크앱(main.DnfMobileApp):
                 )
             _팝업_닫기()
             yield 0.3
-        결과["단계"].append("장비 교체 팝업(무기/상의) + 상세보기(레어 무기 설명)")
+        # 악세서리 세트: 은도금 3종을 끼면 상세 정보 "장비 보너스 합계"에 세트 이름과 HP재생이 뜬다
+        for 슬롯 in ("목걸이", "반지", "팔찌"):
+            상태["소지품"]["장비"][f"은도금 {슬롯}"] = 1
+            gf.장비_교체(상태, 귀검사, 슬롯, f"은도금 {슬롯}")
+        매니저.get_screen("파티원")._상세정보_팝업(상태, 귀검사)
+        yield 0.5
+        _찍기("char_detail_accessory_set")
+        글 = "\n".join(
+            w.text for w in Window.children[0].walk(restrict=True) if hasattr(w, "text")
+        )
+        assert "세트효과: 은도금 세트" in 글 and "HP재생 +1" in 글, 글
+        _팝업_닫기()
+        yield 0.3
+        for 슬롯 in ("목걸이", "반지", "팔찌"):
+            gf.장비_해제(상태, 귀검사, 슬롯)
+        결과["단계"].append(
+            "장비 교체 팝업(무기/상의) + 상세보기(레어 무기 설명) + 악세서리 세트 상세 정보"
+        )
         yield 0.3
         return 무기
 

@@ -8,6 +8,7 @@ from game.data.equipment.eq_02_armor_03_shoulder import 어깨목록
 from game.data.equipment.eq_02_armor_04_belt import 벨트목록
 from game.data.equipment.eq_02_armor_05_shoes import 신발목록
 from game.data.equipment.eq_02_armor_set import 방어구세트목록
+from game.data.equipment.eq_03_accessory_set import 악세서리세트목록
 from game.data.equipment.eq_03_accessory_06_necklace import 목걸이목록
 from game.data.equipment.eq_03_accessory_07_ring import 반지목록
 from game.data.equipment.eq_03_accessory_08_bracelet import 팔찌목록
@@ -32,6 +33,9 @@ from game.system import (
 )
 from game.controller.ctl_registry import 전직_레지스트리, 직업_레지스트리
 
+# 전투/능력치 계산에 넘기는 세트 정의 - 방어구 재질 세트 + 악세서리 구성품 세트
+장비세트목록 = {**방어구세트목록, **악세서리세트목록}
+
 파티_최대인원 = party_system.파티_최대인원  # 화면의 파티원 상자 폭(4칸 기준)
 
 __all__ = [
@@ -50,6 +54,7 @@ __all__ = [
     "캐릭터_능력치_보정치",
     "캐릭터_최대HP",
     "캐릭터_최대MP",
+    "장비세트목록",
     "파티_최대치로_회복",
     "스킬데이터모음_생성",
     "_상점_카탈로그_생성",
@@ -169,7 +174,7 @@ def 캐릭터_유효능력치(게임상태, 캐릭터):
     능력치 = equipment_system.장비반영_능력치(
         캐릭터,
         캐릭터_장비데이터(게임상태, 캐릭터),
-        방어구세트목록,
+        장비세트목록,
     )
     상태이상 = 캐릭터.get("상태이상") or []
     for 이름 in 능력치:
@@ -195,7 +200,7 @@ def 캐릭터_최대HP(게임상태, 캐릭터):
     return equipment_system.장비반영_최대HP(
         캐릭터,
         캐릭터_장비데이터(게임상태, 캐릭터),
-        방어구세트목록,
+        장비세트목록,
     )
 
 
@@ -203,7 +208,7 @@ def 캐릭터_최대MP(게임상태, 캐릭터):
     return equipment_system.장비반영_최대MP(
         캐릭터,
         캐릭터_장비데이터(게임상태, 캐릭터),
-        방어구세트목록,
+        장비세트목록,
     )
 
 
