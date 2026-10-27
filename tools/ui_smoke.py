@@ -45,6 +45,7 @@ from kivy.clock import Clock  # noqa: E402
 from kivy.core.window import Window  # noqa: E402
 from kivy.uix.button import Button  # noqa: E402
 from kivy.uix.label import Label  # noqa: E402
+from kivy.metrics import dp  # noqa: E402
 from kivy.uix.scrollview import ScrollView  # noqa: E402
 from kivy.uix.togglebutton import ToggleButton  # noqa: E402
 
@@ -1092,7 +1093,38 @@ class 스모크앱(main.DnfMobileApp):
         yield 0.5
         _찍기("equip_detail")
         _팝업_닫기()
-        결과["단계"].append("장비 교체 팝업(무기/상의) + 상세보기")
+        yield 0.3
+        # 레어 무기(#437): 파티 상세보기와 상점 자세히 보기에 "설명"이 보이고, 효과 원소 칸은 그대로 안 보인다
+        레어 = 상태["상점카탈로그"]["장비"]["무기"]["복수의 영혼도"]
+        for 이름, 열기 in (
+            ("equip_detail_rare", lambda: screens_party._아이템_상세_팝업(레어)),
+            ("shop_detail_rare", lambda: 매니저.get_screen("상점")._자세히보기(레어)),
+        ):
+            열기()
+            yield 0.5
+            _찍기(이름)
+            글들 = [
+                w.text
+                for w in Window.children[0].walk(restrict=True)
+                if hasattr(w, "text")
+            ]
+            assert any(레어["설명"] in 글 for 글 in 글들), (이름, 글들)
+            assert not any("고유효과" in 글 for 글 in 글들), (이름, 글들)
+            if (
+                이름 == "shop_detail_rare"
+            ):  # 긴 설명 줄은 글 높이만큼 늘어나 윗줄과 겹치지 않는다
+                [설명] = [
+                    w
+                    for w in Window.children[0].walk(restrict=True)
+                    if isinstance(w, Label) and w.text.startswith("설명:")
+                ]
+                assert 설명.height + 1 >= 설명.texture_size[1] > dp(32), (
+                    설명.height,
+                    설명.texture_size,
+                )
+            _팝업_닫기()
+            yield 0.3
+        결과["단계"].append("장비 교체 팝업(무기/상의) + 상세보기(레어 무기 설명)")
         yield 0.3
         return 무기
 

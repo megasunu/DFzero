@@ -1155,8 +1155,9 @@ def 마봉_명중시효과(전투상태, 공격자, 대상, 판정):
     if not 판정.get("성공"):
         return
     for 아이템, 원소 in stats.마봉_발동목록(공격자, "명중", 대상):
-        if not 대상.get("생존", True):
-            return
+        # 대상이 쓰러졌으면 대상에게 거는 것은 없다 - 자신에게 거는 버프는 쓰러뜨린 공격에도 걸린다
+        if not 대상.get("생존", True) and not 원소.get("버프"):
+            continue
         조건 = 원소.get("대상상태이상")
         if 조건 and not any(s.get("이름") == 조건 for s in 대상.get("상태이상") or []):
             continue

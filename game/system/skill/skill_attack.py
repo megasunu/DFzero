@@ -5,7 +5,7 @@
 from game.system import rng
 from dataclasses import dataclass, field, replace
 
-from game.system import dice_utils
+from game.system import dice_utils, equipment_system
 from game.system.combat import (
     attacks,
     core,
@@ -644,8 +644,10 @@ def _연계_묻기(전투상태, 시전자, 대상, 원소):
 
 
 def _연계(전투상태, 시전자, 대상, 원소):
-    """연계스킬 한 번 - 행동/MP를 내고 같은 대상에게 공격스킬로 친다."""
+    """연계스킬 한 번 - 행동/MP를 내고 같은 대상에게 공격스킬로 친다. 스킬_실행을 거치지 않으므로 레어 무기의
+    "스킬강화"(데스 바이 수플렉스 - 수플렉스 썬더, #437)를 여기서 반영한다."""
     자원_소비_처리(전투상태, 시전자, _귀참드라이브_비용(원소))
+    원소 = equipment_system.스킬강화_적용(시전자.get("장비데이터"), 원소["이름"], 원소)
     return 공격스킬_실행(전투상태, 시전자, 원소, 대상)
 
 
