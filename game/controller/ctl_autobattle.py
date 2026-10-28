@@ -1,6 +1,7 @@
 # 컨트롤러 - 자동전투 - [자동전투] 한 턴(일반공격 방식 / 전력전투 방식), 전력전투 스킬 고르기
 # (ctl_battle.py에서 분리 - 품질 계획 P5. ctl_autobattle -> ctl_battle 한 방향. 설정 값(자동전투_방식)은 ctl_battle에 있다)
 
+from game.data.character.job_info import 직업정보
 from game.data.item.item_potion import 포션_데이터
 from game.system import rng, skill_system
 from game.system.combat import formula, stats
@@ -44,8 +45,12 @@ __all__ = [
 ]
 
 # [자동전투]에서 일반공격 대신 쓰는 스킬 - 캐릭터의 1차 직업 기준(전직해도 같다).
-# 마법사 계열(마법사/엘리멘탈마스터)은 MP를 쓰지 않는 기본 주문 매직미사일(2026-10-12 사용자 요청).
-_자동전투_대체스킬 = {"마법사": "매직미사일"}
+# 값은 game/data/character/job_info.py 직업정보의 "자동전투_대체스킬".
+_자동전투_대체스킬 = {
+    직업: 정보["자동전투_대체스킬"]
+    for 직업, 정보 in 직업정보.items()
+    if 정보["자동전투_대체스킬"]
+}
 
 
 def _자동전투_스킬(게임상태, 참가자):

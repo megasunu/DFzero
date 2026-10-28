@@ -1,6 +1,7 @@
 # 컨트롤러 - 데이터 배선 - 몬스터/직업/전직/던전/마을 레지스트리와 전투용 특성 정의 테이블
 # (gameflow.py에서 분리 - N5. 화면은 gameflow.py 창구만 부른다. 설명은 gameflow.py 머리말)
 
+from game.data.character.job_info import 직업정보
 import importlib
 from game.data.ability.job_ability_0000 import 특성목록 as 공용특성
 from game.data.dungeon.dungeon_01A_D01_Lorien import 맵정보 as _로리엔
@@ -108,13 +109,9 @@ def _몬스터목록_합치기(파일목록):
 #   ability/job_ability_{분류코드}.py            특성목록
 #   perks/perks_class_{분류코드}.py              퍽목록
 #   equipment/eq_01_weapon_{분류번호}.py         {직업}무기목록 (분류번호 = 분류코드 앞 3자리)
-# 새 직업은 파일을 이 규칙대로 만들고 여기에 한 줄 추가하면 된다.
+# 새 직업은 파일을 이 규칙대로 만들고 game/data/character/job_info.py 직업정보에 한 항목 더하면 된다.
 직업_데이터파일 = {
-    "귀검사": ("010m", "ghost_swordsman"),
-    "격투가": ("020f", "fighter"),
-    "거너": ("030f", "gunner"),
-    "마법사": ("040f", "mage"),
-    "프리스트": ("050f", "priest"),
+    직업: (정보["분류코드"], 정보["영문명"]) for 직업, 정보 in 직업정보.items()
 }
 
 

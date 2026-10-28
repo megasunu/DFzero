@@ -55,7 +55,7 @@
 | `test_formula_parity.py` | 수식 평가기가 옛 eval 구현과 같은 값을 내는지(데이터 수식 전부 + 무작위 식), 안전 평가기의 거부 규칙 | 기준 구현과 비교 |
 | `test_architecture.py` | combat 모듈 순환은 허용 묶음뿐, combat은 skill_system/skill을 안 부름, skill 패키지는 아래로만, 다른 모듈의 밑줄 이름 금지, 게임 코드에 eval/exec 금지 | 규칙 |
 | `test_state_schema.py` | 캐릭터/전투 참가자/게임상태가 `state_schema.py` 표대로인지(칸이 빠지거나 이름이 바뀌면 실패), 불러올 때 핵심 칸 검사 | 규칙 |
-| `test_data_integrity.py` | 데이터의 수식이 엄격하게 평가되는지, 몬스터/스킬/버프/던전/마을/상점의 키·이름 참조 | 규칙(허용 목록은 이유와 함께) |
+| `test_data_integrity.py` | 데이터의 수식이 엄격하게 평가되는지, 몬스터/스킬/버프/던전/마을/상점의 키·이름 참조, 직업정보(job_info)의 전직 이름 = job_level 전직목록 | 규칙(허용 목록은 이유와 함께) |
 | `test_scenario_*.py` | 풀 시나리오(실제 전투로 처음부터 끝까지, scenarios.md) | 요약 골든 + 값 |
 | `test_auto_merge_gate.py`, `test_project_bridge.py` | 자동 병합 판정, 보드 브리지(명령 라벨·사건별 상태·STATUS.md) | 값 |
 | `test_rng.py` | 난수 흐름: 같은 시드면 같은 값, 흐름끼리 독립(한 흐름을 더 굴려도 다른 흐름은 그대로) | 값 |
