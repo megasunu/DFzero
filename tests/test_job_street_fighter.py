@@ -9,7 +9,8 @@ import pytest
 import gameflow as gf
 from game.system import rng
 from game.system import skill_system as ss
-from game.system.combat import attacks, core, damage, flow, stats, traits
+from game.system.skill import skill_run
+from game.system.combat import attacks, core, damage, flow, stats, status, traits
 from tests import support
 
 
@@ -456,6 +457,24 @@ def test_마운트와_크레이지_발칸은_한번에_무기공격력이라_근
         if 발칸
         else not _기록(전투상태, "크레이지 발칸")
     )
+
+
+def test_크레이지_발칸과_일발화약성은_분류가_아니라_타입_상태이상_상태변화로_센다(
+    스파전장, monkeypatch
+):
+    # 2026-10-28 사용자 결정(#462) - 지속피해형은 타입 "상태이상", 무력화CC·약화CC는 타입 "상태변화"
+    _, 전투상태, 적, s = 스파전장
+    정의 = dict(전투상태["상태이상정의"])
+    정의["시험상태"] = {"분류": "시험분류", "타입": "상태변화", "효과": {}}
+    정의["시험표시"] = {"분류": "약화CC", "효과": {}}  # 타입이 없으면 세지 않는다
+    전투상태["상태이상정의"] = 정의
+    마운트 = _스킬("마운트")
+    적[0]["상태이상"] = [{"이름": "시험상태"}]
+    assert skill_run.대체_적용(전투상태, 마운트, 적[0])["_이름"] == "크레이지 발칸"
+    적[0]["상태이상"] = [{"이름": "시험표시"}]
+    assert skill_run.대체_적용(전투상태, 마운트, 적[0])["_이름"] == "마운트"
+    적[0]["상태이상"] = [{"이름": "시험상태"}, {"이름": "시험표시"}]
+    assert status.상태이상_종류수(전투상태, 적[0], ("상태이상", "상태변화")) == 1
 
 
 def test_상태이상이_걸린_적에게는_크레이지_발칸이_나가고_공격마다_충격파(
