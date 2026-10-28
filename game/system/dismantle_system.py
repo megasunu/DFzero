@@ -14,7 +14,7 @@ from game.system import rng
 from game.system import player_system
 from game.system import shop_system
 
-# 해체하면 소울이 나오는 레어도(크로니클 소울은 아직 없다)
+# 해체하면 소울이 나오는 레어도 - 크로니클은 소울을 주지 않는다(사용자 규칙)
 소울_레어도 = [r for r in common_names.레어도_순서 if r != "크로니클"]
 
 조각개수_무기 = 10
