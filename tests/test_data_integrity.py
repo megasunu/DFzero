@@ -1171,3 +1171,20 @@ def test_특성의_면역은_효과_원소로_적는다():
             ):
                 틀림.append((모듈이름, 이름, "면역특성인데 면역 원소 없음"))
     assert 틀림 == []
+
+
+def test_직업정보의_전직은_job_level_전직목록과_같다():
+    """job_info.직업정보의 "전직기본스탯" 이름(과 순서)이 그 직업 job_level 파일의 "전직목록"과 같다 -
+    빠진 전직·오타를 잡는다. 기본스탯은 능력치 셋을 서로 다르게 고른다."""
+    from game.data.character.job_info import 직업정보
+    from game.data import common_names
+
+    for 직업, 정보 in 직업정보.items():
+        모듈 = importlib.import_module(
+            f"game.data.job_level.job_level_{정보['분류코드']}_{정보['영문명']}"
+        )
+        assert list(정보["전직기본스탯"]) == list(모듈.전직목록), 직업
+        for 이름, 구성 in [(직업, 정보["기본스탯"]), *정보["전직기본스탯"].items()]:
+            assert set(구성) == {"주스탯", "보조스탯", "약점스탯"}, 이름
+            assert len(set(구성.values())) == 3, 이름
+            assert set(구성.values()) <= common_names.능력치_집합, 이름
