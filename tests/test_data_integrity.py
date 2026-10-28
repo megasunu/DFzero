@@ -494,7 +494,7 @@ def test_용족_몬스터는_그림과_적등급을_가지고_등록된다():
         assert {"이름": "세리말리온군", "발동확률": 1} in 몬스터["드랍표"], 이름
     정의 = gf.전투용_몬스터특성정의
     assert 정의["종족:용족"]["효과"] == [
-        {"변동대상": "AC", "변동값": 1},
+        {"변동대상": "AC보너스", "변동값": 1},
         {"변동대상": "속성내성", "속성": "전체", "변동값": 1},
     ]
     assert 정의["종족:세리말리온"]["효과"] == [
@@ -563,7 +563,7 @@ def test_용족_패턴_구성():
     )
     from game.data.buff.buff import 버프목록
 
-    assert 버프목록["공중날기"]["효과"] == {"변동대상": "AC", "변동값": 5}
+    assert 버프목록["공중날기"]["효과"] == {"변동대상": "AC보너스", "변동값": 5}
 
 
 def test_몬스터_특성_이름은_정의가_있다():
@@ -1188,3 +1188,31 @@ def test_직업정보의_전직은_job_level_전직목록과_같다():
             assert set(구성) == {"주스탯", "보조스탯", "약점스탯"}, 이름
             assert len(set(구성.values())) == 3, 이름
             assert set(구성.values()) <= common_names.능력치_집합, 이름
+
+
+def _변동대상_값들(값, 경로):
+    if isinstance(값, dict):
+        if isinstance(값.get("변동대상"), str):
+            yield 경로, 값["변동대상"]
+        for 키, 하위 in 값.items():
+            yield from _변동대상_값들(하위, f"{경로}.{키}")
+    elif isinstance(값, (list, tuple)):
+        for i, 하위 in enumerate(값):
+            yield from _변동대상_값들(하위, f"{경로}[{i}]")
+
+
+def test_데이터의_변동대상은_정식_이름이다():
+    """데이터의 "변동대상"에 옛 이름(별칭 - "AC"/"속도"/"명중률보너스")을 쓰지 않는다 - 정식 이름은
+    "AC보너스"/"명중보너스"/"속도보너스"(#459). 엔진은 별칭도 받지만 새로 쓰지 않게 막는다."""
+    from game.data import common_names
+
+    별칭 = []
+    for 모듈 in _데이터_모듈들():
+        for 이름, 값 in vars(모듈).items():
+            if 이름.startswith("__") or not isinstance(값, (dict, list)):
+                continue
+            for 경로, 대상 in _변동대상_값들(값, f"{모듈.__name__}.{이름}"):
+                if 대상 in common_names.변동대상_별칭:
+                    별칭.append(f"{경로}: {대상}")
+    별칭 = sorted(set(별칭))
+    assert not 별칭, f"별칭 {len(별칭)}곳:\n" + "\n".join(별칭[:20])
