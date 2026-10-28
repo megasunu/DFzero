@@ -7,6 +7,7 @@
 # 오른다. [레벨업] 실제 반영은 character_levelup_system.캐릭터_레벨업()에
 # 위임한다 - 타입(특성/스탯/스킬/퍽/행동획득)별 처리는 그 함수의 몫이다.
 
+from game.data import common_names
 import copy
 from game.data.ability.job_ability_0000 import 특성목록 as 공용특성
 from game.data.job_level.job_level_000x_style import 전투스타일
@@ -372,7 +373,7 @@ def _특성_능력치보너스(캐릭터):
         효과 = 정의.get("효과") or []
         for 항목 in [효과] if isinstance(효과, dict) else 효과:
             대상, 값 = 항목.get("변동대상"), 항목.get("변동값")
-            if 대상 in 캐릭터생성.능력치_목록 and isinstance(값, (int, float)):
+            if 대상 in common_names.능력치_집합 and isinstance(값, (int, float)):
                 보너스[대상] = 보너스.get(대상, 0) + 값
     return 보너스
 

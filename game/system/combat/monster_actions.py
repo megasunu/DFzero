@@ -1,6 +1,7 @@
 # 전투 시스템 - 몬스터 턴 - 패턴(공격/다중/자폭/버프/회복/내성)과 몬스터 소환수.
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
+from game.data import common_names
 from game.system import rng
 
 from game.system import dice_utils
@@ -661,7 +662,7 @@ def 감옥_걸기(전투상태, 시전자, 대상, 패턴, 출처, 내성=None):
         "보호률": 패턴.get("감옥보호률", 0),
         **{
             이름: stats.유효_능력치값(전투상태, 시전자, 이름)
-            for 이름 in ("근력", "민첩", "건강", "지능", "지혜", "매력")
+            for 이름 in common_names.능력치_목록
         },
     }
     감옥 = participants.적_참가자_생성(원본)

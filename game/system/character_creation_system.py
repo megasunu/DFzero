@@ -13,6 +13,7 @@
 # "레벨업테이블"에서 레벨 1 항목을, eq_weapon_XX.py에서 시작 무기의
 # 데이터를 직접 찾아 넘겨준다고 가정한다.
 
+from game.data import common_names
 from game.system import character_data_system as 캐릭터데이터
 from game.system import effect_engine
 
@@ -72,7 +73,6 @@ from game.system import effect_engine
 기본스탯_점수 = 10
 
 
-능력치_목록 = ["근력", "민첩", "건강", "지능", "지혜", "매력"]
 # 터치할 때마다 바뀌는 역할 순서. "일반"은 고르지 않은 능력치(10점)다.
 스탯역할_순서 = ["주스탯", "보조스탯", "일반", "약점스탯"]
 _역할별_점수 = {
@@ -138,7 +138,7 @@ def 스탯구성_검사(스탯구성):
     고른것 = [스탯구성.get(역할) for 역할 in _역할별_점수]
     if any(스탯 is None for 스탯 in 고른것):
         raise ValueError("주스탯/보조스탯/약점스탯을 모두 골라 주세요.")
-    if any(스탯 not in 능력치_목록 for 스탯 in 고른것):
+    if any(스탯 not in common_names.능력치_목록 for 스탯 in 고른것):
         raise ValueError(f"없는 능력치가 있습니다: {고른것}")
     if len(set(고른것)) != len(고른것):
         raise ValueError("주스탯/보조스탯/약점스탯은 서로 다른 능력치여야 합니다.")
@@ -154,19 +154,23 @@ def 역할_교환(캐릭터, 새구성, 특성보너스=None):
     약점증가면 끝에 새 약점들을 상한(8)으로 내린다. 새구성은 스탯구성_검사를 통과해야 한다(ValueError)."""
     스탯구성_검사(새구성)
     보너스 = 특성보너스 or {}
-    기본 = {n: 캐릭터[n] - 보너스.get(n, 0) for n in 능력치_목록}
+    기본 = {n: 캐릭터[n] - 보너스.get(n, 0) for n in common_names.능력치_목록}
     옛 = {역할: 캐릭터.get(역할) for 역할 in _역할별_점수}
     옛역할 = {n for n in 옛.values() if n}
     새값 = {새구성[역할]: 기본[옛[역할]] for 역할 in _역할별_점수 if 옛[역할]}
-    for n in 능력치_목록:  # 역할이 없던 능력치는 새 역할을 받지 않았으면 제자리
+    for n in (
+        common_names.능력치_목록
+    ):  # 역할이 없던 능력치는 새 역할을 받지 않았으면 제자리
         if n not in 옛역할 and n not in 새값:
             새값[n] = 기본[n]
     # 값을 잃은 자리(옛 역할이었지만 새 역할이 아님)에, 새 역할에 밀린 값(역할이 없던 능력치의 값)을
-    빈자리 = [n for n in 능력치_목록 if n not in 새값]
-    밀린값 = [n for n in 능력치_목록 if n not in 옛역할 and n in 새구성.values()]
+    빈자리 = [n for n in common_names.능력치_목록 if n not in 새값]
+    밀린값 = [
+        n for n in common_names.능력치_목록 if n not in 옛역할 and n in 새구성.values()
+    ]
     for 자리, 출처 in zip(빈자리, 밀린값):
         새값[자리] = 기본[출처]
-    for n in 능력치_목록:
+    for n in common_names.능력치_목록:
         캐릭터[n] = 새값[n] + 보너스.get(n, 0)
     for 역할 in _역할별_점수:
         캐릭터[역할] = 새구성[역할]
@@ -185,7 +189,7 @@ def 초기능력치_생성(직업, 스탯구성=None):
     튜플이다."""
     if 스탯구성 is None:
         스탯구성 = 직업별_주보조약점스탯[직업]
-    능력치 = {스탯이름: 기본스탯_점수 for 스탯이름 in 능력치_목록}
+    능력치 = {스탯이름: 기본스탯_점수 for 스탯이름 in common_names.능력치_목록}
     for 역할, 점수 in _역할별_점수.items():
         if 스탯구성.get(역할) is not None:
             능력치[스탯구성[역할]] = 점수
@@ -241,7 +245,7 @@ def 캐릭터_생성(
     캐릭터["주문시전능력치"] = 주문시전능력치 or "지능"
 
     능력치, 주스탯, 보조스탯, 약점스탯 = 초기능력치_생성(직업, 스탯구성)
-    for 스탯이름 in 능력치_목록:
+    for 스탯이름 in common_names.능력치_목록:
         캐릭터[스탯이름] = 능력치[스탯이름]
     캐릭터["주스탯"] = 주스탯
     캐릭터["보조스탯"] = 보조스탯

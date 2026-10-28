@@ -50,7 +50,7 @@ from game.screens.screens_common import (
 
 
 class 파티관리화면(Screen):
-    _능력치_목록 = ["근력", "민첩", "건강", "지능", "지혜", "매력"]
+    _능력치_목록 = gameflow.능력치_목록
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1104,7 +1104,7 @@ def _장비교체_팝업(캐릭터, 슬롯, 완료콜백):
 
 
 class 파티원화면(Screen):
-    _능력치_목록 = ["근력", "민첩", "건강", "지능", "지혜", "매력"]
+    _능력치_목록 = gameflow.능력치_목록
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

@@ -1,6 +1,7 @@
 # 전투 시스템 - 몬스터 특성/캐릭터 특성/칭호 수치와 발동(공격명중시/턴종료시/해제시/전투시작시).
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
+from game.data import common_names
 from game.system import rng
 
 from game.system import character_data_system as 캐릭터데이터
@@ -37,9 +38,6 @@ def _특성_목록(전투상태, 참가자):
     return 결과
 
 
-_능력치_이름 = ("근력", "민첩", "건강", "지능", "지혜", "매력")
-
-
 def 능력치특성_반영(특성정의모음, 몬스터원본):
     """특성 "효과" 리스트의 {"변동대상": "능력치", "변동값": n}(여섯 능력치 모두 +n,
     예: 황금도둑)을 몬스터 원본 사본에 더해 돌려준다. 전투_시작()이 참가자를 만들기
@@ -57,7 +55,7 @@ def 능력치특성_반영(특성정의모음, 몬스터원본):
     if not 합계:
         return 몬스터원본
     사본 = dict(몬스터원본)
-    for 이름 in _능력치_이름:
+    for 이름 in common_names.능력치_목록:
         if isinstance(사본.get(이름), (int, float)):
             사본[이름] += 합계
     return 사본

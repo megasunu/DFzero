@@ -10,6 +10,7 @@
 # (사용자 결정 2026-09-30) - 발동확률/드랍비율/드랍확률/아이템이름 어느
 # 하나라도 "미정"이면 그 항목은 건너뛴다.
 
+from game.data import common_names
 from game.system import rng
 from fractions import Fraction
 
@@ -18,7 +19,7 @@ from game.system.combat import formula
 # 드랍표 "아이템조건"의 "카테고리" 키워드 -> 장비 카탈로그의 탭들
 # ("장비"는 모든 탭 - 무기/방어구/악세서리/특수장비 전체)
 조건_카테고리_탭 = {
-    "방어구": ["상의", "하의", "어깨", "벨트", "신발"],
+    "방어구": list(common_names.방어구_부위),
 }
 
 

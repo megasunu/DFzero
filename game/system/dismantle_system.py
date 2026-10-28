@@ -8,17 +8,18 @@
 # 장착 중인 장비(파티원 + 모험단 숙소)는 해체할 수 없다(shop_system.판매목록과 같은
 # 기준). 레어도에 맞는 소울이 없는 장비(예: "치트")도 해체할 수 없다.
 
+from game.data import common_names
 from game.system import rng
 
 from game.system import player_system
 from game.system import shop_system
 
-소울_레어도 = ["커먼", "언커먼", "레어", "유니크", "레전더리", "에픽"]
+# 해체하면 소울이 나오는 레어도(크로니클 소울은 아직 없다)
+소울_레어도 = [r for r in common_names.레어도_순서 if r != "크로니클"]
 
 조각개수_무기 = 10
 조각개수_방어구 = 2
 조각개수_악세서리_특수 = 3
-방어구_탭 = {"상의", "하의", "어깨", "벨트", "신발"}
 
 # (색, 확률) - 합 1.0. 황금은 0%라 넣지 않는다.
 조각_색확률 = [
@@ -38,7 +39,7 @@ def 소울_이름(아이템):
 def 조각_개수(탭):
     if 탭 == "무기":
         return 조각개수_무기
-    if 탭 in 방어구_탭:
+    if 탭 in common_names.방어구_부위:
         return 조각개수_방어구
     return 조각개수_악세서리_특수
 

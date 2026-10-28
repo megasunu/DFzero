@@ -16,6 +16,7 @@
 # - 봉인해제: 봉인 장비 -> 그 부위 마봉능력 중 무작위 하나. 봉인변환: 마법의 장비 -> 지금 능력을
 #   뺀 무작위 하나. 둘 다 100골드 + 레어 소울 1개. 소지품의 것이든 장착 중인 것이든 된다.
 
+from game.data import common_names
 import copy
 from game.system import rng
 
@@ -23,7 +24,6 @@ from game.data.equipment.eq_00_magic_seal import 마봉능력, 봉인장비_해�
 
 비용 = {"골드": 100, "레어 소울": 1}
 _봉인머리 = "마법으로 봉인된 "
-_능력치 = ("근력", "민첩", "건강", "지능", "지혜", "매력")
 # 마봉능력 효과의 변동대상 -> 장비 칸(대상타입/발동/속성이 없는 숫자 효과만)
 _장비칸 = {
     "AC": "AC보너스",
@@ -54,7 +54,7 @@ def _장비칸_효과(효과):
     대상, 값 = 효과.get("변동대상"), 효과.get("변동값")
     if not isinstance(값, (int, float)):
         return None
-    if 대상 in _능력치:
+    if 대상 in common_names.능력치_집합:
         return ("스탯보너스", 대상), 값
     if 대상 in _장비칸:
         return (_장비칸[대상], None), 값

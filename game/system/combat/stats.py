@@ -1,6 +1,7 @@
 # 전투 시스템 - 수치 집계 - 버프/디버프/장비/특성 반영 능력치, AC/방어력/보호률/최대HP, 이니셔티브/우선도, 수식 컨텍스트.
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
+from game.data import common_names
 from game.system import character_data_system as 캐릭터데이터
 from game.system import dice_utils, equipment_system, rng
 from game.system.combat import core, formula, participants, resources, status, traits
@@ -187,9 +188,6 @@ def _상태이상_추가효과_합(전투상태, 참가자, 변동대상):
             else:
                 합계 += 수식
     return 합계
-
-
-_능력치_목록 = ("근력", "민첩", "건강", "지능", "지혜", "매력")
 
 
 def 장비_스탯보너스(참가자, 능력치이름):
@@ -409,7 +407,7 @@ def 유효_능력치(전투상태, 참가자):
     유효_능력치값()으로 바꿔 넣는다("근력보정치" 같은 키워드가 장비/버프를
     반영하게 된다)."""
     사본 = dict(참가자["원본"])
-    for 이름 in _능력치_목록:
+    for 이름 in common_names.능력치_목록:
         사본[이름] = 유효_능력치값(전투상태, 참가자, 이름)
     return 사본
 

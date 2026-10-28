@@ -12,6 +12,7 @@
 # 반영하는 처리는 effect_engine.py가 담당하며, 이 파일은 그 결과값을
 # 담아두는 그릇 역할만 한다.
 
+from game.data import common_names
 import math
 
 from game.data.job_level.job_level_000x_style import (
@@ -184,7 +185,7 @@ def 보정치표(캐릭터, 능력치=None):
     값들 = 능력치 or 캐릭터
     return {
         이름: 보정치_계산(캐릭터, 이름, 값들[이름])
-        for 이름 in ("근력", "민첩", "건강", "지능", "지혜", "매력")
+        for 이름 in common_names.능력치_목록
         if isinstance(값들.get(이름), (int, float))
     }
 
@@ -204,7 +205,7 @@ def 약점스탯_목록(캐릭터):
     if 약점증가_보유(캐릭터):
         return [
             이름
-            for 이름 in ("근력", "민첩", "건강", "지능", "지혜", "매력")
+            for 이름 in common_names.능력치_목록
             if 이름 not in (캐릭터.get("주스탯"), 캐릭터.get("보조스탯"))
         ]
     약점 = 캐릭터.get("약점스탯")
