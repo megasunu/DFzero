@@ -13,7 +13,8 @@ from game.system.combat import core, formula, participants, resources, status, t
 _추가효과_변동대상_매핑 = {
     # "추가효과"(중독의 명중/회피 패널티 등) 키를 buff.py/debuff.py와 같은
     # "변동대상" 이름으로 맞춘다. "회피보너스"는 별도 변동대상이 없어
-    # AC에 직접 반영한다.
+    # AC에 직접 반영한다. 공용 별칭(AC보너스/명중률보너스/속도보너스)도 받는다(#455).
+    **common_names.변동대상_별칭,
     "회피보너스": "AC",
     "명중보너스": "명중보너스",
 }
