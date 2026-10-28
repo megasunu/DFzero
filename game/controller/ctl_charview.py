@@ -1,6 +1,7 @@
 # 컨트롤러 - 파티원 화면용 조회(읽기 전용) - 퍽/특성/스킬 목록, 마스터리, 상세정보
 # (gameflow.py에서 분리 - N5. 화면은 gameflow.py 창구만 부른다. 설명은 gameflow.py 머리말)
 
+from game.data import common_names
 import copy
 from game.data.buff.buff import 버프목록
 from game.data.buff.debuff import 디버프목록
@@ -159,7 +160,7 @@ def 캐릭터_상세정보(게임상태, 캐릭터):
     ]
 
     능력치줄 = []
-    for 이름 in ("근력", "민첩", "건강", "지능", "지혜", "매력"):
+    for 이름 in common_names.능력치_목록:
         원래 = 캐릭터[이름]
         차이 = 유효[이름] - 원래
         보정 = 캐릭터데이터.보정치_계산(캐릭터, 이름, 유효[이름])

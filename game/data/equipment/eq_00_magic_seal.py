@@ -21,10 +21,12 @@
 # 봉인 해제는 magic_seal_system, 효과의 전투 반영은 equipment_system.마봉_수치(상시)와
 # combat.flow 턴 시작 / combat.damage.마봉_명중시효과 / combat.stats.마봉_추가피해(발동)다.
 
+from game.data import common_names
+
 _무기 = ["무기"]
-_방어구 = ["상의", "하의", "어깨", "벨트", "신발"]
-_악세서리 = ["목걸이", "반지", "팔찌"]
-_특수장비 = ["보조장비", "마법석", "귀걸이"]
+_방어구 = list(common_names.방어구_부위)
+_악세서리 = list(common_names.악세서리_부위)
+_특수장비 = list(common_names.특수장비_부위)
 _전부위 = _무기 + _방어구 + _악세서리 + _특수장비
 
 마봉능력 = {

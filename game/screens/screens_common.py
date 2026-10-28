@@ -501,7 +501,7 @@ class _스탯칸(ButtonBehavior, Label):
 class 스탯고르기판(GridLayout):
     """능력치 6칸(3x2). 칸을 터치하면 self.스탯구성이 바뀌고 바뀜(스탯구성)을 부른다."""
 
-    능력치_목록 = ["근력", "민첩", "건강", "지능", "지혜", "매력"]
+    능력치_목록 = gameflow.능력치_목록
 
     def __init__(self, 바뀜=None, font_size="12sp", **kwargs):
         kwargs.setdefault("cols", 3)

@@ -20,9 +20,9 @@
 #   계산한다 (character_data_system.py 참고). 이 계산 함수는 아직
 #   만들지 않았다 - 장비/버프 쪽 데이터가 더 정리된 뒤에 채운다.
 
+from game.data import common_names
 from game.system import character_data_system as 캐릭터데이터
 
-능력치_이름 = {"근력", "민첩", "건강", "지능", "지혜", "매력"}
 리스트형_변동대상 = {"이점", "내성", "저항", "취약", "면역", "숙련", "숙달"}
 
 
@@ -60,7 +60,7 @@ def 효과_즉시_적용(캐릭터, 효과):
             캐릭터["어그로"] += 변동값 * _고정어그로_배율(캐릭터, 변동값)
     elif 변동대상 in ("어그로증가배율", "어그로감소배율") and 배율 is not None:
         캐릭터[변동대상] = 캐릭터.get(변동대상, 1.0) * 배율
-    elif 변동대상 in 능력치_이름 and isinstance(변동값, (int, float)):
+    elif 변동대상 in common_names.능력치_집합 and isinstance(변동값, (int, float)):
         캐릭터[변동대상] += 변동값
     elif 변동대상 == "추가공격획득" and isinstance(변동값, (int, float)):
         # 유연함 - 레벨업 끝의 추가공격_계산이 직업스타일 성장과 합산한다
@@ -116,7 +116,7 @@ def 특성_제거(캐릭터, 특성이름, 특성정의=None):
                 캐릭터["어그로"] -= 변동값 * _고정어그로_배율(캐릭터, 변동값)
         elif 변동대상 in ("어그로증가배율", "어그로감소배율") and 항목.get("배율"):
             캐릭터[변동대상] = 캐릭터.get(변동대상, 1.0) / 항목["배율"]
-        elif 변동대상 in 능력치_이름 and isinstance(변동값, (int, float)):
+        elif 변동대상 in common_names.능력치_집합 and isinstance(변동값, (int, float)):
             캐릭터[변동대상] -= 변동값
         elif 변동대상 in 리스트형_변동대상 and 변동값 in 캐릭터[변동대상]:
             캐릭터[변동대상].remove(변동값)

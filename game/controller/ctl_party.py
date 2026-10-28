@@ -1,6 +1,7 @@
 # 컨트롤러 - 캐릭터/파티/게임상태 만들기 - 캐릭터 생성, 장비데이터모음, 능력치/HP/MP 조회, 이름 자르기
 # (gameflow.py에서 분리 - N5. 화면은 gameflow.py 창구만 부른다. 설명은 gameflow.py 머리말)
 
+from game.data import common_names
 from game.data.buff.status_effects import 상태이상목록
 from game.data.equipment.eq_02_armor_01_top import 상의목록
 from game.data.equipment.eq_02_armor_02_bottom import 하의목록
@@ -33,11 +34,13 @@ from game.system import (
 from game.controller.ctl_registry import 전직_레지스트리, 직업_레지스트리
 
 파티_최대인원 = party_system.파티_최대인원  # 화면의 파티원 상자 폭(4칸 기준)
+능력치_목록 = common_names.능력치_목록  # 화면의 능력치 칸 순서
 
 __all__ = [
     "인형바구니_보유",
     "_인형바구니_반영",
     "파티_최대인원",
+    "능력치_목록",
     "캐릭터_생성",
     "캐릭터_미리보기",
     "_캐릭터_만들기",
@@ -238,9 +241,7 @@ def 인형_만들기(게임상태, 이름, 소환자=None):
     소환자(캐릭터)를 주면 스킬로 부른 인형(매드) - 그 캐릭터의 능력치를 "기준능력치"로 쓰고 "소환자"에 이름을 남긴다."""
     인형데이터 = 인형정의(이름)
     기준 = (
-        {n: 소환자[n] for n in ("근력", "민첩", "건강", "지능", "지혜", "매력")}
-        if 소환자 is not None
-        else None
+        {n: 소환자[n] for n in common_names.능력치_목록} if 소환자 is not None else None
     )
     인형 = party_system.인형_만들기(
         {**인형데이터, "능력치": 기준} if 기준 else 인형데이터,

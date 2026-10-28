@@ -1,6 +1,7 @@
 # 전투 시스템 - 수식 평가 - 데미지 문법/다이스/무기공격력.
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
+from game.data import common_names
 import ast
 import functools
 import math
@@ -196,7 +197,7 @@ def 수식_평가(수식, 컨텍스트, 치명타=False, 평균=False):
         식 = 식.replace("주문시전보정치", str(컨텍스트.get("주문시전보정치", 0)))
 
     능력치딕셔너리 = 컨텍스트.get("능력치", {})
-    for 능력치이름 in ("근력", "민첩", "건강", "지능", "지혜", "매력"):
+    for 능력치이름 in common_names.능력치_목록:
         키워드 = f"{능력치이름}보정치"
         if 키워드 in 식:
             보정치표 = 컨텍스트.get("능력치보정치") or {}
