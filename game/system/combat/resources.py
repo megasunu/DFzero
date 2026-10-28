@@ -2,6 +2,7 @@
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
 from game.system import rng
+from game.data import common_names
 from game.data.buff import buff
 from game.data.buff import debuff
 from game.data.buff import skill_effects
@@ -96,7 +97,7 @@ def 턴종료_효과_제거(참가자):
 # 생긴(앞에 있는) 것부터.
 
 체이서_최대 = 9
-_체이서_속성 = {"화": "화속성", "수": "수속성", "명": "명속성", "암": "암속성"}
+_체이서_속성 = {common_names.속성_줄임말[s]: s for s in common_names.강화_속성}
 
 
 def 체이서_목록(참가자):
