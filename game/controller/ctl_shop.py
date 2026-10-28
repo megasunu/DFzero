@@ -16,6 +16,7 @@ from game.system import (
 from game.controller.ctl_party import 플레이어뷰
 
 __all__ = [
+    "변동대상_표시이름",
     "상점_탭목록",
     "상점_보유골드",
     "상점_구매목록",
@@ -185,3 +186,9 @@ def 상점_분류_일치(부위, 아이템, 직업군=None, 분류=None):
         if equipment_system.무기_직업군(아이템) != 직업군:
             return False
     return equipment_system.분류탭_일치(아이템, 부위, 분류)
+
+
+def 변동대상_표시이름(변동대상):
+    """효과 원소의 변동대상을 화면 문구로 - "AC보너스" -> "AC"(옛 이름도 정식 이름을 거쳐 같은 문구)."""
+    정식 = common_names.정식_변동대상(변동대상)
+    return common_names.변동대상_표시.get(정식, 정식)

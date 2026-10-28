@@ -1012,7 +1012,8 @@ class 상점화면(Screen):
             )
         if isinstance(값, (list, tuple)):
             return ", ".join(
-                f"{v['변동대상']} {v['변동값']:+d}"  # 장비효과 원소 - "최대MP +10"
+                # 장비효과·오라 원소 - "최대MP +10", "AC +1"
+                f"{gameflow.변동대상_표시이름(v['변동대상'])} {v['변동값']:+d}"
                 if isinstance(v, dict) and isinstance(v.get("변동값"), int)
                 else str(v)
                 for v in 값
