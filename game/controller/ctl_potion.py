@@ -5,6 +5,7 @@
 
 import copy
 
+from game.data import common_names
 from game.data.buff.status_effects import 상태이상목록
 from game.data.item.item_consumable import 소모품_데이터
 from game.data.item.item_doll import 인형_데이터
@@ -241,7 +242,7 @@ def 아군_버프포션_목록(게임상태):
 def _행동보너스들(전투상태, 참가자):
     return {
         종류: stats.버프디버프_수치(전투상태, 참가자, "행동보너스", 행동종류=종류)
-        for 종류 in ("일반행동", "보조행동", "반응행동")
+        for 종류 in common_names.행동자원_종류
     }
 
 

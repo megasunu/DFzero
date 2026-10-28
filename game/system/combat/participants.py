@@ -1,6 +1,7 @@
 # 전투 시스템 - 참가자 인스턴스 생성(아군/몬스터), 몬스터 수식 컨텍스트.
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
+from game.data import common_names
 from game.data.monster.monster_format import 역할군공식
 from game.system.combat import formula
 
@@ -120,7 +121,7 @@ def 적_참가자_생성(몬스터원본):
         "기본이니셔티브": 0,
         "우선도": 0,  # 아군과 같은 개념 - 유효_우선도() 참고.
         "기본우선도": 0,
-        "행동자원": {"일반행동": 1, "보조행동": 1, "반응행동": 1},
+        "행동자원": dict.fromkeys(common_names.행동자원_종류, 1),
         "추가공격_사용가능": 0,
         "상태이상": [],
         "버프": [],

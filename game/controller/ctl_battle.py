@@ -4,6 +4,7 @@
 # (gameflow.py에서 분리 - N5. 화면은 gameflow.py 창구만 부른다. 설명은 gameflow.py 머리말)
 
 from game.system import rng
+from game.data import common_names
 from game.data.buff.buff import 버프목록
 from game.data.buff.debuff import 디버프목록
 from game.data.buff.status_effects import 상태이상목록
@@ -361,8 +362,8 @@ def 새_로그_가져오기(게임상태):
 
 
 # 공격 연출 종류(combat.damage.공격연출_종류, "모양:색") -> game/assets/attack/ 안의 그림 파일
-_연출_모양_파일 = {"참격": "slash", "타격": "blunt", "관통": "pierce", "마법": "magic"}
-_연출_색_파일 = {"무": "none", "화": "fire", "수": "water", "명": "light", "암": "dark"}
+_연출_모양_파일 = common_names.연출모양_그림
+_연출_색_파일 = common_names.속성_그림
 
 
 def 새_공격연출_가져오기(게임상태):
@@ -564,7 +565,7 @@ def _만취_턴(게임상태, 참가자):
         지속턴 = rng.주사위.randint(*효과["수면지속턴"])
         resources.몬스터_버프_부여(전투상태, 참가자, "수면", 지속턴)
         if status.상태이상_플래그(전투상태, 참가자, "행동불가"):
-            참가자["행동자원"] = {"일반행동": 0, "보조행동": 0, "반응행동": 0}
+            참가자["행동자원"] = dict.fromkeys(common_names.행동자원_종류, 0)
         core.로그(
             전투상태,
             {"공격자": 참가자["이름"], "행동": f"만취 - 곯아떨어졌다(수면 {지속턴}턴)"},

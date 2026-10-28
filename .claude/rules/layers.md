@@ -20,6 +20,7 @@ game/system/       전투, 스킬, 장비, 세이브 등 게임 로직
                      쓰는 쪽은 `game.system.skill_system`(재수출 창구)을 부른다
 game/system/rng.py 모든 무작위의 출처 - 용도별 흐름(주사위/확률/대상/던전/보상). 전역 random을 직접 쓰지 않는다
 game/data/         직업, 몬스터, 맵, 아이템 데이터(파이썬 딕셔너리)
+  common_names.py    여러 계층이 같이 쓰는 이름 목록·표(속성, 연출 모양, 행동자원 ...) - 새로 반복하지 말고 여기서 가져다 쓴다
 game/assets/       폰트, 이미지
 tests/             헤드리스 테스트 + golden/*.json (kivy 없이 돈다, 테스트 지도는 docs/test-map.md)
 tools/check.py     완료 기준 게이트 (CLAUDE.md "완료 기준"), --골든은 골든 갱신 요약

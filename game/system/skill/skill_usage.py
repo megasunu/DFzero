@@ -14,6 +14,7 @@ from game.system.skill.skill_grant import (
     소환수_마릿수,
     정수_평가,
 )
+from game.data import common_names
 from game.data.buff import summon_00
 
 
@@ -116,10 +117,7 @@ def _행동_자원_사유(전투상태, 참가자, 스킬데이터):
     """스킬이 쓰는 행동(일반/보조/반응/전체소모)이 남아 있지 않은 사유. 있으면 None."""
     행동들 = _행동종류목록(스킬데이터.get("행동"))
     if "전체소모" in 행동들:
-        if all(
-            참가자["행동자원"].get(k, 0) <= 0
-            for k in ("일반행동", "보조행동", "반응행동")
-        ):
+        if all(참가자["행동자원"].get(k, 0) <= 0 for k in common_names.행동자원_종류):
             return "소모할 행동이 하나도 남아있지 않다."
         return None
     for 행동 in 행동들:
@@ -323,7 +321,7 @@ def 자원_소비_처리(
     행동지불을 주면(화면에서 고른 수단) 그것으로 낸다."""
     행동들 = _행동종류목록(스킬데이터.get("행동"))
     if "전체소모" in 행동들:
-        for k in ("일반행동", "보조행동", "반응행동"):
+        for k in common_names.행동자원_종류:
             참가자["행동자원"][k] = 0
     else:
         for 행동 in 행동들:
