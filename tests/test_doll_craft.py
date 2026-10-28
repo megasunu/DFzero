@@ -6,7 +6,7 @@
 import pytest
 
 import gameflow as gf
-from game.data.ability.job_ability_0000 import 특성목록
+from game.data.ability.job_ability_040f import 특성목록
 from game.data.item.item_doll import 인형_데이터
 from tests import support
 
