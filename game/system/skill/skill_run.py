@@ -2,6 +2,7 @@
 
 패키지 설명과 구현 범위는 game/system/skill_system.py 머리 주석을 본다(밖에서는 skill_system을 통해 쓴다)."""
 
+from game.data import common_names
 from game.system import rng
 
 from game.system import dice_utils, effect_engine, equipment_system
@@ -499,7 +500,9 @@ def _버프_원소들(시전자, 변동대상):
         정의 = resources.효과정의_조회(항목["이름"])[0] or {}
         효과 = 정의.get("효과")
         for 원소 in [효과] if isinstance(효과, dict) else 효과 or []:
-            if isinstance(원소, dict) and 원소.get("변동대상") == 변동대상:
+            if isinstance(원소, dict) and common_names.같은_변동대상(
+                원소.get("변동대상"), 변동대상
+            ):
                 yield 항목["이름"], 원소
 
 

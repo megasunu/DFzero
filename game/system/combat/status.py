@@ -1,6 +1,7 @@
 # 전투 시스템 - 상태이상 조회 - 정의/면역/플래그/행동제한, 은신 자동해제.
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
+from game.data import common_names
 from game.data.ability.job_ability_0000 import 특성목록 as _공용특성
 from game.system.combat import core
 
@@ -95,7 +96,9 @@ def 버프_분류목록(전투상태, 참가자, 변동대상):
     for 항목 in 참가자.get("버프") or []:
         효과 = (전투상태.get("버프정의", {}).get(항목["이름"]) or {}).get("효과")
         for 원소 in [효과] if isinstance(효과, dict) else 효과 or []:
-            if isinstance(원소, dict) and 원소.get("변동대상") == 변동대상:
+            if isinstance(원소, dict) and common_names.같은_변동대상(
+                원소.get("변동대상"), 변동대상
+            ):
                 결과 += 원소.get("분류") or []
     return 결과
 
@@ -163,7 +166,8 @@ def _특성_변동값들(전투상태, 참가자, 변동대상):
             결과 += [
                 원소.get("변동값")
                 for 원소 in 원소들
-                if isinstance(원소, dict) and 원소.get("변동대상") == 변동대상
+                if isinstance(원소, dict)
+                and common_names.같은_변동대상(원소.get("변동대상"), 변동대상)
             ]
     return 결과
 
