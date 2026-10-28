@@ -23,12 +23,12 @@ orientation = portrait
 fullscreen = 0
 
 # 안드로이드
-# api 33: HIDDeviceManager.java의 BLUETOOTH_CONNECT 심볼 오류 방지(빌드 노트 11절)
+# api 33: HIDDeviceManager.java의 BLUETOOTH_CONNECT 심볼 오류 방지(근거는 이 주석뿐 - 빌드 노트 4절 대응표)
 android.api = 33
 android.minapi = 21
 android.archs = arm64-v8a
 android.accept_sdk_license = True
-# 크래시 로그를 Download 폴더에 저장(main.py 안전장치, 빌드 노트 13절)
+# 크래시 로그를 Download 폴더에 저장(main.py 안전장치, 빌드 노트 5절)
 android.permissions = WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE
 android.allow_backup = True
 
