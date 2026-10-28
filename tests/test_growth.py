@@ -1197,3 +1197,9 @@ def test_방어구_숙달_전투_AC_방어력과_가죽_지속피해_내성이�
     assert not traits.상태이상_내성이점(전투상태, p, "기절")
     p["장비데이터"] = dict(p["장비데이터"], 상의={"재질": "천갑"})
     assert not traits.상태이상_내성이점(전투상태, p, "출혈")  # 세트가 깨지면 없음
+
+
+def test_모르는_레벨업_타입은_ValueError다():
+    """레벨업 타입별 처리기 표(character_levelup_system._레벨업_처리기)에 없는 타입은 거부한다."""
+    with pytest.raises(ValueError, match="알 수 없는 레벨업 타입"):
+        레벨업._레벨업_적용({"레벨": 1}, {"타입": "없는타입"}, 0, {})
