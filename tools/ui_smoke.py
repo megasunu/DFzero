@@ -259,6 +259,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_화면_틀(매니저)
         yield from self._단계_공격연출(상태, 매니저)
         yield from self._단계_감옥_대상팝업(상태, 매니저)
+        yield from self._단계_골렘_소환(상태, 매니저)
         yield from self._단계_프렌드_실드(상태, 매니저)
         yield from self._단계_인형(상태, 매니저)
         yield from self._단계_란마(상태, 매니저)
@@ -2935,6 +2936,50 @@ class 스모크앱(main.DnfMobileApp):
         결과["단계"].append(
             "얼음감옥: 갇힌 아군 칸에 뒤/앞 그림, 적 칸에는 없고 대상 팝업에 나오며 골라서 공격. 운석은 뒤 그림만"
         )
+
+    def _단계_골렘_소환(self, 상태, 매니저):
+        """인형사의 골렘 소환(#464): 적 칸이 다섯 다 찼으면 부른 골렘이 쓰러진 적의 칸을 넘겨받아 칸은 다섯 그대로,
+        골렘 그림과 이름이 그 칸에 뜨고 쓰러진 적은 칸에서 빠진다."""
+        from game.system.combat import damage, monster_actions, stats
+        from game.system.skill import skill_run
+
+        gf.전투_시작(상태, ["진흙 인형사"] + ["고블린"] * 4, 레벨=3, 차수=1)
+        support.반응_처리(상태)
+        전투상태 = 상태["전투상태"]
+        for x in 전투상태["참가자"]:
+            if x["진영"] == "아군":
+                x["현재HP"] = 999
+        인형사 = next(x for x in 전투상태["참가자"] if x["이름"] == "진흙 인형사")
+        쓰러진 = next(x for x in gf.적_목록(상태) if x is not 인형사)
+        damage.피해_적용(전투상태, 쓰러진, 10**6, 피해감소무시=True)
+        인형사["현재HP"] = (int(stats.유효_최대HP(전투상태, 인형사)) - 1) // 2
+        전투상태["현재턴"] = 전투상태["참가자"].index(인형사)
+        monster_actions.몬스터_턴_실행(전투상태, 인형사)
+        for _ in range(40):
+            다음 = skill_run.다음_턴(전투상태)
+            if 다음 is 인형사:
+                break
+            if 다음["진영"] == "적":
+                monster_actions.몬스터_턴_실행(전투상태, 다음)
+        monster_actions.몬스터_턴_실행(전투상태, 인형사)
+        assert any(x["이름"] == "진흙 골렘" for x in 전투상태["참가자"])
+        _차례(전투상태, "거너")
+        전투 = 매니저.get_screen("전투")
+        전투.갱신(신규=True)
+        매니저.current = "전투"
+        yield 0.5
+        _팝업_닫기()
+        적칸글 = [
+            w.text
+            for w in 전투.적상태틀.walk(restrict=True)
+            if isinstance(w, main.Label)
+        ]
+        assert any("진흙 골렘" in t for t in 적칸글), 적칸글
+        assert not any(쓰러진["이름"] in t for t in 적칸글), 적칸글
+        그림들 = [str(그림) for _, 그림, _ in 전투._적그림목록]
+        assert sum("asset_monster_mud_golem.webp" in g for g in 그림들) == 1, 그림들
+        assert len(전투._적그림목록) == 5, 그림들
+        _찍기("battle_golem_summon")
 
     def _단계_프렌드_실드(self, 상태, 매니저):
         """프렌드 실드(#310): 반응 자동이 꺼져 있으면 적의 단일 공격 대상이 될 때 반응 팝업에 살아 있는
