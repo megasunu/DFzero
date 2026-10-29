@@ -1619,6 +1619,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_전투종료_보상(상태, 매니저, 전투)
         yield from self._단계_자동전투(상태, 매니저, 전투)
         yield from self._단계_몬스터_크기(상태, 매니저, 전투)
+        yield from self._단계_익스펠러_석상(상태, 매니저, 전투)
         yield from self._단계_황금고블린_도망(상태, 매니저, 전투)
         yield from self._단계_주점(매니저)
 
@@ -1882,6 +1883,26 @@ class 스모크앱(main.DnfMobileApp):
         결과["단계"].append(
             "몬스터 크기 배율(소 1/2, 중 3/4, 대 1) + 발바닥 맞춤 + 대형이 뒤, 아군 그림 2/3 바닥 맞춤"
         )
+
+    def _단계_익스펠러_석상(self, 상태, 매니저, 전투):
+        """익스펠러는 석상(기사석상 그림)으로 등장하고, 석상이 풀리면 본래 그림으로 그린다(#472)"""
+        gf.전투_시작(상태, ["헤븐 익스펠러"], 레벨=6, 차수=2)
+        support.반응_처리(상태)
+        _아군_차례로(상태)
+        매니저.current = "전투"
+        헤븐 = gf.적_목록(상태)[0]
+        헤븐["상태이상"] = [s for s in 헤븐["상태이상"] if s["이름"] != "석상"]
+        헤븐["상태이상"].append({"이름": "석상", "지속턴": None})
+        전투.갱신(신규=True)
+        yield 1.2  # 0.6이면 앞 단계 그림이 찍힌다(화면이 아직 다시 그려지기 전)
+        assert 전투._적그림목록[0][1].endswith("asset_monster_knight_statue.webp")
+        _찍기("battle_expeller_statue")
+        헤븐["상태이상"] = [s for s in 헤븐["상태이상"] if s["이름"] != "석상"]
+        전투.갱신()
+        yield 1.2
+        assert 전투._적그림목록[0][1].endswith("asset_monster_heaven_expeller.webp")
+        _찍기("battle_expeller")
+        결과["단계"].append("익스펠러 석상 -> 기사석상 그림, 풀리면 본래 그림")
 
     def _단계_황금고블린_도망(self, 상태, 매니저, 전투):
         """황금 고블린 도망 -> (도망) 표시, 그림 없음, 적이 도망쳤다! -> 던전"""
