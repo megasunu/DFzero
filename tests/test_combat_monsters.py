@@ -144,7 +144,7 @@ def test_몬스터_패턴_전수(monkeypatch, 종족, golden):
     golden(f"combat_monsters_{종족}", 결과)
 
 
-def test_몬스터는_39종():
-    # 시험용 거대 누골 포함(2026-10-21), 인형사 4종(2026-10-28)
-    assert len(gf.몬스터목록) == 39
-    assert sum(len(v) for v in 종족파일.values()) == 39
+def test_몬스터는_46종():
+    # 시험용 거대 누골 포함(2026-10-21), 인형사 4종(2026-10-28), 골렘 7종(2026-10-29)
+    assert len(gf.몬스터목록) == 46
+    assert sum(len(v) for v in 종족파일.values()) == 46
