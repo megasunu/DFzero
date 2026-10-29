@@ -61,6 +61,7 @@ git config core.hooksPath .githooks          # pre-commit 훅 켜기
   실행 허락이 아니다.
 - **비밀값을 커밋하지 않는다** - 서명 키스토어, 토큰, 비밀번호, `*.pem`, `.env`. CI 비밀은 GitHub Secrets로.
 - **이 저장소는 공개다** - 이슈와 Actions 로그도 전부 공개다. 내부 URL, 개인정보, 비공개 계획을 쓰지 않는다.
+- **사용자에게 시각을 말할 때는 한국 시간(KST, UTC+9)으로 쓴다**(예: 21시 26분). 도구 인수(`send_later` 등)와 기록 파일은 UTC 그대로다(#478).
 - **GitHub 워크플로:** 맨 위 `permissions: {}`와 잡별 권한, `actions/checkout`은 `persist-credentials: false`, 액션은 주 버전 고정.
 
 ## 규칙 파일과 스킬
