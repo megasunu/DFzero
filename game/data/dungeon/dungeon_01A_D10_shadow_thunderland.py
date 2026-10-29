@@ -5,6 +5,7 @@
 
 맵정보 = {
     "지도명": "어둠의 선더랜드",
+    "목록그림": "asset_banner_shadow_thunderland.webp",
     "상세지역": ["아라드", "벨마이어 공국 북부"],
     "지도": [
         "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",

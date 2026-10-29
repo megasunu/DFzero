@@ -5,6 +5,7 @@
 
 맵정보 = {
     "지도명": "불타는 그락카락",
+    "목록그림": "asset_banner_blazing_grakquarak.webp",
     "상세지역": ["아라드", "벨마이어 공국 북부"],
     "지도": [
         "XXXXXXXXXXXXXXXXXXXXXXXXXXX",

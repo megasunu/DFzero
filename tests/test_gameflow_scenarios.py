@@ -74,7 +74,7 @@ def test_캠페인_전체_진행(golden):
     gf.마을_이동(상태, "헨돈마이어")
     assert gf.이동가능던전목록(상태) == [던전파일명(3), 던전파일명(5), 던전파일명(8)]
     # 순서 해금: 바로 앞 번호 던전의 보스를 깨야 열린다(목록엔 보이되 비활성)
-    assert [열림 for _, _, 열림 in gf.던전목록_표시(상태)] == [True, False, False]
+    assert [열림 for _, _, 열림, _ in gf.던전목록_표시(상태)] == [True, False, False]
 
     # 머크우드 -> 깊숙한곳 -> 헨돈마이어
     gf.던전_진입(상태, 던전파일명(3))
@@ -88,7 +88,7 @@ def test_캠페인_전체_진행(golden):
     assert (
         연결로_나가기(상태, "town_01A_T02_hendonmyre", 기록)["마을명"] == "헨돈마이어"
     )
-    assert [열림 for _, _, 열림 in gf.던전목록_표시(상태)] == [True, True, False]
+    assert [열림 for _, _, 열림, _ in gf.던전목록_표시(상태)] == [True, True, False]
 
     # 선더랜드 보스 -> 자기 숏컷 개방 -> 포이즌 선더랜드
     gf.던전_진입(상태, 던전파일명(5))

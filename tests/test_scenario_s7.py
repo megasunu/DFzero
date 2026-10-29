@@ -161,7 +161,7 @@ def test_S7_2차수_진입(golden):
     gf.마을_이동(상태, "웨스트코스트")
     assert gf.현재_마을정보(상태)["마을명"] == "웨스트코스트"
     목록 = gf.던전목록_표시(상태)
-    assert [(f, 열림) for f, _, 열림 in 목록] == [(f, True) for f in _하늘성]
+    assert [(f, 열림) for f, _, 열림, _ in 목록] == [(f, True) for f in _하늘성]
 
     # 3) 하층/천해 둘러보기 - 인카운트 없음, 막힌 보스·포탈은 몬스터 미정
     하늘성 = {f: _하늘성_둘러보기(상태, f) for f in _하늘성}
@@ -175,7 +175,7 @@ def test_S7_2차수_진입(golden):
     assert 불러옴["진행도"] == 진행도
     assert 불러옴["진행도"]["현재마을"] == "웨스트코스트"
     assert scenario.파티_HP(불러옴) == scenario.파티_HP(상태)
-    assert [f for f, _, 열림 in gf.던전목록_표시(불러옴) if 열림] == list(_하늘성)
+    assert [f for f, _, 열림, _ in gf.던전목록_표시(불러옴) if 열림] == list(_하늘성)
 
     golden(
         "scenario_S7_second_tier",
