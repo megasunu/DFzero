@@ -36,6 +36,7 @@ from game.system.combat import (
     "칭호정의",
     "세트정의",
     "스킬정의",
+    "몬스터정의",  # 전투 중에 부르는 몬스터(인형사의 골렘 소환 - monster_actions.적_소환)
 )
 
 

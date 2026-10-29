@@ -153,7 +153,9 @@ def test_진흙_돌_강철_인형사의_값과_패턴():
         m = gf.몬스터목록[이름]
         assert m["이미지"] == f"asset_monster_{그림}.webp"
         assert (m["적등급"], m["지능"], m["데미지보너스"]) == (등급, 지능, 0), 이름
-        assert m["특성"][2:] == ([개인] if 개인 else []), 이름
+        # 골렘소환:OO는 test_golem_summon.py가 본다
+        개인특성 = [t for t in m["특성"][2:] if not t.startswith("골렘소환:")]
+        assert 개인특성 == ([개인] if 개인 else []), 이름
         p = m["패턴"]
         assert [p[i]["이름"] for i in range(1, 7)] == [
             "근접 공격",
