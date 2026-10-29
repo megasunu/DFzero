@@ -2582,36 +2582,68 @@ class 스모크앱(main.DnfMobileApp):
         )
 
     def _단계_던전목록(self, 상태, 매니저):
-        """던전 이동 목록 - 바로 앞 번호 던전 보스를 안 깬 던전은 비활성"""
+        """던전 이동 목록 - 배너 그림이 버튼이고, 바로 앞 번호 던전 보스를 안 깬 던전은
+        어둡게 비활성. 열린 배너를 누르면 그 던전에 들어간다. 그림 없는 로리엔은 이름 버튼."""
         진행도 = 상태["진행도"]
-        원래 = (진행도["현재마을"], set(진행도.get("클리어한던전", set())))
+        원래 = (
+            진행도["현재마을"],
+            set(진행도.get("클리어한던전", set())),
+            상태["던전상태"],
+        )
+
+        def 목록():
+            return {
+                w.던전파일명: w
+                for w in 매니저.current_screen.목록틀.children
+                if hasattr(w, "던전파일명")
+            }
+
         try:
+            매니저.current = "던전목록"
+            yield 0.3
+            로리엔 = 목록()["dungeon_01A_D01_Lorien"]
+            assert isinstance(로리엔, Button) and 로리엔.text == "로리엔", 로리엔
             진행도["클리어한던전"] = {
                 "dungeon_01A_D01_Lorien",
                 "dungeon_01A_D02_Hollow_Lorien",
             }
             진행도["현재마을"] = "헨돈마이어"
-            매니저.current = "던전목록"
+            매니저.current_screen.갱신()
             yield 0.4
-            버튼 = {
-                w.text: w.disabled
-                for w in 매니저.current_screen.목록틀.walk(restrict=True)
-                if isinstance(w, Button)
-            }
-            assert 버튼 == {"머크우드": False, "선더랜드": True, "그락카락": True}, 버튼
+            버튼 = 목록()
+            assert {f: w.disabled for f, w in 버튼.items()} == {
+                "dungeon_01A_D03_mirkwood": False,
+                "dungeon_01A_D05_thunderland": True,
+                "dungeon_01A_D08_grakquarak": True,
+            }, 버튼
+            for 파일명, 이름 in [
+                ("dungeon_01A_D03_mirkwood", "mirkwood"),
+                ("dungeon_01A_D05_thunderland", "thunderland"),
+                ("dungeon_01A_D08_grakquarak", "grakquarak"),
+            ]:
+                w = 버튼[파일명]
+                assert isinstance(w, screens_common._이미지버튼), w
+                assert w.source.endswith(f"asset_banner_{이름}.webp"), w.source
+                assert w.texture is not None, w.source  # 그림을 실제로 읽었다
+            assert tuple(버튼["dungeon_01A_D03_mirkwood"].color) == (1, 1, 1, 1)
+            assert 버튼["dungeon_01A_D05_thunderland"].color[0] < 1  # 잠김은 어둡게
             _찍기("dungeon_list_locked")
             진행도["클리어한던전"].add("dungeon_01A_D04_Hollow_mirkwood")
             매니저.current_screen.갱신()
             yield 0.3
-            버튼 = {
-                w.text: w.disabled
-                for w in 매니저.current_screen.목록틀.walk(restrict=True)
-                if isinstance(w, Button)
-            }
-            assert 버튼["선더랜드"] is False and 버튼["그락카락"] is True, 버튼
-            결과["단계"].append("던전 이동 목록 - 앞 던전 보스 전엔 비활성, 깨면 활성")
+            버튼 = 목록()
+            assert not 버튼["dungeon_01A_D05_thunderland"].disabled, 버튼
+            assert 버튼["dungeon_01A_D08_grakquarak"].disabled, 버튼
+            assert tuple(버튼["dungeon_01A_D05_thunderland"].color) == (1, 1, 1, 1)
+            버튼["dungeon_01A_D03_mirkwood"].dispatch("on_release")
+            yield 0.3
+            assert 매니저.current == "던전", 매니저.current
+            assert 상태["던전상태"]["던전파일명"] == "dungeon_01A_D03_mirkwood"
+            결과["단계"].append(
+                "던전 이동 목록 - 배너 그림 버튼, 앞 던전 보스 전엔 어둡게 비활성, 누르면 입장"
+            )
         finally:
-            진행도["현재마을"], 진행도["클리어한던전"] = 원래
+            진행도["현재마을"], 진행도["클리어한던전"], 상태["던전상태"] = 원래
             매니저.current = "마을"
 
     def _단계_던전_스킬(self, 상태, 매니저):

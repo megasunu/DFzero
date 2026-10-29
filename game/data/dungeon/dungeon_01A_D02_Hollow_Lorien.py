@@ -5,6 +5,7 @@
 
 맵정보 = {
     "지도명": "로리엔 안쪽",
+    "목록그림": "asset_banner_hollow_lorien.webp",
     "상세지역": ["아라드", "벨마이어 공국 북부"],
     "지도": [
         "XXXXXXXXXXXXXXXXX",

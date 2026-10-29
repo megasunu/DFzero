@@ -5,6 +5,7 @@
 
 맵정보 = {
     "지도명": "머크우드 깊숙한곳",
+    "목록그림": "asset_banner_hollow_mirkwood.webp",
     "상세지역": ["아라드", "벨마이어 공국 북부"],
     "지도": [
         "XXXXXXXXXXXXXXXXX",

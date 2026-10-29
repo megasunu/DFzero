@@ -760,6 +760,36 @@ def test_던전_데이터의_좌표와_참조가_맞는다():
     assert not 문제, "\n".join(문제)
 
 
+# [던전 이동] 목록에서 이름 대신 보여 줄 그림(사용자가 준 168x73 배너, 그림 안에 이름이 있다).
+# 로리엔(D01)과 하늘성(D11~D16)은 아직 그림이 없어 이름 버튼으로 남는다.
+_던전_목록그림 = {
+    "dungeon_01A_D02_Hollow_Lorien": "asset_banner_hollow_lorien.webp",
+    "dungeon_01A_D03_mirkwood": "asset_banner_mirkwood.webp",
+    "dungeon_01A_D04_Hollow_mirkwood": "asset_banner_hollow_mirkwood.webp",
+    "dungeon_01A_D05_thunderland": "asset_banner_thunderland.webp",
+    "dungeon_01A_D06_poison_thunderland": "asset_banner_poison_thunderland.webp",
+    "dungeon_01A_D07_frost_mirkwood": "asset_banner_frost_mirkwood.webp",
+    "dungeon_01A_D08_grakquarak": "asset_banner_grakquarak.webp",
+    "dungeon_01A_D09_blazing_grakquarak": "asset_banner_blazing_grakquarak.webp",
+    "dungeon_01A_D10_shadow_thunderland": "asset_banner_shadow_thunderland.webp",
+}
+
+
+def test_던전_목록그림은_정한_던전에만_있고_파일이_있다():
+    목록그림 = {
+        이름: 던전["목록그림"]
+        for 이름, 던전 in gf.던전_레지스트리.items()
+        if 던전.get("목록그림")
+    }
+    assert 목록그림 == _던전_목록그림
+    없음 = [
+        파일
+        for 파일 in 목록그림.values()
+        if not (루트 / "game" / "assets" / "dungeon" / 파일).is_file()
+    ]
+    assert not 없음, 없음
+
+
 def test_마을_데이터와_상점_품목이_맞는다():
     카탈로그 = gf._상점_카탈로그_생성()
     품목 = set()

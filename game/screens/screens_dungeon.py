@@ -25,6 +25,8 @@ from game.screens.screens_common import (
     스크롤_목록,
     _캐릭터이미지_경로,
     _에셋_경로,
+    _도트_필터,
+    _이미지버튼,
     뒤로키_버튼,
     파티칸줄,
     파티원_정사각형_채우기,
@@ -525,10 +527,25 @@ class 던전목록화면(Screen):
         self.안내라벨.text = ""
 
         # 바로 앞 던전 보스를 아직 안 깬 던전은 보이되 누를 수 없다(gameflow.던전_열림)
-        for 파일명, 표시이름, 열림 in gameflow.던전목록_표시(앱.게임상태):
-            버튼 = Button(
-                text=표시이름, size_hint=(1, None), height=dp(56), disabled=not 열림
-            )
+        # 배너 그림(목록그림)이 있으면 이름 대신 그 그림이 버튼이다 - 그림 안에 이름이 있다.
+        for 파일명, 표시이름, 열림, 목록그림 in gameflow.던전목록_표시(앱.게임상태):
+            경로 = _에셋_경로("dungeon", 목록그림)
+            if 경로:
+                버튼 = _이미지버튼(
+                    source=경로,
+                    size_hint=(1, None),
+                    height=dp(84),
+                    allow_stretch=True,
+                    disabled=not 열림,
+                    # 잠긴 던전은 어둡게 - Image는 disabled여도 색이 그대로라 직접 칠한다
+                    color=(1, 1, 1, 1) if 열림 else (0.35, 0.35, 0.35, 1),
+                )
+                _도트_필터(버튼)
+            else:
+                버튼 = Button(
+                    text=표시이름, size_hint=(1, None), height=dp(56), disabled=not 열림
+                )
+            버튼.던전파일명 = 파일명  # ui_smoke가 목록에서 던전 버튼을 찾는 표
             버튼.bind(on_release=lambda inst, f=파일명: self._선택(f))
             self.목록틀.add_widget(버튼)
 
