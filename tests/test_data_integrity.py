@@ -436,9 +436,9 @@ def test_몬스터_데이터의_칭호는_모두_None이다():
 
 
 def test_용족_분류는_타입에_용족이_있다():
-    """세리말리온 계열 4종의 타입(사용자 지정 2026-10-13, 그전에는 "미정")."""
+    """세리말리온 계열 4종의 타입(사용자 지정 2026-10-13, 그전에는 "미정")과 용인족 3종(2026-10-29)."""
     용족 = {k: m for k, m in gf.몬스터목록.items() if m.get("분류") == "용족"}
-    assert len(용족) == 4
+    assert len(용족) == 7
     for 키, 몬스터 in 용족.items():
         타입 = 몬스터["타입"]
         assert "용족" in (타입 if isinstance(타입, list) else [타입]), 키
@@ -473,7 +473,12 @@ def test_공어_몬스터는_그림이_연결된다():
 
 
 def test_용족_몬스터는_그림과_적등급을_가지고_등록된다():
-    용족 = {n: d for n, d in gf.몬스터목록.items() if d["분류"] == "용족"}
+    """세리말리온 계열(용인족은 tests/test_dragonkin.py)."""
+    용족 = {
+        n: d
+        for n, d in gf.몬스터목록.items()
+        if d["분류"] == "용족" and "종족:세리말리온" in d["특성"]
+    }
     assert {n: (d["이미지"], d["적등급"]) for n, d in 용족.items()} == {
         "세리말리온": ("asset_monster_serimalion.webp", "일반"),
         "루스 세리말리온": ("asset_monster_louis_serimalion.webp", "일반"),
