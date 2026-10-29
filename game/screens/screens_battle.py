@@ -700,7 +700,7 @@ class 전투화면(Screen):
                 # 도망친 적은 그림을 지운다(칸은 남긴다)
                 None
                 if 적.get("도망")
-                else _에셋_경로("monster", 적["원본"].get("이미지")),
+                else _에셋_경로("monster", gameflow.적_그림_파일(적)),
                 gameflow.적_표시_배율(적),
             )
             for 번호, 적 in gameflow.적_그리기_순서(적목록)

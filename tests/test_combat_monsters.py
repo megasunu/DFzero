@@ -75,6 +75,9 @@ def 패턴_시나리오(monkeypatch, 이름, 패턴키, 패턴):
     동료["현재HP"] = max(1, 동료["현재HP"] // 3)
     # 반피 아래라 인형사가 패턴 대신 골렘 소환 캐스팅을 하지 않게(소환은 test_golem_summon.py가 본다)
     몬스터["소환사용"] = 동료["소환사용"] = True
+    # 석상(익스펠러)은 패턴 대신 쉬므로 풀린 상태로 본다(석상은 test_expeller.py가 본다)
+    for p in (몬스터, 동료):
+        p["상태이상"] = [s for s in p["상태이상"] if s["이름"] != "석상"]
     전 = [참가자_요약(p) for p in 전투상태["참가자"]]
 
     원래 = monster_ai.행동_선택
@@ -146,7 +149,7 @@ def test_몬스터_패턴_전수(monkeypatch, 종족, golden):
     golden(f"combat_monsters_{종족}", 결과)
 
 
-def test_몬스터는_46종():
-    # 시험용 거대 누골 포함(2026-10-21), 인형사 4종(2026-10-28), 골렘 7종(2026-10-29)
-    assert len(gf.몬스터목록) == 46
-    assert sum(len(v) for v in 종족파일.values()) == 46
+def test_몬스터는_49종():
+    # 시험용 거대 누골 포함(2026-10-21), 인형사 4종(2026-10-28), 골렘 7종·익스펠러 3종(2026-10-29)
+    assert len(gf.몬스터목록) == 49
+    assert sum(len(v) for v in 종족파일.values()) == 49
