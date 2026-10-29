@@ -2583,7 +2583,7 @@ class 스모크앱(main.DnfMobileApp):
 
     def _단계_던전목록(self, 상태, 매니저):
         """던전 이동 목록 - 배너 그림이 버튼이고, 바로 앞 번호 던전 보스를 안 깬 던전은
-        어둡게 비활성. 열린 배너를 누르면 그 던전에 들어간다. 그림 없는 로리엔은 이름 버튼."""
+        어둡게 비활성. 열린 배너를 누르면 그 던전에 들어간다. 그림 없는 하늘성 던전은 이름 버튼."""
         진행도 = 상태["진행도"]
         원래 = (
             진행도["현재마을"],
@@ -2602,7 +2602,14 @@ class 스모크앱(main.DnfMobileApp):
             매니저.current = "던전목록"
             yield 0.3
             로리엔 = 목록()["dungeon_01A_D01_Lorien"]
-            assert isinstance(로리엔, Button) and 로리엔.text == "로리엔", 로리엔
+            assert isinstance(로리엔, screens_common._이미지버튼), 로리엔
+            assert 로리엔.source.endswith("asset_banner_lorien.webp"), 로리엔.source
+            # 그림 없는 하늘성 던전은 이름 버튼
+            진행도["현재마을"] = "웨스트코스트"
+            매니저.current_screen.갱신()
+            yield 0.3
+            아몬 = 목록()["dungeon_02A_D11_amon_lower"]
+            assert isinstance(아몬, Button) and 아몬.text == "아몬 하층", 아몬
             진행도["클리어한던전"] = {
                 "dungeon_01A_D01_Lorien",
                 "dungeon_01A_D02_Hollow_Lorien",

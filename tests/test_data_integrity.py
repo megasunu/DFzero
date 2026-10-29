@@ -761,8 +761,9 @@ def test_던전_데이터의_좌표와_참조가_맞는다():
 
 
 # [던전 이동] 목록에서 이름 대신 보여 줄 그림(사용자가 준 168x73 배너, 그림 안에 이름이 있다).
-# 로리엔(D01)과 하늘성(D11~D16)은 아직 그림이 없어 이름 버튼으로 남는다.
+# 하늘성(D11~D16)은 아직 그림이 없어 이름 버튼으로 남는다.
 _던전_목록그림 = {
+    "dungeon_01A_D01_Lorien": "asset_banner_lorien.webp",
     "dungeon_01A_D02_Hollow_Lorien": "asset_banner_hollow_lorien.webp",
     "dungeon_01A_D03_mirkwood": "asset_banner_mirkwood.webp",
     "dungeon_01A_D04_Hollow_mirkwood": "asset_banner_hollow_mirkwood.webp",
