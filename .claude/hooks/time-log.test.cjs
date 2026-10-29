@@ -422,7 +422,7 @@ test("summarize: background tasks, waiting on them apart from waiting on the use
 
 test("format: markdown tables in seconds", () => {
   const text = t.format(t.summarize(EVENTS));
-  assert.match(text, /\| 1 \| #1 상점 \| 00:00:00 \| 40초 \| 16초 \| 24초 \| 1 \| 50k \| 300 \| 전체 게이트 20초, 코드 검색 4초, 파일 읽기 3초 \|/);
+  assert.match(text, /\| 1 \| #1 상점 \| 09:00:00 \| 40초 \| 16초 \| 24초 \| 1 \| 50k \| 300 \| 전체 게이트 20초, 코드 검색 4초, 파일 읽기 3초 \|/);
   assert.match(text, /\| #1 상점 \| 기능 \| 1 \| 40초 \| 16초 \| 24초 \| 1 \|/);
   assert.match(text, /\| 검사·실행 \| 전체 게이트 \| 1 \| 1 \| 20초 \| 20초 \|/);
   assert.match(text, /\| pytest \| 1 \| 1 \| 7\.5초 \|/);
@@ -658,14 +658,25 @@ test("summarize/format: expected green against the CI result that followed the t
     { t: at(700), ev: "Task", kind: "조사", name: "#2 조사" },
   ]);
   assert.deepStrictEqual(s.etas, [{ task: "#1 버그", kind: "버그", eta: at(430), actual: at(500), diff: 70, result: "초록" }]);
-  assert.match(t.format(s), /\| #1 버그 \| 버그 \| 00:07:10 \| 00:08:20 \| \+1분 10초 \| 초록 \|/);
+  assert.match(t.format(s), /\| #1 버그 \| 버그 \| 09:07:10 \| 09:08:20 \| \+1분 10초 \| 초록 \|/);
+});
+
+test("kst: shows a UTC time as Korean time, crossing midnight", () => {
+  assert.strictEqual(t.kst("2026-10-19T00:07:10.000Z"), "2026-10-19 09:07:10");
+  assert.strictEqual(t.kst("2026-10-19T15:30:00.000Z"), "2026-10-20 00:30:00");
+});
+
+test("format shows the period and turn starts in Korean time", () => {
+  const text = t.format(t.summarize(EVENTS));
+  assert.match(text, /^기간: 2026-10-19 09:00:00 ~ 2026-10-19 09:\d\d:\d\d \(KST\)\n/);
+  assert.match(text, /\| 턴 \| 작업 \| 시작\(KST\) \|/);
 });
 
 test("mark 작업 prints and keeps the expected green", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "time-log-eta-"));
   const env = { ...process.env, CLAUDE_PROJECT_DIR: dir };
   const out = execFileSync("node", [HOOK, "mark", "작업", "기능", "#3 상점"], { env }).toString();
-  assert.match(out, /^예상 초록 \d\d:\d\d:\d\d UTC \(작업 12분 0초 \+ CI 3분 10초\)\n$/);
+  assert.match(out, /^예상 초록 \d\d:\d\d:\d\d KST \(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ, 작업 12분 0초 \+ CI 3분 10초\)\n$/);
   const [line] = fs.readdirSync(path.join(dir, ".claude", "time-log")).map((f) =>
     JSON.parse(fs.readFileSync(path.join(dir, ".claude", "time-log", f), "utf8")),
   );

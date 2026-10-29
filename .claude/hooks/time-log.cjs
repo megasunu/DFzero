@@ -229,6 +229,9 @@ function backgroundLines(input, now) {
 const ETA_SEC = { 버그: 240, 설정: 240, 규칙: 240, 자동검사수정: 240, 문서: 240, 리팩터링: 540, 기능: 720, 기타: 720 };
 const CI_SEC = 190; // check + ui-smoke, the last 11 PR runs took 3:00-3:18
 
+// Times are stored in UTC and shown in Korean time (UTC+9, no daylight saving): "2026-10-19 09:07:10".
+const kst = (iso) => new Date(Date.parse(iso) + 9 * 3600 * 1000).toISOString().slice(0, 19).replace("T", " ");
+
 function eta(kind, t) {
   if (kind === "조사") return null;
   const sec = (ETA_SEC[kind] || ETA_SEC.기타) + CI_SEC;
@@ -596,7 +599,7 @@ const STARTED_BY = { 알림: " (알림)", 원격알림: " (원격)", 훅피드�
 
 function format(s) {
   const out = [
-    `기간: ${s.start} ~ ${s.end} (UTC)`,
+    `기간: ${kst(s.start)} ~ ${kst(s.end)} (KST)`,
     `사용자 대기: ${dur(s.waiting)} / 백그라운드 대기: ${dur(s.bgWaiting || 0)} / ` +
       `원격 알림 대기: ${dur(s.remoteWaiting || 0)} / ` +
       `끝나지 않은 도구 호출(거부·중단): ${s.unfinished}`,
@@ -624,11 +627,11 @@ function format(s) {
     "**턴별** (사용자 메시지부터 답을 마칠 때까지, `+`는 답하는 도중 새 메시지가 와서 나뉜 턴, " +
       "(알림)은 백그라운드 작업의 알림, (원격)은 PR 활동 같은 원격 알림, (훅)은 정지 훅 피드백으로 시작한 턴)",
     "",
-    "| 턴 | 작업 | 시작(UTC) | 걸린 시간 | 생각·답변 | 도구 | 실패 | 맥락 | 출력 토큰 | 주요 도구 |",
+    "| 턴 | 작업 | 시작(KST) | 걸린 시간 | 생각·답변 | 도구 | 실패 | 맥락 | 출력 토큰 | 주요 도구 |",
     "|---|---|---|---|---|---|---|---|---|---|",
     ...s.turns.map(
       (r) =>
-        `| ${r.n}${r.cut ? "+" : ""}${STARTED_BY[r.kind] || ""} | ${r.task} | ${r.start.slice(11, 19)} | ${dur(r.sec)} | ` +
+        `| ${r.n}${r.cut ? "+" : ""}${STARTED_BY[r.kind] || ""} | ${r.task} | ${kst(r.start).slice(11)} | ${dur(r.sec)} | ` +
         `${dur(r.think)} | ${dur(r.tools)} | ${r.fails} | ${k(r.context)} | ${r.output} | ${top(r.cats)} |`,
     ),
     "",
@@ -671,11 +674,11 @@ function format(s) {
   }
   const etas = s.etas || [];
   if (etas.length) {
-    const clock = (iso) => (iso ? iso.slice(11, 19) : "-");
+    const clock = (iso) => (iso ? kst(iso).slice(11) : "-");
     const signed = (sec) => (sec === null ? "-" : `${sec < 0 ? "-" : "+"}${dur(Math.abs(sec))}`);
     out.push(
       "",
-      "**예상 초록 시각** (UTC, 작업 표시 + 유형 기준값 + CI, 차이 = 실제 - 예상)",
+      "**예상 초록 시각** (KST, 작업 표시 + 유형 기준값 + CI, 차이 = 실제 - 예상)",
       "",
       "| 작업 | 유형 | 예상 | 실제 | 차이 | 결과 |",
       "|---|---|---|---|---|---|",
@@ -786,7 +789,8 @@ function main(argv, env) {
     if (expected) {
       line.eta = expected.green;
       const work = expected.sec - CI_SEC;
-      process.stdout.write(`예상 초록 ${expected.green.slice(11, 19)} UTC (작업 ${dur(work)} + CI ${dur(CI_SEC)})\n`);
+      const utc = expected.green.slice(0, 19) + "Z";
+      process.stdout.write(`예상 초록 ${kst(utc).slice(11)} KST (${utc}, 작업 ${dur(work)} + CI ${dur(CI_SEC)})\n`);
     }
     append(latestLog(dir) || logFile(dir, "manual"), line);
     return;
@@ -812,6 +816,7 @@ function main(argv, env) {
 if (require.main === module) main(process.argv.slice(2), process.env);
 
 module.exports = {
+  kst,
   categories,
   classify,
   group,
