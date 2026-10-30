@@ -143,9 +143,9 @@ def test_인형사_네_종의_공통_데이터():
         assert (루트 / "game" / "assets" / "monster" / m["이미지"]).is_file(), 이름
 
 
-def test_골렘_조종사와_얼음인형_샤레도는_없다():
+def test_골렘_조종사는_없다():
+    # 얼음인형 샤레도는 2026-10-30 사용자 지정으로 넣었다(#487, test_monster_shareddo_siegheart.py)
     assert "골렘 조종사" not in gf.몬스터목록
-    assert "얼음인형 샤레도" not in gf.몬스터목록
 
 
 def test_진흙_돌_강철_인형사의_값과_패턴():
