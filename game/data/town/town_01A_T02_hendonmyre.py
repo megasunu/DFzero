@@ -9,8 +9,13 @@
     "배경이미지": "asset_town_hendonmyre.webp",
     "던전목록": [
         "dungeon_01A_D03_mirkwood",
+        "dungeon_01A_D04_Hollow_mirkwood",
         "dungeon_01A_D05_thunderland",
+        "dungeon_01A_D06_poison_thunderland",
+        "dungeon_01A_D07_frost_mirkwood",
         "dungeon_01A_D08_grakquarak",
+        "dungeon_01A_D09_blazing_grakquarak",
+        "dungeon_01A_D10_shadow_thunderland",
     ],
     "상점판매목록": [
         # 무기 - 귀검사

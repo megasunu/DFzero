@@ -268,11 +268,22 @@ def test_던전목록_표시는_목록그림을_같이_넘긴다():
     """[던전 이동] 화면은 4번째 값(목록그림)이 있으면 이름 대신 그 그림을 버튼으로 쓴다."""
     상태 = gf.새_게임_시작([("", "귀검사")])
     assert gf.던전목록_표시(상태) == [
-        ("dungeon_01A_D01_Lorien", "로리엔", True, "asset_banner_lorien.webp")
+        ("dungeon_01A_D01_Lorien", "로리엔", True, "asset_banner_lorien.webp"),
+        (
+            "dungeon_01A_D02_Hollow_Lorien",
+            "로리엔 안쪽",
+            False,
+            "asset_banner_hollow_lorien.webp",
+        ),
     ]
     상태["진행도"]["현재마을"] = "헨돈마이어"
     assert [그림 for *_, 그림 in gf.던전목록_표시(상태)] == [
         "asset_banner_mirkwood.webp",
+        "asset_banner_hollow_mirkwood.webp",
         "asset_banner_thunderland.webp",
+        "asset_banner_poison_thunderland.webp",
+        "asset_banner_frost_mirkwood.webp",
         "asset_banner_grakquarak.webp",
+        "asset_banner_blazing_grakquarak.webp",
+        "asset_banner_shadow_thunderland.webp",
     ]

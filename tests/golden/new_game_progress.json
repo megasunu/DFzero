@@ -11,7 +11,8 @@
   "포션": {}
  },
  "이동가능던전": [
-  "dungeon_01A_D01_Lorien"
+  "dungeon_01A_D01_Lorien",
+  "dungeon_01A_D02_Hollow_Lorien"
  ],
  "진행도": {
   "도감": {

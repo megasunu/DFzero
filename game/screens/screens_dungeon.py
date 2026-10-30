@@ -500,8 +500,9 @@ class 던전목록화면(Screen):
         루트 = BoxLayout(orientation="vertical", padding=16, spacing=10)
         루트.add_widget(Label(text="던전 이동", font_size="24sp", size_hint=(1, 0.12)))
 
-        self.목록틀 = BoxLayout(orientation="vertical", size_hint=(1, 0.68), spacing=8)
-        루트.add_widget(self.목록틀)
+        # 헨돈마이어는 배너 8개(D03~D10)라 화면을 넘는다 - 끌어서 넘긴다
+        self.목록스크롤, self.목록틀 = 스크롤_목록(0.68, 간격=8)
+        루트.add_widget(self.목록스크롤)
 
         self.안내라벨 = Label(text="", size_hint=(1, 0.1))
         루트.add_widget(self.안내라벨)
@@ -518,6 +519,7 @@ class 던전목록화면(Screen):
 
     def 갱신(self):
         self.목록틀.clear_widgets()
+        self.목록스크롤.scroll_y = 1
         앱 = App.get_running_app()
         던전목록 = gameflow.이동가능던전목록(앱.게임상태)
 

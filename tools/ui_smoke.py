@@ -2625,12 +2625,41 @@ class 스모크앱(main.DnfMobileApp):
             로리엔 = 목록()["dungeon_01A_D01_Lorien"]
             assert isinstance(로리엔, screens_common._이미지버튼), 로리엔
             assert 로리엔.source.endswith("asset_banner_lorien.webp"), 로리엔.source
-            # 그림 없는 하늘성 던전은 이름 버튼
+            # 그림 없는 하늘성 던전은 이름 버튼 - 일곱 곳이 번호 순, 아몬 하층만 열림(순서 해금)
             진행도["현재마을"] = "웨스트코스트"
             매니저.current_screen.갱신()
             yield 0.3
-            아몬 = 목록()["dungeon_02A_D11_amon_lower"]
+            버튼 = 목록()
+            아몬 = 버튼["dungeon_02A_D11_amon_lower"]
             assert isinstance(아몬, Button) and 아몬.text == "아몬 하층", 아몬
+            assert [
+                w.text for w in reversed(매니저.current_screen.목록틀.children)
+            ] == [
+                "아몬 하층",
+                "아몬 상층",
+                "세피로타 하층",
+                "세피로타 상층",
+                "미들오션 천해",
+                "미들오션 심해",
+                "부유성",
+            ]
+            assert [f for f, w in 버튼.items() if not w.disabled] == [
+                "dungeon_02A_D11_amon_lower"
+            ], 버튼
+            _찍기("dungeon_list_skycastle")
+            # 아몬 하층 보스를 깨면 아몬 상층이 열리고, 목록으로 들어가도 하층에서 오는 포탈 도착 칸에 선다
+            진행도["클리어한던전"].add("dungeon_02A_D11_amon_lower")
+            매니저.current_screen.갱신()
+            yield 0.3
+            버튼 = 목록()
+            assert not 버튼["dungeon_02A_D12_amon_upper"].disabled, 버튼
+            assert 버튼["dungeon_02A_D13_sephiroth_lower"].disabled, 버튼
+            버튼["dungeon_02A_D12_amon_upper"].dispatch("on_release")
+            yield 0.3
+            assert 매니저.current == "던전", 매니저.current
+            assert tuple(상태["던전상태"]["위치"]) == (19, 18), 상태["던전상태"]["위치"]
+            매니저.current = "던전목록"
+            yield 0.3
             진행도["클리어한던전"] = {
                 "dungeon_01A_D01_Lorien",
                 "dungeon_01A_D02_Hollow_Lorien",
@@ -2639,11 +2668,12 @@ class 스모크앱(main.DnfMobileApp):
             매니저.current_screen.갱신()
             yield 0.4
             버튼 = 목록()
-            assert {f: w.disabled for f, w in 버튼.items()} == {
-                "dungeon_01A_D03_mirkwood": False,
-                "dungeon_01A_D05_thunderland": True,
-                "dungeon_01A_D08_grakquarak": True,
-            }, 버튼
+            assert [f for f, w in 버튼.items() if not w.disabled] == [
+                "dungeon_01A_D03_mirkwood"
+            ], 버튼
+            assert len(버튼) == 8, 버튼  # 헨돈마이어는 D03~D10 전부
+            _찍기("dungeon_list_hendonmyre")
+            yield from _스크롤_확인(매니저.current_screen.목록스크롤, "던전 목록")
             for 파일명, 이름 in [
                 ("dungeon_01A_D03_mirkwood", "mirkwood"),
                 ("dungeon_01A_D05_thunderland", "thunderland"),
@@ -2662,13 +2692,22 @@ class 스모크앱(main.DnfMobileApp):
             버튼 = 목록()
             assert not 버튼["dungeon_01A_D05_thunderland"].disabled, 버튼
             assert 버튼["dungeon_01A_D08_grakquarak"].disabled, 버튼
+            # 머크우드 깊숙한곳(D04)은 목록으로 들어가도 머크우드에서 오는 포탈 도착 칸(0, 3)에 선다
+            버튼["dungeon_01A_D04_Hollow_mirkwood"].dispatch("on_release")
+            yield 0.3
+            assert 매니저.current == "던전", 매니저.current
+            assert tuple(상태["던전상태"]["위치"]) == (0, 3), 상태["던전상태"]["위치"]
+            매니저.current = "던전목록"
+            yield 0.3
+            버튼 = 목록()
             assert tuple(버튼["dungeon_01A_D05_thunderland"].color) == (1, 1, 1, 1)
             버튼["dungeon_01A_D03_mirkwood"].dispatch("on_release")
             yield 0.3
             assert 매니저.current == "던전", 매니저.current
             assert 상태["던전상태"]["던전파일명"] == "dungeon_01A_D03_mirkwood"
             결과["단계"].append(
-                "던전 이동 목록 - 배너 그림 버튼, 앞 던전 보스 전엔 어둡게 비활성, 누르면 입장"
+                "던전 이동 목록 - 배너 그림 버튼, 앞 던전 보스 전엔 어둡게 비활성, 누르면 입장, "
+                "하늘성 일곱 곳 순서 해금, 이어진 던전은 포탈 도착 칸에서 시작"
             )
         finally:
             진행도["현재마을"], 진행도["클리어한던전"], 상태["던전상태"] = 원래

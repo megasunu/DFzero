@@ -7,6 +7,8 @@
     "지도명": "머크우드 깊숙한곳",
     "목록그림": "asset_banner_hollow_mirkwood.webp",
     "상세지역": ["아라드", "벨마이어 공국 북부"],
+    # 마을 목록으로 들어와도 머크우드에서 오는 포탈 도착 칸에 선다
+    "입장좌표": (0, 3),
     "지도": [
         "XXXXXXXXXXXXXXXXX",
         "XOOOXOXXXXXOOOOOX",

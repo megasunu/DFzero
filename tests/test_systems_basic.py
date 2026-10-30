@@ -443,12 +443,28 @@ def test_웨스트코스트는_어둠의_선더랜드_보스를_깨면_열린다
     town_system.던전_클리어_처리(진행도, "dungeon_01A_D10_shadow_thunderland")
     town_system.마을_이동(진행도, "웨스트코스트")
     assert 진행도["현재마을"] == "웨스트코스트"
-    # 마을에서 바로 가는 곳은 하층 두 곳과 천해뿐(상층/심해는 포탈로)
+    # 하늘성 던전 일곱 곳 모두 번호 순(아몬 하층 -> ... -> 부유성), 열림은 순서 해금
     assert town_system.이동가능던전목록(웨코) == [
         "dungeon_02A_D11_amon_lower",
+        "dungeon_02A_D12_amon_upper",
         "dungeon_02A_D13_sephiroth_lower",
+        "dungeon_02A_D14_sephiroth_upper",
         "dungeon_02A_D15_middleocean_shallow",
+        "dungeon_02A_D16_middleocean_deep",
+        "dungeon_02A_D17_floating_castle",
     ]
+
+
+def test_마을_던전_목록은_그_지역_던전_전부를_번호_순으로():
+    마을 = {m["마을명"]: m["던전목록"] for m in town_system.기본_마을목록()}
+    번호 = {
+        이름: [town_system.던전_번호(f) for f in 목록] for 이름, 목록 in 마을.items()
+    }
+    assert 번호 == {
+        "엘븐가드": [1, 2],
+        "헨돈마이어": [3, 4, 5, 6, 7, 8, 9, 10],
+        "웨스트코스트": [11, 12, 13, 14, 15, 16, 17],
+    }
 
 
 def _하늘성(파일):
@@ -742,6 +758,7 @@ def test_던전_순서_해금은_바로_앞_번호_던전_보스_클리어():
         "dungeon_01A_D05_thunderland",
         "dungeon_02A_D11_amon_lower",
         "dungeon_02A_D12_amon_upper",
+        "dungeon_02A_D13_sephiroth_lower",
     ]
     진행도 = {"클리어한던전": set()}
     assert town_system.던전_번호("dungeon_01A_D05_thunderland") == 5
@@ -750,7 +767,11 @@ def test_던전_순서_해금은_바로_앞_번호_던전_보스_클리어():
     assert not town_system.던전_열림("dungeon_01A_D05_thunderland", 진행도, 전체)
     진행도["클리어한던전"].add("dungeon_01A_D04_Hollow_mirkwood")
     assert town_system.던전_열림("dungeon_01A_D05_thunderland", 진행도, 전체)
-    # D11 이후는 규칙 밖(웨스트코스트 던전은 마을 개방조건으로만)
+    # 하늘성 첫 던전(D11)은 규칙 밖(웨스트코스트 개방조건으로만), D12~D17은 같은 규칙
+    assert town_system.던전_열림("dungeon_02A_D11_amon_lower", 진행도, 전체)
+    assert not town_system.던전_열림("dungeon_02A_D12_amon_upper", 진행도, 전체)
+    진행도["클리어한던전"].add("dungeon_02A_D11_amon_lower")
     assert town_system.던전_열림("dungeon_02A_D12_amon_upper", 진행도, 전체)
+    assert not town_system.던전_열림("dungeon_02A_D13_sephiroth_lower", 진행도, 전체)
     # 바로 앞 번호 던전 파일이 없으면 열림
     assert town_system.던전_열림("dungeon_01A_D04_Hollow_mirkwood", 진행도, 전체)

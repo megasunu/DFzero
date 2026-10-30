@@ -7,6 +7,8 @@
     "지도명": "어둠의 선더랜드",
     "목록그림": "asset_banner_shadow_thunderland.webp",
     "상세지역": ["아라드", "벨마이어 공국 북부"],
+    # 마을 목록으로 들어와도 선더랜드에서 오는 포탈 도착 칸에 선다
+    "입장좌표": (3, 6),
     "지도": [
         "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
         "XXOOOXXXXXXOOOXOXXXXXXOOXOXXXXXXOXOOX",
