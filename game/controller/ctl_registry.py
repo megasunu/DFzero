@@ -249,12 +249,15 @@ for _직업정보 in 직업_레지스트리.values():
 
 
 # 던전 보스를 "처음" 클리어했을 때 플레이어 레벨을 이 값으로 올린다(max()
-# 처리). 로리엔(01)은 없음, 짝수 던전 보스마다 +2 - 로리엔 안쪽 2,
-# 머크우드 깊숙한곳 4, 포이즌 선더랜드 6, 그락카락 8, 어둠의 선더랜드 10.
+# 처리). 로리엔(01)은 없음, 짝수 던전 보스마다 +1 - 로리엔 안쪽 2,
+# 머크우드 깊숙한곳 3, 포이즌 선더랜드 4, 그락카락 5, 어둠의 선더랜드 6.
+# 하늘성은 세피로타 상층 7, 부유성 8(2026-10-30 사용자 지정).
 플레이어레벨업_트리거 = {
     ("dungeon_01A_D02_Hollow_Lorien", (15, 3)): 2,
-    ("dungeon_01A_D04_Hollow_mirkwood", (15, 3)): 4,
-    ("dungeon_01A_D06_poison_thunderland", (25, 3)): 6,
-    ("dungeon_01A_D08_grakquarak", (25, 3)): 8,
-    ("dungeon_01A_D10_shadow_thunderland", (35, 3)): 10,
+    ("dungeon_01A_D04_Hollow_mirkwood", (15, 3)): 3,
+    ("dungeon_01A_D06_poison_thunderland", (25, 3)): 4,
+    ("dungeon_01A_D08_grakquarak", (25, 3)): 5,
+    ("dungeon_01A_D10_shadow_thunderland", (35, 3)): 6,
+    ("dungeon_02A_D14_sephiroth_upper", (3, 18)): 7,
+    ("dungeon_02A_D17_floating_castle", (3, 1)): 8,
 }
