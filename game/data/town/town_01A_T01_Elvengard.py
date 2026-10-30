@@ -7,7 +7,7 @@
     "마을명": "엘븐가드",
     "상세지역": ["아라드", "벨마이어 공국 북부"],
     "배경이미지": "asset_town_elvengard.webp",
-    "던전목록": ["dungeon_01A_D01_Lorien"],
+    "던전목록": ["dungeon_01A_D01_Lorien", "dungeon_01A_D02_Hollow_Lorien"],
     "상점판매목록": [
         # 무기 - 귀검사
         "녹슨 소검",

@@ -3,8 +3,8 @@
 # =====================
 # town_format.py 양식을 따른다.
 #
-# 2차수(하늘성) 마을. 하층 두 곳과 천해만 여기서 바로 들어가고, 상층/심해는
-# 그 던전의 포탈을 클리어해야 들어간다(dungeon_02A_D11~D16 참고).
+# 2차수(하늘성) 마을. 하늘성 던전 일곱 곳이 번호 순으로 목록에 있고, 바로 앞
+# 번호 던전의 보스를 깨야 열린다(town_system.던전_열림 - 2026-10-30 사용자 지정).
 # 배경이미지는 항구 그림(1323x1189 - 화면 그림 칸 1080x970과 비율이 같다).
 # 상점판매목록은 2차수 장비가 아직 없어 헨돈마이어와 같다.
 
@@ -14,8 +14,12 @@
     "배경이미지": "asset_town_westcoast.webp",
     "던전목록": [
         "dungeon_02A_D11_amon_lower",
+        "dungeon_02A_D12_amon_upper",
         "dungeon_02A_D13_sephiroth_lower",
+        "dungeon_02A_D14_sephiroth_upper",
         "dungeon_02A_D15_middleocean_shallow",
+        "dungeon_02A_D16_middleocean_deep",
+        "dungeon_02A_D17_floating_castle",
     ],
     "상점판매목록": [
         # 무기 - 귀검사

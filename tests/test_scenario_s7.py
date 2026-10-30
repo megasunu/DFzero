@@ -171,15 +171,27 @@ def test_S7_2차수_진입(golden):
     assert "웨스트코스트" in _마을명들(상태)
     성장[6] = _키우기(상태)
 
-    # 2) 웨스트코스트 - 하층 두 곳과 천해만 바로 열려 있다(상층/심해는 포탈 너머)
+    # 2) 웨스트코스트 - 하늘성 일곱 곳이 번호 순으로 보이고 아몬 하층만 열려 있다(순서 해금)
     gf.마을_이동(상태, "웨스트코스트")
     assert gf.현재_마을정보(상태)["마을명"] == "웨스트코스트"
     목록 = gf.던전목록_표시(상태)
-    assert [(f, 열림) for f, _, 열림, _ in 목록] == [(f, True) for f in _하늘성]
+    assert [f for f, *_ in 목록] == sorted(
+        f for f in gf.던전_레지스트리 if f.startswith("dungeon_02A_")
+    )
+    assert [열림 for _, _, 열림, _ in 목록] == [True] + [False] * 6
 
-    # 3) 하층/천해 둘러보기 - 인카운트와 전투이벤트를 실전으로
+    # 3) 하층/천해 둘러보기 - 인카운트와 전투이벤트를 실전으로. 상층/심해 원정은 S7 범위 밖이라
+    # 세피로타 하층·천해 앞에서는 바로 앞 던전(아몬 상층·세피로타 상층) 클리어를 기록해 연다
     하늘성 = {}
     for f in _하늘성:
+        앞던전 = {
+            "dungeon_02A_D13_sephiroth_lower": "dungeon_02A_D12_amon_upper",
+            "dungeon_02A_D15_middleocean_shallow": "dungeon_02A_D14_sephiroth_upper",
+        }.get(f)
+        if 앞던전:
+            assert not gf.던전_열림(상태, f), f
+            town_system.던전_클리어_처리(진행도, 앞던전)
+        assert gf.던전_열림(상태, f), f
         gf.휴식(상태)
         하늘성[f] = _하늘성_둘러보기(상태, f)
     assert any(v["인카운트"] for v in 하늘성.values())  # 하늘성에 몬스터가 나온다
@@ -193,7 +205,7 @@ def test_S7_2차수_진입(golden):
     assert 불러옴["진행도"] == 진행도
     assert 불러옴["진행도"]["현재마을"] == "웨스트코스트"
     assert scenario.파티_HP(불러옴) == scenario.파티_HP(상태)
-    assert [f for f, _, 열림, _ in gf.던전목록_표시(불러옴) if 열림] == list(_하늘성)
+    assert gf.던전목록_표시(불러옴) == gf.던전목록_표시(상태)
 
     golden(
         "scenario_S7_second_tier",
