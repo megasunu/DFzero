@@ -30,6 +30,7 @@ from game.data.dungeon.dungeon_02A_D15_middleocean_shallow import (
     맵정보 as _미들오션천해,
 )
 from game.data.dungeon.dungeon_02A_D16_middleocean_deep import 맵정보 as _미들오션심해
+from game.data.dungeon.dungeon_02A_D17_floating_castle import 맵정보 as _부유성
 from game.data.job_level.job_level_000x_style import 전투스타일
 from game.data.monster.monster_ability import 특성목록 as _몬스터특성
 from game.data.monster.monster_defaults import 몬스터_기본값
@@ -40,6 +41,7 @@ from game.data.monster.monster_race_expeller import 몬스터목록 as _익스�
 from game.data.monster.monster_race_etc import 몬스터목록 as _기타몬스터
 from game.data.monster.monster_race_human import 몬스터목록 as _인간몬스터
 from game.data.monster.monster_race_lugaru import 몬스터목록 as _루가루몬스터
+from game.data.monster.monster_race_spacefish import 몬스터목록 as _공어몬스터
 from game.data.monster.monster_race_tau import 몬스터목록 as _타우몬스터
 from game.data.monster.monster_race_test import 몬스터목록 as _시험몬스터
 from game.data.monster.monster_race_zombie import 몬스터목록 as _좀비몬스터
@@ -76,6 +78,11 @@ _몬스터파일목록 = [
     ("monster_race_dragon", _용족몬스터),
     ("monster_race_golem", _골렘몬스터),
     ("monster_race_expeller", _익스펠러몬스터),
+    # 공왕 크로쿠타는 특성 "공어의 왕"과 드랍군 "공어공용군"이 미정이라 아직 뺀다(공어·대공어만, 2026-10-30)
+    (
+        "monster_race_spacefish",
+        {k: v for k, v in _공어몬스터.items() if k != "공왕 크로쿠타"},
+    ),
     ("monster_race_etc", _기타몬스터),
     ("monster_race_test", _시험몬스터),
 ]
@@ -228,6 +235,7 @@ for _직업정보 in 직업_레지스트리.values():
     "dungeon_02A_D14_sephiroth_upper": _세피로타상층,
     "dungeon_02A_D15_middleocean_shallow": _미들오션천해,
     "dungeon_02A_D16_middleocean_deep": _미들오션심해,
+    "dungeon_02A_D17_floating_castle": _부유성,
 }
 
 
