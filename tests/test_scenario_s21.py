@@ -16,7 +16,7 @@ import support
 from tests.support import 구현된_전직
 
 서리 = "dungeon_01A_D07_frost_mirkwood"
-시드 = 1
+시드 = 2
 
 
 def _퍽고르기(캐릭터, 후보):
