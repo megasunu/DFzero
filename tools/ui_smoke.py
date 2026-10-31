@@ -474,6 +474,24 @@ class 스모크앱(main.DnfMobileApp):
         결과["단계"].append(
             "상점 장비 탭 2줄(한 화면) + 무기 직업군->종류 탭 + 방어구 재질 탭"
         )
+        # 소모품 "인형" 탭 - 상점 인형 5종만(28호는 팔지 않는다, #508)
+        상점._탭목록_그리기("구매", "소모품")
+        yield 0.3
+        탭("인형").trigger_action(duration=0)
+        yield 0.3
+        인형글 = [
+            _글(w.text)
+            for w in 상점._목록틀.walk(restrict=True)
+            if isinstance(w, main.Label)
+            and not isinstance(w, Button)
+            and _글(w.text) in 상태["상점카탈로그"]["소모품"]["인형"]
+        ]
+        assert 인형글 == [
+            f"아라드의 흔한 {직업}"
+            for 직업 in ("귀검사", "격투가", "거너", "마법사", "프리스트")
+        ], 인형글
+        _찍기("shop_buy_doll")
+        결과["단계"].append("상점 소모품 인형 탭(상점 인형 5종, 28호 없음)")
         상점._탭목록_그리기("판매", "장비")
         yield 0.5
         assert len({t.y for t in 탭들() if t.group == 탭("무기").group}) == 2
