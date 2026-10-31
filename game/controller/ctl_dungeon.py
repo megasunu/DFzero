@@ -1,7 +1,8 @@
 # 컨트롤러 - 던전 이동과 상호작용(인카운트/보스전 시작)
 # (gameflow.py에서 분리 - N5. 화면은 gameflow.py 창구만 부른다. 설명은 gameflow.py 머리말)
 
-from game.system import dungeon_system, effect_engine, town_system
+from game.data.item.item_consumable import 소모품_데이터
+from game.system import dungeon_system, effect_engine, potion_system, town_system
 from game.system.combat import formula
 from game.controller.ctl_battle import 전투_시작
 from game.controller.ctl_party import 캐릭터_장비데이터, 캐릭터_최대HP
@@ -15,6 +16,8 @@ __all__ = [
     "던전_진입",
     "연결지역_처리",
     "파티_인카운트없음",
+    "스프레이_사용",
+    "스프레이_남은걸음",
     "던전_이동",
     "오브젝트_상호작용",
     "이어진_맵_목록",
@@ -65,15 +68,37 @@ def 연결지역_처리(게임상태, 연결정보):
         return {"타입": "마을", "마을명": 마을명}
     if 연결맵 in 던전_레지스트리:
         # 던전 -> 던전 연결(로리엔 -> 로리엔 안쪽, 숏컷 등). "진입좌표"로
-        # 다음 던전에 들어간다.
+        # 다음 던전에 들어간다. 스프레이는 던전을 나가기 전까지라 이어진 던전에도 남는다(#506).
+        스프레이 = (게임상태.get("던전상태") or {}).get("스프레이") or []
         게임상태["던전상태"] = dungeon_system.던전_시작(
             던전_레지스트리[연결맵],
             연결맵,
             시작좌표=연결정보.get("진입좌표"),
             진행도=게임상태["진행도"],
         )
+        게임상태["던전상태"]["스프레이"] = list(스프레이)
         return {"타입": "던전", "지도명": 던전_레지스트리[연결맵].get("지도명", 연결맵)}
     return {"타입": "미지원", "연결맵": 연결맵}
+
+
+def 스프레이_사용(게임상태, 이름):
+    """던전 안 소지품에서 스프레이 1개를 쓴다(#506) - 그 걸음 동안(골드는 던전을 나갈 때까지) 인카운트가
+    없다. 화면 문구를 돌려준다. 던전 밖이거나 없으면 ValueError."""
+    아이템 = 소모품_데이터.get("스프레이", {}).get(이름)
+    if 아이템 is None:
+        raise ValueError(f"'{이름}'은(는) 스프레이가 아니다.")
+    if not 게임상태.get("던전상태") or 게임상태.get("전투상태"):
+        raise ValueError("스프레이는 던전 안에서만 쓸 수 있다.")
+    potion_system.소지품_차감_카테고리(게임상태["소지품"], "소모품", 이름)
+    걸음 = 아이템["걸음"]
+    dungeon_system.스프레이_사용(게임상태["던전상태"], 걸음)
+    기간 = "던전을 나갈 때까지" if 걸음 is None else f"{걸음}걸음 동안"
+    return f"{기간} 몬스터가 다가오지 않는다."
+
+
+def 스프레이_남은걸음(게임상태):
+    """던전 화면 표시용 - 가장 오래 남은 스프레이 걸음("∞"은 나갈 때까지), 없으면 None."""
+    return dungeon_system.스프레이_남은걸음(게임상태.get("던전상태"))
 
 
 def 파티_인카운트없음(게임상태):

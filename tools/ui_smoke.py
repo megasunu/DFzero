@@ -270,6 +270,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_합격(상태, 매니저)
         yield from self._단계_소지품(상태, 매니저)
         yield from self._단계_레테(상태, 매니저)
+        yield from self._단계_스프레이_플라스크(상태, 매니저)
         yield from self._단계_도감_업적(상태, 매니저)
         yield from self._단계_메뉴(상태, 매니저)
 
@@ -1401,6 +1402,26 @@ class 스모크앱(main.DnfMobileApp):
         결과["단계"].append(
             "전투 [아이템] 버프포션(가속 포션 - 보조행동 1, 일반행동 바로 +1)"
         )
+
+        # [아이템]의 속성 플라스크(#506): 보조행동 1개로 자기 무기에 속성, 로그에 남는다
+        p = _차례(전투상태, "귀검사")
+        상태["소지품"]["소모품"]["잭프로스트 플라스크"] = 1
+        보조 = p["행동자원"]["보조행동"]
+        전투._아이템_클릭()
+        yield 0.3
+        플라스크버튼 = [
+            b for b in _대상버튼들() if b.text.startswith("잭프로스트 플라스크")
+        ]
+        assert 플라스크버튼 and not 플라스크버튼[0].disabled, [
+            b.text for b in _대상버튼들()
+        ]
+        플라스크버튼[0].trigger_action(duration=0)
+        yield 0.5
+        assert p["행동자원"]["보조행동"] == 보조 - 1, p["행동자원"]
+        assert p["원본"].get("무기속성부여") == ["수속성"], p["원본"]
+        assert "잭프로스트 플라스크 사용" in 전투상태["로그"][-1].get("행동", "")
+        p["원본"].pop("무기속성부여", None)
+        결과["단계"].append("전투 [아이템] 속성 플라스크(보조행동 1, 무기에 수속성)")
 
         # [아이템]의 소환 아이템: 고블린 더스트 - 보조행동 1개, 고블린 소환, 턴이 끝나면 고블린이 공격
         p = _차례(전투상태, "귀검사")
@@ -3974,6 +3995,130 @@ class 스모크앱(main.DnfMobileApp):
         결과["단계"].append(
             "레테: 마을 소지품 [특수] 눈물 -> 파티원 -> 능력치판 -> 확인, 강물 -> 확인 -> [예] -> 레벨 1·환급, "
             "던전 소지품에는 [사용] 없음, 옛 세이브는 마을에서 한 번 묻기([취소] 없음)"
+        )
+
+    def _단계_스프레이_플라스크(self, 상태, 매니저):
+        """스프레이·속성 플라스크(#506): 마을 소지품 [스프레이]에는 [사용] 없음, 던전 소지품 [스프레이] [사용]
+        -> 결과 팝업 -> 던전 상태줄 "스프레이 10", [부여] [사용] -> 파티원 -> 무기에 화속성"""
+        import copy as _copy
+
+        앱 = App.get_running_app()
+        앱.게임상태 = 상태
+        상태["전투상태"] = None
+        상태["던전상태"] = None
+        원래소지품 = _copy.deepcopy(상태["소지품"])
+        상태["소지품"].setdefault("소모품", {}).update(
+            {"벌레퇴치 스프레이": 1, "샐러맨더 플라스크": 1}
+        )
+
+        def 버튼(위젯, 글):
+            return next(
+                w
+                for w in 위젯.walk(restrict=True)
+                if isinstance(w, Button) and _글(w.text) == 글
+            )
+
+        def 팝업():
+            return Window.children[0]
+
+        def 사용버튼(화면, 이름):
+            행 = next(
+                w.parent
+                for w in 화면._목록틀.walk(restrict=True)
+                if isinstance(w, Label) and _글(w.text) == 이름
+            )
+            return next(
+                (
+                    w
+                    for w in 행.walk(restrict=True)
+                    if isinstance(w, Button) and _글(w.text) == "사용"
+                ),
+                None,
+            )
+
+        def 탭_열기(화면, 탭):
+            버튼(화면, 탭).trigger_action(duration=0)
+
+        # 마을 소지품 - 스프레이는 [사용]이 없다
+        매니저.current = "마을"
+        yield 0.3
+        버튼(매니저.current_screen, "소지품/창고").trigger_action(duration=0)
+        yield 0.3
+        버튼(팝업(), "소지품").trigger_action(duration=0)
+        yield 0.3
+        화면 = 매니저.current_screen
+        버튼(화면, "소모품").trigger_action(duration=0)
+        yield 0.3
+        _찍기("spray_tabs")
+        탭_열기(화면, "스프레이")
+        yield 0.3
+        assert 사용버튼(화면, "벌레퇴치 스프레이") is None, (
+            "마을에서는 스프레이를 못 쓴다"
+        )
+        버튼(화면, "◀ 뒤로").trigger_action(duration=0)
+        yield 0.3
+        버튼(화면, "◀ 나가기").trigger_action(duration=0)
+        yield 0.3
+
+        # 던전 소지품 - 스프레이 [사용] -> 결과 팝업 -> 상태줄
+        gf.던전_진입(상태, "dungeon_01A_D01_Lorien")
+        던전 = 매니저.get_screen("던전")
+        던전.갱신()
+        매니저.current = "던전"
+        yield 0.3
+        버튼(던전, "소지품").trigger_action(duration=0)
+        yield 0.3
+        화면 = 매니저.current_screen
+        버튼(화면, "소모품").trigger_action(duration=0)
+        yield 0.3
+        탭_열기(화면, "스프레이")
+        yield 0.3
+        사용버튼(화면, "벌레퇴치 스프레이").trigger_action(duration=0)
+        yield 0.3
+        글들 = [_글(w.text) for w in 팝업().walk(restrict=True) if isinstance(w, Label)]
+        assert any("10걸음" in t for t in 글들), 글들
+        _찍기("spray_used")
+        _팝업_닫기()
+        yield 0.2
+        assert gf.스프레이_남은걸음(상태) == 10
+
+        # [부여] [사용] -> 파티원 고르기 -> 무기에 화속성
+        탭_열기(화면, "부여")
+        yield 0.3
+        사용버튼(화면, "샐러맨더 플라스크").trigger_action(duration=0)
+        yield 0.3
+        c = 상태["파티"]["파티원"][0]
+        next(
+            w
+            for w in 팝업().walk(restrict=True)
+            if isinstance(w, Button) and _글(w.text).startswith(c["캐릭터명"])
+        ).trigger_action(duration=0)
+        yield 0.3
+        assert c.get("무기속성부여") == ["화속성"], c.get("무기속성부여")
+        assert "화속성" in 화면.안내라벨.text, 화면.안내라벨.text
+        _찍기("flask_used")
+        for _ in range(3):
+            if 매니저.current != "소지품":
+                break
+            글들 = {
+                _글(w.text) for w in 화면.walk(restrict=True) if isinstance(w, Button)
+            }
+            버튼(화면, "◀ 뒤로" if "◀ 뒤로" in 글들 else "◀ 나가기").trigger_action(
+                duration=0
+            )
+            yield 0.3
+        assert 매니저.current == "던전", 매니저.current
+        던전.갱신()
+        yield 0.2
+        assert "스프레이 10" in 던전.상태라벨.text, 던전.상태라벨.text
+        _찍기("spray_dungeon_status")
+
+        c.pop("무기속성부여", None)
+        상태["소지품"] = 원래소지품
+        상태["던전상태"] = None
+        결과["단계"].append(
+            "스프레이·플라스크(#506): 마을 [스프레이]는 [사용] 없음, 던전 [사용] -> 팝업 -> 상태줄 스프레이 10, "
+            "[부여] [사용] -> 파티원 -> 무기에 화속성"
         )
 
     def _단계_도감_업적(self, 상태, 매니저):
