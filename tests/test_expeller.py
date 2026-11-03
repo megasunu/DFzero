@@ -184,12 +184,13 @@ def test_친위대장은_명속성_저항():
     assert damage.속성_피해배율(전투상태, 몬스터, "명속성") == 0.5
 
 
-def test_친위대장은_한_턴에_패턴을_두_번_쓴다(monkeypatch):
+def test_친위대장도_한_턴에_패턴을_한_번만_쓴다(monkeypatch):
+    # 추가행동 1은 2026-11-03 사용자 지정으로 뺐다
     전투상태, 몬스터, _ = _헤븐(monkeypatch)
     시작 = len(전투상태["로그"])
     _차례(전투상태, 몬스터, monkeypatch, _패턴(몬스터, "찌르기"))
     타격 = [x for x in 전투상태["로그"][시작:] if x.get("종류") == "타격"]
-    assert len(타격) == 2
+    assert len(타격) == 1
 
 
 def test_친위대장이_없는_익스펠러는_한_번만_쓴다(monkeypatch):
