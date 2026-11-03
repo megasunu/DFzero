@@ -25,6 +25,7 @@
 from game.system import rng
 
 from game.system import town_system
+from game.data.monster import monster_title
 
 # =====================================================
 # 던전 (그리드형 소형지도)
@@ -157,6 +158,39 @@ def 인카운트_판정(던전상태):
         등장몬스터[rng.던전.randrange(len(등장몬스터))] = 인카운트_교체몬스터
 
     return {"등장몬스터": 등장몬스터}
+
+
+# 챔피언 칭호(#546) - 값은 monster_title.py. 테스트가 바꿔 끼울 수 있게 모듈 이름으로 둔다.
+챔피언_확률 = monster_title.챔피언_확률
+
+
+def 챔피언_부여(등장몬스터, 몬스터목록):
+    """무작위 인카운트의 등장몬스터(이름 목록)에서 보스가 아니고 적등급이 일반/엘리트인 몬스터마다
+    챔피언_확률로 "챔피언"을 붙인다. 붙은 몬스터는 {"이름", "칭호": "챔피언", "돌연변이": 접두,
+    "챔피언버프": [...]} 항목이 되고(ctl_battle이 몬스터 원본에 반영), 나머지는 이름 그대로다.
+    버프 개수는 챔피언_버프개수 범위에서 같은 확률, 버프는 겹치지 않는다."""
+    결과 = []
+    최소, 최대 = monster_title.챔피언_버프개수
+    for 이름 in 등장몬스터:
+        원본 = 몬스터목록.get(이름) or {}
+        if (
+            원본.get("칭호") == "보스"
+            or 원본.get("적등급") not in monster_title.챔피언_대상등급
+            or rng.칭호.random() >= 챔피언_확률
+        ):
+            결과.append(이름)
+            continue
+        목록 = list(monster_title.챔피언버프_뽑기목록)
+        개수 = min(rng.칭호.randint(최소, 최대), len(목록))
+        결과.append(
+            {
+                "이름": 이름,
+                "칭호": "챔피언",
+                "돌연변이": rng.칭호.choice(list(monster_title.챔피언_돌연변이)),
+                "챔피언버프": rng.칭호.sample(목록, 개수),
+            }
+        )
+    return 결과
 
 
 def 연속전투_판정(맵정보, 처치몬스터들):

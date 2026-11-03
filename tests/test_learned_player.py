@@ -455,7 +455,7 @@ def test_샌드백_전투는_거대_누골_5마리이고_기본은_공격하지_
     로그 = [
         x
         for x in 상태["전투상태"]["로그"]
-        if x.get("공격자", "").startswith("거대 누골")
+        if x.get("공격자", "").startswith("[보스-거대 누골")
     ]
     assert 로그 and all(x.get("행동") == "무행동" for x in 로그)
     # 몬스터 데이터의 패턴은 그대로다(전투 사본만 비운다)
@@ -473,7 +473,7 @@ def test_샌드백_전투는_공격을_켜면_패턴대로_공격한다():
     로그 = [
         x
         for x in 상태["전투상태"]["로그"]
-        if x.get("공격자", "").startswith("거대 누골")
+        if x.get("공격자", "").startswith("[보스-거대 누골")
     ]
     assert 로그 and not any(x.get("행동") == "무행동" for x in 로그)
 

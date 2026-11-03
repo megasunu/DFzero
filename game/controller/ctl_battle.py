@@ -10,7 +10,7 @@ from game.data.buff.debuff import 디버프목록
 from game.data.buff.status_effects import 상태이상목록
 from game.data.equipment.eq_03_accessory_set import 장비세트목록
 from game.data.item.item_doll import 인형정의
-from game.data.monster.monster_title import 칭호목록
+from game.data.monster.monster_title import 챔피언_돌연변이, 칭호목록
 from game.system import dice_utils, settings_system, skill_system
 from game.system.combat import (
     attacks,
@@ -36,6 +36,7 @@ __all__ = [
     "스킬_인형소환",
     "양쪽대상_목록",
     "_몬스터항목_정규화",
+    "_챔피언_덮어쓰기",
     "_몬스터원본목록_생성",
     "자동전투_방식_목록",
     "전투로그_방식_목록",
@@ -114,6 +115,19 @@ def _몬스터항목_정규화(항목):
     return 항목
 
 
+def _챔피언_덮어쓰기(원본, 항목):
+    """챔피언 칭호(#546, dungeon_system.챔피언_부여)의 돌연변이 접두와 챔피언 버프를 몬스터 원본 사본에 넣는다.
+    돌연변이 특성과 챔피언 버프(monster_ability.py 분류 "챔피언버프")는 "특성"에 더해 특성처럼 계산된다 -
+    이미 있는 돌연변이는 하나만 둔다."""
+    접두 = 항목.get("돌연변이")
+    버프 = list(항목.get("챔피언버프") or [])
+    특성 = list(원본.get("특성") or [])
+    for 이름 in [챔피언_돌연변이.get(접두)] + 버프:
+        if 이름 and 이름 not in 특성:
+            특성.append(이름)
+    return {"특성": 특성, "챔피언접두": 접두, "챔피언버프": 버프}
+
+
 def _몬스터원본목록_생성(몬스터항목목록, 레벨=None, 차수=None):
     """레벨/차수를 주면 몬스터 원본 데이터 사본에 덮어쓴다 - 몬스터
     데이터(monster_race_*.py) 자신은 "레벨"/"차수"가 항상 None이고,
@@ -133,6 +147,8 @@ def _몬스터원본목록_생성(몬스터항목목록, 레벨=None, 차수=Non
         칭호 = 항목.get("칭호")
         if 칭호 is not None:
             덮어쓰기["칭호"] = 칭호
+        if 칭호 == "챔피언":
+            덮어쓰기.update(_챔피언_덮어쓰기(원본, 항목))
         if 레벨 is not None:
             덮어쓰기["레벨"] = 레벨
         if 차수 is not None:
