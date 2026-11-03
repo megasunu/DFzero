@@ -558,3 +558,18 @@ def test_학습정책은_열린_추가행동으로_일반공격도_후보에_넣
     assert p["행동자원"]["일반행동"] == 0 and gf.추가행동_남은수(p) == 1
     후보 = [키 for 키, _ in scenario.학습정책().후보(상태, p)]
     assert any(키[0] == "일반공격" for 키 in 후보), 후보
+
+
+def test_스킬_우선_턴은_열린_추가행동을_일반공격으로_쓴다(monkeypatch):
+    import scenario
+
+    상태, p, _ = support.추가행동_전장()
+    monkeypatch.setattr(scenario, "스킬_고르기", lambda *a: None)
+    시작 = len(상태["전투상태"]["로그"])
+    scenario.스킬_우선_턴(상태, [])
+    공격 = [
+        x
+        for x in 상태["전투상태"]["로그"][시작:]
+        if x.get("공격자") == p["이름"] and x.get("종류") == "일반공격"
+    ]
+    assert len(공격) == 2 and gf.추가행동_남은수(p) == 0
