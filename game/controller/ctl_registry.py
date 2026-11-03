@@ -79,11 +79,7 @@ _몬스터파일목록 = [
     ("monster_race_dragon", _용족몬스터),
     ("monster_race_golem", _골렘몬스터),
     ("monster_race_expeller", _익스펠러몬스터),
-    # 공왕 크로쿠타는 특성 "공어의 왕"과 드랍군 "공어공용군"이 미정이라 아직 뺀다(공어·대공어만, 2026-10-30)
-    (
-        "monster_race_spacefish",
-        {k: v for k, v in _공어몬스터.items() if k != "공왕 크로쿠타"},
-    ),
+    ("monster_race_spacefish", _공어몬스터),
     ("monster_race_spirit", _정령몬스터),
     ("monster_race_etc", _기타몬스터),
     ("monster_race_test", _시험몬스터),
