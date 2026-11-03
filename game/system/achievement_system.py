@@ -15,7 +15,7 @@
 
 from game.system import rng
 
-from game.data.achievement.achievement_list import 이름있는_보상
+from game.data.achievement.achievement_list import 업적_목록, 이름있는_보상
 from game.system import collection_system, player_system, shop_system
 
 조건_종류 = (
@@ -24,6 +24,7 @@ from game.system import collection_system, player_system, shop_system
     "일반전투승리",
     "보스전투승리",
     "오브젝트클리어",
+    "몬스터승리",
 )
 
 
@@ -55,6 +56,24 @@ def 전투승리_기록(진행도, 보스):
     _업적기록(진행도)["보스전투승리" if 보스 else "일반전투승리"] += 1
 
 
+# 조건 "몬스터승리"가 찾는 몬스터 - 이 몬스터만 기록한다(다른 처치는 진행도에 남기지 않는다)
+_승리처치_대상 = {
+    업적["조건"]["몬스터"] for 업적 in 업적_목록 if 업적["조건"]["종류"] == "몬스터승리"
+}
+
+
+def 승리처치_기록(진행도, 몬스터이름들):
+    """이긴 전투에서 쓰러뜨린 몬스터 중 조건 "몬스터승리"(공왕 크로쿠타 #490)가 찾는 이름을 남긴다(중복 없이).
+    진행도["업적기록"]["승리처치"] - 옛 세이브에는 이 칸이 없어 처음 쓸 때 만든다."""
+    새것 = [이름 for 이름 in 몬스터이름들 if 이름 in _승리처치_대상]
+    if not 새것:
+        return
+    기록 = _업적기록(진행도).setdefault("승리처치", [])
+    for 이름 in 새것:
+        if 이름 not in 기록:
+            기록.append(이름)
+
+
 def _현재값(진행도, 조건):
     종류 = 조건["종류"]
     if 종류 == "플레이어레벨":
@@ -63,6 +82,12 @@ def _현재값(진행도, 조건):
         return len((진행도.get("도감") or {}).get("몬스터", []))
     if 종류 in ("일반전투승리", "보스전투승리"):
         return _업적기록(진행도)[종류]
+    if 종류 == "몬스터승리":
+        return (
+            1
+            if 조건["몬스터"] in (진행도.get("업적기록") or {}).get("승리처치", [])
+            else 0
+        )
     if 종류 == "오브젝트클리어":
         대상 = (조건["던전파일명"], tuple(조건["좌표"]))
         return 1 if 대상 in 진행도.get("클리어한오브젝트", set()) else 0

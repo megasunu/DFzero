@@ -1657,6 +1657,7 @@ class 스모크앱(main.DnfMobileApp):
     def _단계_전투종료_자동전투_주점(self, 상태, 매니저, 전투):
         """전투 종료/보상, 자동전투, 몬스터 크기, 황금 고블린 도망, 주점"""
         yield from self._단계_전투종료_보상(상태, 매니저, 전투)
+        yield from self._단계_공어_연속전투(상태, 매니저, 전투)
         yield from self._단계_자동전투(상태, 매니저, 전투)
         yield from self._단계_몬스터_크기(상태, 매니저, 전투)
         yield from self._단계_익스펠러_석상(상태, 매니저, 전투)
@@ -1826,6 +1827,72 @@ class 스모크앱(main.DnfMobileApp):
                 gf.던전_진입(상태, "dungeon_01A_D01_Lorien")
         결과["단계"].append(
             "전투 종료 팝업(승리 전리품/없음, 도망, 패배) + 전투 보상 선택/포기"
+        )
+
+    def _단계_공어_연속전투(self, 상태, 매니저, 전투):
+        """공어 연속전투(#490): 이긴 뒤 [연속전투] 팝업 -> [전투 시작]으로 공왕 크로쿠타 전투 -> 이기면 보상 두 번"""
+        gf.던전_진입(상태, "dungeon_02A_D15_middleocean_shallow")
+        gf.파티_최대치로_회복(상태)
+        gf.전투_시작(상태, ["공어"], 레벨=8, 차수=2)
+        support.반응_처리(상태)
+        _아군_차례로(상태)
+        매니저.current = "전투"
+        전투.갱신(신규=True)
+        yield 0.3
+        원래 = rng.던전.random
+        rng.던전.random = lambda: 0.0  # 연속전투 판정이 반드시 걸리게
+        try:
+            if 상태["전투상태"] is not None:
+                support.강제_승리(상태)
+                전투.갱신()
+            yield 0.5
+        finally:
+            rng.던전.random = 원래
+        글 = next(t for t in _팝업글() if "공왕 크로쿠타가 나타났다!" in t)
+        assert 글.split("\n") == ["전투 승리!", "공왕 크로쿠타가 나타났다!"], 글
+        assert not gf.전투_보상_대기중(상태)  # 보상은 두 전투가 끝난 뒤
+        _찍기("battle_chain_popup")
+        _팝업_버튼("전투 시작").dispatch("on_release")
+        yield 0.8
+        # 전투시작 반응·적 차례를 엔진이 돌리는 동안은 기다린다(반응 팝업은 쓰지 않는다)
+        for _ in range(50):
+            if not 전투._엔진중:
+                break
+            if "사용 안 함" in _팝업글():
+                _팝업_버튼("사용 안 함").dispatch("on_release")
+            yield 0.2
+        assert not 전투._엔진중, _팝업글()
+        이름들 = sorted(p["원본"]["몬스터명"] for p in gf.적_목록(상태))
+        assert 이름들 == sorted(
+            ["공왕 크로쿠타", "대공어", "대공어", "공어", "공어"]
+        ), 이름들
+        assert 매니저.current == "전투"
+        _찍기("battle_chain_crocuta")
+        if 상태["전투상태"] is not None:
+            support.강제_승리(상태)
+            전투.갱신()
+        yield 0.5
+        assert next(t for t in _팝업글() if t.startswith("전투 승리!"))
+        for 차례 in (1, 2):  # 첫 전투 보상, 크로쿠타 전투 보상
+            assert _팝업_버튼("확인").disabled, 차례
+            assert not _팝업_버튼("전투 보상").disabled, 차례
+            _팝업_버튼("전투 보상").dispatch("on_release")
+            yield 0.5
+            _팝업_버튼("포기하기(10골드)").dispatch("on_release")
+            yield 0.3
+        assert not gf.전투_보상_대기중(상태)
+        assert not _팝업_버튼("확인").disabled and _팝업_버튼("전투 보상").disabled
+        _확인_누르기()
+        yield 0.5
+        assert 매니저.current == "던전", 매니저.current
+        # 크로쿠타를 이겨 업적 "공왕 크로쿠타 처치"가 열렸다 - 뒤의 도감·업적 단계는 골드 업적만 세므로 기록을 지운다
+        assert "공왕 크로쿠타" in 상태["진행도"]["업적기록"]["승리처치"]
+        del 상태["진행도"]["업적기록"]["승리처치"]
+        # 다음 단계들은 로리엔에서, 다 회복한 파티로 시작한다
+        gf.던전_진입(상태, "dungeon_01A_D01_Lorien")
+        gf.파티_최대치로_회복(상태)
+        결과["단계"].append(
+            "공어 연속전투 팝업 -> 공왕 크로쿠타 전투 -> 보상 두 번(포기)"
         )
 
     def _단계_자동전투(self, 상태, 매니저, 전투):

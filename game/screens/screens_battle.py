@@ -1278,6 +1278,9 @@ class 전투화면(Screen):
         줄들 = gameflow.전투_종료_문구(앱.게임상태, 결과)
         self.안내라벨.text = 줄들[0]
         self.액션틀.clear_widgets()
+        if 결과 == "연속전투":
+            self._연속전투_팝업(줄들)
+            return
 
         안내 = Label(text=_전리품_글(앱.게임상태, 줄들), halign="center", markup=True)
         확인버튼 = Button(text="확인", size_hint=(1, None), height=dp(48))
@@ -1292,8 +1295,10 @@ class 전투화면(Screen):
             확인버튼.disabled = True
 
             def 보상끝():
-                보상버튼.disabled = True
-                확인버튼.disabled = False
+                # 연속전투(#490)면 보상이 하나 더 남는다 - 그때는 [전투 보상]을 한 번 더 누른다
+                if not gameflow.전투_보상_대기중(앱.게임상태):
+                    보상버튼.disabled = True
+                    확인버튼.disabled = False
                 # 받은 보상 아이템을 전리품 줄에 더해 다시 쓴다(포기면 그대로)
                 새줄들 = gameflow.전투_종료_문구(앱.게임상태, 결과)
                 안내.text = _전리품_글(앱.게임상태, 새줄들)
@@ -1322,6 +1327,29 @@ class 전투화면(Screen):
             self._전투종료_이동(결과)
 
         확인버튼.bind(on_release=확인)
+        팝업.open()
+
+    def _연속전투_팝업(self, 줄들):
+        """공어 연속전투(#490) - 보상 전에 공왕 크로쿠타가 나타났다고 알리고 [전투 시작]으로 바로 싸운다."""
+        앱 = App.get_running_app()
+        본문 = BoxLayout(orientation="vertical", spacing=12, padding=12)
+        본문.add_widget(Label(text="\n".join(줄들), halign="center"))
+        시작버튼 = Button(text="전투 시작", size_hint=(1, None), height=dp(48))
+        뒤로키_버튼(시작버튼)
+        본문.add_widget(시작버튼)
+        팝업 = Popup(
+            title="연속전투",
+            content=본문,
+            size_hint=(0.7, 0.35),
+            auto_dismiss=False,
+        )
+
+        def 시작(*_):
+            팝업.dismiss()
+            gameflow.연속전투_시작(앱.게임상태)
+            self.갱신(신규=True)
+
+        시작버튼.bind(on_release=시작)
         팝업.open()
 
     def _전투종료_이동(self, 결과):
