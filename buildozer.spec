@@ -7,7 +7,7 @@
 title = dnfmobile
 package.name = dnfmobile
 package.domain = org.test
-version = 0.1.2
+version = 0.1.3
 
 # 소스 위치 (최상위에 main.py / gameflow.py / game/ 가 바로 있음)
 source.dir = .
