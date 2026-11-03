@@ -98,3 +98,14 @@ def test_플레게의_화염병은_명화속성_피해와_지혜_내성_실패�
     assert 내성 == [10 + 보정치]
     화상 = [x for x in 적[0]["상태이상"] if x["이름"] == "화상"]
     assert 화상 and 화상[0]["지속턴"] == 3
+
+
+def test_플레게의_화염병_주사위는_d12(심판관전장, monkeypatch):
+    # 2026-11-03 사용자 결정 - (차수+1)d8에서 (차수+1)d12로
+    _, 전투상태, 적, s = 심판관전장
+    monkeypatch.setattr(stats.dice_utils, "d20_굴림", lambda 이점=False, 불리=False: 15)
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: b)  # 주사위 최대 눈
+    결과 = _쓰기(전투상태, s, "플레게의 화염병", 적[0])
+    보정치 = stats.주문시전_보정치(전투상태, s)
+    # 3d12 최대 36 + 주문시전보정치, 화·명속성강화 1 -> x1.1 올림
+    assert 결과["타격"][0]["피해"] == -(-(36 + 보정치) * 11 // 10)
