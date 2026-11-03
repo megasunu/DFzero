@@ -5,7 +5,8 @@
   차징이 풀리고 차수가 2 이상이어도 그 차례는 한 번만 행동(특수패턴:레기온).
 - 악시온 6번 "돌진 명령" - 살아 있는(석상이 아닌) 레기온이 모두 즉시 6번 패턴을 쓰고 자신은 "돌진 준비"
   (랜스 차징과 같음, 특수패턴:악시온).
-- 이블아이 파괴광선 - 양 옆 대상은 (1d12+지능보정치)/2, 특성 "사악한 눈" - 피격 시 30% 1d6 반격, 라운드당 1회.
+- 이블아이 파괴광선 - 양 옆 대상은 (1d12+지능보정치)/2, 특성 "사악한 눈" - 피격 시 30% 1d6 반격, 라운드당 1회,
+  최대체력 1/2 추가(배율 1.5, 다른 최대체력 변동을 다 더한 뒤 - 2026-11-03 사용자 지정).
 
 패턴 데이터 값은 전수 골든(test_combat_monsters)이 본다. 여기는 규칙을 정확한 값으로 본다.
 """
@@ -16,7 +17,16 @@ import pytest
 
 import gameflow as gf
 from game.system import monster_ai, rng
-from game.system.combat import damage, flow, monster_actions, status
+
+from game.system.combat import (
+    damage,
+    flow,
+    formula,
+    monster_actions,
+    stats,
+    status,
+    traits,
+)
 from game.data.monster.monster_ability import 특성목록 as _특성
 from tests import support
 
@@ -161,7 +171,7 @@ def test_이블아이_두_눈은_같은_능력치와_패턴이고_그림만_다�
     assert [왼[k] for k in ("근력", "민첩", "건강", "지능", "지혜", "매력")] == [
         14,
         10,
-        20,
+        10,
         14,
         18,
         6,
@@ -412,3 +422,24 @@ def test_사악한_눈은_30퍼센트_확률이_빗나가면_반격하지_않고
     damage.피격_처리(전투상태, 아군[0], 눈, {"성공": True})
     assert [x[0] for x in 기록] == [아군[0]["이름"]]
     assert _특성["사악한 눈"]["피격시효과"][0]["확률"] == 0.3
+
+
+@pytest.mark.parametrize("이름", ["이블아이의 왼쪽눈", "이블아이의 오른쪽눈"])
+def test_사악한_눈은_최대체력을_절반만큼_더한다(이름):
+    rng.시드(5)
+    상태 = support.새게임([("", "귀검사")])
+    gf.전투_시작(상태, [이름], 레벨=2, 차수=1)
+    support.반응_처리(상태)
+    전투상태 = 상태["전투상태"]
+    눈 = next(p for p in 전투상태["참가자"] if p["진영"] == "적")
+    배율전 = (
+        눈["기본최대HP"] * traits.칭호_배율(전투상태, 눈, "최대HP")
+        + stats.버프디버프_수치(전투상태, 눈, "최대HP")
+        + traits.특성_수치(전투상태, 눈, "최대HP")
+        + traits.칭호_수치(전투상태, 눈, "최대HP")
+    )
+    assert traits.특성_배율(전투상태, 눈, "최대HP") == 1.5
+    assert stats.유효_최대HP(전투상태, 눈) == 배율전 * 1.5
+    assert 눈["현재HP"] == formula.올림(
+        배율전 * 1.5
+    )  # 전투 시작 HP도 1.5배(소수는 올림)
