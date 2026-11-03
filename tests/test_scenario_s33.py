@@ -18,7 +18,7 @@ import support
 from tests.support import 구현된_전직
 
 선더랜드 = "dungeon_01A_D05_thunderland"
-시드 = 0
+시드 = 1
 파티구성 = [("", "귀검사"), ("", "격투가"), ("", "거너"), ("", "프리스트")]
 전직표 = dict(구현된_전직, 귀검사="검귀")
 도 = "예리한 카타나"
