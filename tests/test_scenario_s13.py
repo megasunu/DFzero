@@ -87,6 +87,9 @@ def test_S13_마봉효과_실전(golden):
             for 항목 in 상태["전투상태"]["로그"]
             if isinstance(항목, dict)
             and str(항목.get("비고", "")).startswith(f"'{귀걸이이름}' - ")
+            and not str(항목["비고"]).endswith(
+                "면역"
+            )  # 챔피언 이뮨-상태변화(#546) - 시전자 없는 기록
         ]
         # 발동은 귀검사의 공격이 명중했을 때만 - 내성굴림(DC 12)을 굴린 기록이 같이 남는다
         for 항목 in 발동:
