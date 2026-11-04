@@ -6,9 +6,8 @@
 import json
 
 import gameflow as gf
-from game.data.npc.npc_list import NPC_목록
-from game.data.quest.quest_list import 퀘스트_목록
 from game.system import quest_system, save_system, town_system
+from game.system.quest_system import NPC_목록, 퀘스트_목록
 from tests import support
 
 로리엔 = "dungeon_01A_D01_Lorien"
@@ -35,7 +34,6 @@ def test_NPC와_퀘스트_데이터는_서로_맞다():
     assert len({n["이름"] for n in NPC_목록}) == len(NPC_목록)
     for npc in NPC_목록:
         assert npc["마을"] == "모든마을" or set(npc["마을"]) <= 마을명들, npc["이름"]
-        assert set(npc["퀘스트"]) <= set(퀘스트ID), npc["이름"]
         assert npc["대화"]
         조건 = npc["대화조건"]
         assert 조건 is None or 조건["타입"] in quest_system.조건_타입
@@ -191,3 +189,48 @@ def test_옛_세이브는_빈_퀘스트_기록으로_불러온다(임시_세이�
     assert 불러온["진행도"]["퀘스트"] == {}
     assert save_system.세이브_버전 >= 17
     assert gf.마을_NPC_목록(불러온) == ["라이너스"]
+
+
+# ------------------------------------------------------------------ NPC 메뉴(대화/퀘스트/상점), 일러스트
+
+
+def test_NPC마다_메뉴_버튼이_다르다():
+    상태 = support.새게임()
+    _로리엔_클리어(상태)
+    assert gf.NPC_대화(상태, "라이너스")["메뉴"] == ["대화", "퀘스트"]
+    assert gf.NPC_대화(상태, "세리아")["메뉴"] == [
+        "대화"
+    ]  # 퀘스트 없음, 판매 목록 비어 있음
+
+
+def test_일러스트는_아직_미정이다():
+    상태 = support.새게임()
+    assert gf.NPC_대화(상태, "라이너스")["일러스트"] == "미정"
+
+
+def test_판매목록이_있는_NPC는_상점_메뉴가_생기고_그_품목만_판다(monkeypatch):
+    상태 = support.새게임()
+    라이너스 = quest_system.NPC_찾기("라이너스")
+    monkeypatch.setitem(라이너스, "상점판매목록", ["칸나의 수제빵"])
+    대화 = gf.NPC_대화(상태, "라이너스")
+    assert 대화["메뉴"] == ["대화", "퀘스트", "상점"]
+    assert 대화["상점판매목록"] == ["칸나의 수제빵"]
+    # 마을 상점(엘븐가드 판매목록)에는 없는 품목 - NPC 상점은 마을 상점과 따로 판다
+    마을목록 = gf.현재_마을정보(상태)["상점판매목록"]
+    assert "칸나의 수제빵" not in 마을목록
+    산것 = gf.상점_구매목록(상태, "소모품", "음식", 대화["상점판매목록"])
+    assert [a["이름"] for a in 산것] == ["칸나의 수제빵"]
+    assert gf.상점_구매목록(상태, "소모품", "음식", 마을목록) == []
+
+
+def test_NPC_데이터에는_일러스트와_상점_칸이_있다():
+    상태 = support.새게임()
+    아이템이름 = {
+        이름
+        for 탭모음 in 상태["상점카탈로그"].values()
+        for 아이템들 in 탭모음.values()
+        for 이름 in 아이템들
+    }
+    for npc in NPC_목록:
+        assert isinstance(npc["일러스트"], str) and npc["일러스트"], npc["이름"]
+        assert set(npc["상점판매목록"]) <= 아이템이름, npc["이름"]

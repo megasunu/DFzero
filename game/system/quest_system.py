@@ -1,12 +1,16 @@
 """NPC와 퀘스트 - 마을에서 대화할 수 있는 NPC, 퀘스트 수락/완료 판정(2026-11-04).
 
-데이터는 game/data/npc/npc_list.py, game/data/quest/quest_list.py. 규칙은 docs/game-rules.md "NPC / 퀘스트".
+데이터는 game/data/npc/npc_<이름>.py(NPC마다 한 파일 - 대사, 퀘스트 내용, 양식은 npc_format.py). 규칙은 docs/game-rules.md "NPC / 퀘스트".
 퀘스트 상태는 진행도["퀘스트"] = {퀘스트 ID: "진행중" | "완료"}에 남고(세이브 버전 17),
 목록에 없는 퀘스트는 "수락전", 진행중인데 조건을 채웠으면 "완료가능"으로 본다.
 """
 
-from game.data.npc.npc_list import NPC_목록
-from game.data.quest.quest_list import 퀘스트_목록
+from game.data.npc.npc_linus import NPC정보 as _라이너스
+from game.data.npc.npc_seria import NPC정보 as _세리아
+
+# 새 NPC 파일을 만들면 여기에 import + 추가한다(순서 = [NPC] 화면 순서)
+NPC_목록 = [_라이너스, _세리아]
+퀘스트_목록 = [퀘스트 for NPC in NPC_목록 for 퀘스트 in NPC["퀘스트"]]
 
 조건_타입 = ("던전클리어",)
 모든마을 = "모든마을"
@@ -61,11 +65,21 @@ def 퀘스트_상태(진행도, ID):
 def NPC_대사(NPC, 진행도):
     """퀘스트를 전부 끝냈으면 "완료후대화"(있을 때), 아니면 "대화"."""
     끝 = NPC["퀘스트"] and all(
-        퀘스트_상태(진행도, ID) == "완료" for ID in NPC["퀘스트"]
+        퀘스트_상태(진행도, q["ID"]) == "완료" for q in NPC["퀘스트"]
     )
     if 끝 and NPC.get("완료후대화"):
         return NPC["완료후대화"]
     return NPC["대화"]
+
+
+def NPC_메뉴(NPC):
+    """NPC 메뉴 팝업의 버튼들 - [대화]는 늘, [퀘스트]는 퀘스트가 있으면, [상점]은 판매목록이 있으면."""
+    메뉴 = ["대화"]
+    if NPC["퀘스트"]:
+        메뉴.append("퀘스트")
+    if NPC.get("상점판매목록"):
+        메뉴.append("상점")
+    return 메뉴
 
 
 def 퀘스트_수락(진행도, ID):
