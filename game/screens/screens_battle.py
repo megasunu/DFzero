@@ -268,7 +268,7 @@ class _대상선택팝업(Popup):
         목록 = BoxLayout(orientation="vertical", spacing=dp(6), padding=dp(6))
         for 적 in 적목록:
             버튼 = Button(
-                text=f"{적['이름']}\n{gameflow.적_HP표시(게임상태, 적)}",
+                text=f"{gameflow.적_이름표(적)}\n{gameflow.적_HP표시(게임상태, 적)}",
                 halign="center",
             )
             버튼.bind(on_release=lambda inst, p=적: self._선택(p))
@@ -668,7 +668,7 @@ class 전투화면(Screen):
             상태박스 = _테두리박스(_박스_테두리색)
             상태박스.add_widget(
                 self._중앙정렬_라벨(
-                    f"{적['이름']}\n{gameflow.적_HP표시(게임상태, 적)}"
+                    f"{gameflow.적_이름표(적)}\n{gameflow.적_HP표시(게임상태, 적)}"
                     + (
                         ""
                         if 적["생존"]
