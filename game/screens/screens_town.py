@@ -6,6 +6,7 @@
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.uix.anchorlayout import AnchorLayout
+from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.button import Button
@@ -96,8 +97,14 @@ class 마을화면(Screen):
         self.배경그림.bind(texture=self._그림_높이_예약, size=self._그림_높이_예약)
         _도트_필터(self.배경그림)
         그림칸.add_widget(self.배경그림)
-        상단.add_widget(그림칸)
+        # 그림틀: 마을 그림 위에 NPC [대화] 장면(가운데 일러스트 + 아래쪽 대화창)을 겹친다 - 평소에는 비어 있다
+        self._그림틀 = FloatLayout(size_hint=(1, None), height=상단_그림_높이)
+        그림칸.size_hint = (1, 1)
+        그림칸.pos_hint = {"x": 0, "y": 0}
+        self._그림틀.add_widget(그림칸)
+        상단.add_widget(self._그림틀)
         루트.add_widget(상단)
+        self._대화_장면_만들기()
 
         하단 = BoxLayout(
             orientation="vertical",
@@ -179,6 +186,10 @@ class 마을화면(Screen):
             on_release=lambda *_: setattr(self.manager, "current", "메인메뉴")
         )
         나머지.add_widget(타이틀버튼)
+
+        # 대화 장면이 떠 있어도 아래 버튼은 누를 수 있다 - 누르면 장면을 닫고 그 버튼의 일을 한다
+        for 버튼 in list(버튼그리드.children) + [타이틀버튼]:
+            버튼.bind(on_release=self._대화_닫기)
 
         self.add_widget(루트)
 
@@ -289,6 +300,7 @@ class 마을화면(Screen):
 
     def _상점_클릭(self, *args):
         self.manager.get_screen("상점").복귀화면 = "마을"
+        self.manager.get_screen("상점").판매목록 = None  # 마을 상점
         self.manager.current = "상점"
 
     def _모험단_클릭(self, *args):
@@ -327,7 +339,7 @@ class 마을화면(Screen):
 
         def 대화(이름):
             팝업.dismiss()
-            self._NPC_대화_열기(이름)
+            self._NPC_메뉴_열기(이름)
 
         if not 이름들:
             본문.add_widget(Label(text="대화할 수 있는 NPC가 없습니다."))
@@ -339,25 +351,104 @@ class 마을화면(Screen):
         팝업.open()
         self._NPC_팝업 = 팝업
 
-    def _NPC_대화_열기(self, 이름):
-        """NPC 대화 팝업 - 대사와 그 NPC의 퀘스트(받기/완료 보고)."""
+    def _NPC_메뉴_열기(self, 이름):
+        """NPC 메뉴 팝업 - NPC마다 다른 버튼: [대화](늘), [퀘스트](퀘스트가 있으면), [상점](판매목록이 있으면)."""
         게임상태 = App.get_running_app().게임상태
         대화 = gameflow.NPC_대화(게임상태, 이름)
         본문 = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12))
         팝업 = Popup(
             title=이름,
             content=본문,
-            size_hint=(0.9, None),
-            height=dp(260 + 150 * len(대화["퀘스트"])),
+            size_hint=(0.8, None),
+            height=dp(140 + 64 * len(대화["메뉴"])),
         )
-        대사 = Label(text=f"“{대화['대사']}”", halign="center", valign="middle")
-        대사.bind(size=lambda inst, size: setattr(inst, "text_size", size))
-        본문.add_widget(대사)
+
+        def 고르기(메뉴):
+            팝업.dismiss()
+            if 메뉴 == "대화":
+                self._대화_장면_열기(대화)
+            elif 메뉴 == "퀘스트":
+                self._NPC_퀘스트_열기(이름)
+            else:  # 상점 - 마을 상점 화면을 이 NPC의 판매목록으로 연다
+                상점 = self.manager.get_screen("상점")
+                상점.복귀화면 = "마을"
+                상점.판매목록 = 대화["상점판매목록"]
+                self.manager.current = "상점"
+
+        for 메뉴 in 대화["메뉴"]:
+            버튼 = Button(text=메뉴)
+            버튼.bind(on_release=lambda *_, 메뉴=메뉴: 고르기(메뉴))
+            본문.add_widget(버튼)
+        본문.add_widget(닫기_버튼(팝업))
+        팝업.open()
+        self._NPC_메뉴_팝업 = 팝업
+
+    def _대화_장면_만들기(self):
+        """[대화] 장면 위젯 - 마을 그림 가운데 NPC 일러스트, 그림 아래쪽 대화창(누르면 닫힘)."""
+        self.NPC그림 = Image(
+            allow_stretch=True,
+            keep_ratio=True,
+            size_hint=(0.8, 0.8),
+            pos_hint={"center_x": 0.5, "center_y": 0.55},
+        )
+        self._대화층 = AnchorLayout(
+            anchor_y="bottom",
+            size_hint=(1, 1),
+            pos_hint={"x": 0, "y": 0},
+            padding=(하단_좌우여백 + 16, 0, 하단_좌우여백 + 16, 16),
+        )
+        self.대화창 = 뒤로키_버튼(
+            Button(
+                markup=True,
+                size_hint=(1, None),
+                height=300,
+                halign="left",
+                valign="top",
+                padding=(24, 20),
+                background_normal="",
+                background_color=(0.05, 0.05, 0.08, 0.85),
+            )
+        )
+        self.대화창.bind(size=lambda inst, size: setattr(inst, "text_size", size))
+        self.대화창.bind(on_release=self._대화_닫기)
+        self._대화층.add_widget(self.대화창)
+        self._대화중 = False
+
+    def _대화_장면_열기(self, 대화):
+        """마을 그림 위에 NPC 일러스트(그림이 있으면)와 대화창을 띄운다."""
+        self._대화_닫기()
+        경로 = _에셋_경로("npc", 대화["일러스트"])
+        if 경로:
+            self.NPC그림.source = 경로
+            self._그림틀.add_widget(self.NPC그림)
+        self.대화창.text = f"[b]{대화['이름']}[/b]\n\n{대화['대사']}"
+        self._그림틀.add_widget(self._대화층)
+        self._대화중 = True
+
+    def _대화_닫기(self, *args):
+        if not self._대화중:
+            return
+        for 위젯 in (self.NPC그림, self._대화층):
+            if 위젯.parent is not None:
+                self._그림틀.remove_widget(위젯)
+        self._대화중 = False
+
+    def _NPC_퀘스트_열기(self, 이름):
+        """NPC 퀘스트 팝업 - 그 NPC의 퀘스트(받기/완료 보고)."""
+        게임상태 = App.get_running_app().게임상태
+        대화 = gameflow.NPC_대화(게임상태, 이름)
+        본문 = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12))
+        팝업 = Popup(
+            title=f"{이름} - 퀘스트",
+            content=본문,
+            size_hint=(0.9, None),
+            height=dp(140 + 150 * len(대화["퀘스트"])),
+        )
 
         def 다시_열기(문구):
             팝업.dismiss()
             self.메시지라벨.text = 문구
-            self._NPC_대화_열기(이름)
+            self._NPC_퀘스트_열기(이름)
 
         def 받기(퀘스트):
             gameflow.퀘스트_수락(게임상태, 퀘스트["ID"])
@@ -401,7 +492,7 @@ class 마을화면(Screen):
             본문.add_widget(버튼)
         본문.add_widget(닫기_버튼(팝업, size_hint=(1, None), height=dp(52)))
         팝업.open()
-        self._NPC_대화_팝업 = 팝업
+        self._NPC_퀘스트_팝업 = 팝업
 
 
 # =====================================================
@@ -609,6 +700,8 @@ class 상점화면(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.복귀화면 = "마을"
+        # None이면 마을 "상점판매목록", NPC [상점]으로 열면 그 NPC의 판매목록(나가면 None으로)
+        self.판매목록 = None
 
         # 머리줄/뒤로 줄/탭/안내줄은 글자 높이에 맞춘 높이(글자_높이) - 남는 높이는 목록이 쓴다
         루트 = BoxLayout(orientation="vertical", padding=12, spacing=6)
@@ -663,7 +756,13 @@ class 상점화면(Screen):
         self.내용틀.add_widget(나가기버튼)
 
     def _나가기(self, *args):
+        self.판매목록 = None
         self.manager.current = self.복귀화면
+
+    def _판매목록(self, 마을정보):
+        return (
+            self.판매목록 if self.판매목록 is not None else 마을정보.get("상점판매목록")
+        )
 
     # -------------------------------------------------
     # 단계 2: 대분류(장비 / 소모품 / 재료)
@@ -818,7 +917,7 @@ class 상점화면(Screen):
                     게임상태,
                     대분류,
                     탭,
-                    마을정보.get("상점판매목록"),
+                    self._판매목록(마을정보),
                 )
             ]
             빈문구 = "팔고 있는 물건이 없습니다."
@@ -948,7 +1047,7 @@ class 상점화면(Screen):
                     탭,
                     이름,
                     수량,
-                    상점판매목록=마을정보.get("상점판매목록"),
+                    상점판매목록=self._판매목록(마을정보),
                 )
                 self.안내라벨.text = f"{이름} {수량}개를 {금액}G에 샀습니다."
             elif 모드 == "해체":

@@ -72,6 +72,16 @@ def NPC_대사(NPC, 진행도):
     return NPC["대화"]
 
 
+def NPC_메뉴(NPC):
+    """NPC 메뉴 팝업의 버튼들 - [대화]는 늘, [퀘스트]는 퀘스트가 있으면, [상점]은 판매목록이 있으면."""
+    메뉴 = ["대화"]
+    if NPC["퀘스트"]:
+        메뉴.append("퀘스트")
+    if NPC.get("상점판매목록"):
+        메뉴.append("상점")
+    return 메뉴
+
+
 def 퀘스트_수락(진행도, ID):
     if 퀘스트_찾기(ID) is None:
         raise ValueError(f"'{ID}' 퀘스트는 없다.")

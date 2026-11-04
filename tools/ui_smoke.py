@@ -52,7 +52,7 @@ from kivy.uix.togglebutton import ToggleButton  # noqa: E402
 import gameflow as gf  # noqa: E402
 from game.screens import screens_common, screens_party  # noqa: E402
 from game.system import rng  # noqa: E402
-from game.system import save_system, skill_system  # noqa: E402
+from game.system import quest_system, save_system, skill_system  # noqa: E402
 from game.system.combat import flow  # noqa: E402
 from tests import support  # noqa: E402
 
@@ -3021,8 +3021,9 @@ class 스모크앱(main.DnfMobileApp):
             마을.메시지라벨.text = ""
 
     def _단계_마을_NPC(self, 상태, 매니저):
-        """마을 [NPC](2026-11-04): 엘븐가드에는 라이너스만 -> 대사와 [퀘스트 받기] -> (진행 중) ->
-        로리엔 클리어 뒤 다시 열면 세리아가 생기고 라이너스 [완료 보고]로 10G -> 세리아는 대사만."""
+        """마을 [NPC](2026-11-04): 엘븐가드에는 라이너스만 -> NPC 메뉴([대화]/[퀘스트]/[상점]은 NPC마다) ->
+        [대화]는 마을 그림 위에 일러스트+대화창(누르면 닫힘) -> [퀘스트] 받기/완료 보고(10G) -> 세리아는 [대화]뿐 ->
+        판매목록이 있으면 [상점]이 그 품목만 파는 상점 화면."""
         로리엔 = "dungeon_01A_D01_Lorien"
         진행도 = 상태["진행도"]
         원래 = (
@@ -3032,6 +3033,8 @@ class 스모크앱(main.DnfMobileApp):
             상태["소지품"]["골드"],
         )
         마을 = 매니저.get_screen("마을")
+        라이너스 = quest_system.NPC_찾기("라이너스")
+        원래판매 = list(라이너스["상점판매목록"])
         try:
             진행도["현재마을"] = "엘븐가드"
             진행도["클리어한던전"].discard(로리엔)
@@ -3048,10 +3051,52 @@ class 스모크앱(main.DnfMobileApp):
             글 = _팝업글()
             assert "라이너스" in 글 and "세리아" not in 글, 글
             _찍기("town_npc_list")
+
+            def 메뉴(이름):
+                NPC버튼.trigger_action(duration=0)
+                yield 0.3
+                _팝업_버튼(이름).trigger_action(duration=0)
+                yield 0.4
+                assert _팝업수() == 1, _팝업수()
+
             _팝업_버튼("라이너스").trigger_action(duration=0)
             yield 0.4
+            글 = _팝업글()
+            assert "대화" in 글 and "퀘스트" in 글 and "상점" not in 글, 글
+            _찍기("town_npc_menu")
+
+            # [대화] - 팝업이 닫히고 마을 그림 위에 대화창(일러스트는 아직 미정이라 없음)
+            _팝업_버튼("대화").trigger_action(duration=0)
+            yield 0.4
+            assert _팝업수() == 0 and 마을._대화중
+            assert "세리아를 구출해주게" in 마을.대화창.text, 마을.대화창.text
+            assert 마을.대화창.parent is not None and 마을.NPC그림.parent is None
+            _찍기("town_npc_talk")
+            마을.대화창.trigger_action(duration=0)  # 대화창을 누르면 닫힘
+            yield 0.3
+            assert not 마을._대화중 and 마을._대화층.parent is None
+            yield from 메뉴("라이너스")
+            _팝업_버튼("대화").trigger_action(duration=0)
+            yield 0.3
+            _뒤로키()  # [뒤로] 키도 닫는다
+            yield 0.3
+            assert not 마을._대화중
+            yield from 메뉴("라이너스")
+            _팝업_버튼("대화").trigger_action(duration=0)
+            yield 0.3
+            NPC버튼.trigger_action(
+                duration=0
+            )  # 아래 버튼은 그대로 눌리고 장면은 닫힌다
+            yield 0.3
+            assert not 마을._대화중 and _팝업수() == 1, _팝업수()
+            _팝업_닫기()
+            yield 0.2
+
+            # [퀘스트] - 받기 -> 진행 중
+            yield from 메뉴("라이너스")
+            _팝업_버튼("퀘스트").trigger_action(duration=0)
+            yield 0.4
             assert _팝업수() == 1, _팝업수()
-            assert any("세리아를 구출해주게" in t for t in _팝업글()), _팝업글()
             _찍기("town_npc_linus")
             _팝업_버튼("퀘스트 받기").trigger_action(duration=0)
             yield 0.4
@@ -3066,7 +3111,9 @@ class 스모크앱(main.DnfMobileApp):
             NPC버튼.trigger_action(duration=0)
             yield 0.3
             assert "세리아" in _팝업글(), _팝업글()
-            _팝업_버튼("라이너스").trigger_action(duration=0)
+            _팝업_닫기()
+            yield from 메뉴("라이너스")
+            _팝업_버튼("퀘스트").trigger_action(duration=0)
             yield 0.4
             골드 = 상태["소지품"]["골드"]
             _팝업_버튼("완료 보고").trigger_action(duration=0)
@@ -3076,16 +3123,32 @@ class 스모크앱(main.DnfMobileApp):
             _찍기("town_npc_linus_done")
             _팝업_닫기()
             yield 0.2
-            NPC버튼.trigger_action(duration=0)
+
+            # 세리아 - 메뉴는 [대화]뿐
+            yield from 메뉴("세리아")
+            글 = _팝업글()
+            assert "대화" in 글 and "퀘스트" not in 글 and "상점" not in 글, 글
+            _팝업_버튼("대화").trigger_action(duration=0)
             yield 0.3
-            _팝업_버튼("세리아").trigger_action(duration=0)
-            yield 0.4
-            assert _팝업수() == 1, _팝업수()
-            assert not any("퀘스트" in t for t in _팝업글()), _팝업글()
+            assert "세리아" in 마을.대화창.text, 마을.대화창.text
             _찍기("town_npc_seria")
+            마을.대화창.trigger_action(duration=0)
+            yield 0.2
+
+            # [상점] - 판매목록이 있는 NPC만(지금 데이터엔 없어 잠깐 넣는다) -> 그 품목만 파는 상점 화면
+            라이너스["상점판매목록"] = ["칸나의 수제빵"]
+            yield from 메뉴("라이너스")
+            _팝업_버튼("상점").trigger_action(duration=0)
+            yield 0.4
+            상점 = 매니저.get_screen("상점")
+            assert 매니저.current == "상점" and 상점.판매목록 == ["칸나의 수제빵"]
+            상점._나가기()
+            yield 0.4
+            assert 매니저.current == "마을" and 상점.판매목록 is None
             결과["단계"].append(
-                "마을 [NPC]: 엘븐가드 라이너스만 -> 퀘스트 받기 -> 진행 중, 로리엔 클리어 뒤 세리아가 생기고 "
-                "라이너스 완료 보고로 10G, 세리아는 대사만"
+                "마을 [NPC]: 엘븐가드 라이너스만 -> 메뉴(대화/퀘스트) -> [대화] 마을 그림 위 대화창(누름·뒤로 키·아래 "
+                "버튼으로 닫힘) -> [퀘스트] 받기 -> 진행 중, 로리엔 클리어 뒤 세리아(메뉴는 대화뿐)가 생기고 "
+                "완료 보고로 10G, 판매목록이 있으면 [상점]이 그 목록의 상점 화면을 연다"
             )
         finally:
             _팝업_닫기()
@@ -3093,6 +3156,8 @@ class 스모크앱(main.DnfMobileApp):
             진행도["클리어한던전"] = 원래[1]
             진행도["퀘스트"] = 원래[2]
             상태["소지품"]["골드"] = 원래[3]
+            라이너스["상점판매목록"] = 원래판매
+            마을._대화_닫기()
             마을.메시지라벨.text = ""
 
     def _단계_화면_틀(self, 매니저):
