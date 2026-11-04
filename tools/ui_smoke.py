@@ -256,6 +256,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_던전목록(상태, 매니저)
         yield from self._단계_던전_스킬(상태, 매니저)
         yield from self._단계_마을_전환스킬(상태, 매니저)
+        yield from self._단계_마을_NPC(상태, 매니저)
         yield from self._단계_화면_틀(매니저)
         yield from self._단계_공격연출(상태, 매니저)
         yield from self._단계_감옥_대상팝업(상태, 매니저)
@@ -3016,6 +3017,81 @@ class 스모크앱(main.DnfMobileApp):
             _팝업_닫기()
             귀검사["보유스킬"][:] = 원래
             귀검사.pop("켜진특성", None)
+            마을.메시지라벨.text = ""
+
+    def _단계_마을_NPC(self, 상태, 매니저):
+        """마을 [NPC](2026-11-04): 엘븐가드에는 라이너스만 -> 대사와 [퀘스트 받기] -> (진행 중) ->
+        로리엔 클리어 뒤 다시 열면 세리아가 생기고 라이너스 [완료 보고]로 10G -> 세리아는 대사만."""
+        로리엔 = "dungeon_01A_D01_Lorien"
+        진행도 = 상태["진행도"]
+        원래 = (
+            진행도["현재마을"],
+            set(진행도["클리어한던전"]),
+            dict(진행도.get("퀘스트", {})),
+            상태["소지품"]["골드"],
+        )
+        마을 = 매니저.get_screen("마을")
+        try:
+            진행도["현재마을"] = "엘븐가드"
+            진행도["클리어한던전"].discard(로리엔)
+            진행도["퀘스트"] = {}
+            매니저.current = "마을"
+            yield 0.4
+            NPC버튼 = next(
+                w
+                for w in 마을.walk(restrict=True)
+                if isinstance(w, Button) and w.text == "NPC"
+            )
+            NPC버튼.trigger_action(duration=0)
+            yield 0.3
+            글 = _팝업글()
+            assert "라이너스" in 글 and "세리아" not in 글, 글
+            _찍기("town_npc_list")
+            _팝업_버튼("라이너스").trigger_action(duration=0)
+            yield 0.4
+            assert _팝업수() == 1, _팝업수()
+            assert any("세리아를 구출해주게" in t for t in _팝업글()), _팝업글()
+            _찍기("town_npc_linus")
+            _팝업_버튼("퀘스트 받기").trigger_action(duration=0)
+            yield 0.4
+            assert _팝업수() == 1, _팝업수()
+            assert _팝업_버튼("진행 중").disabled
+            assert 진행도["퀘스트"] == {"세리아_구출_의뢰": "진행중"}
+            assert "받았습니다" in 마을.메시지라벨.text, 마을.메시지라벨.text
+            _팝업_닫기()
+            yield 0.2
+
+            진행도["클리어한던전"].add(로리엔)
+            NPC버튼.trigger_action(duration=0)
+            yield 0.3
+            assert "세리아" in _팝업글(), _팝업글()
+            _팝업_버튼("라이너스").trigger_action(duration=0)
+            yield 0.4
+            골드 = 상태["소지품"]["골드"]
+            _팝업_버튼("완료 보고").trigger_action(duration=0)
+            yield 0.4
+            assert 상태["소지품"]["골드"] == 골드 + 10
+            assert _팝업_버튼("완료함").disabled
+            _찍기("town_npc_linus_done")
+            _팝업_닫기()
+            yield 0.2
+            NPC버튼.trigger_action(duration=0)
+            yield 0.3
+            _팝업_버튼("세리아").trigger_action(duration=0)
+            yield 0.4
+            assert _팝업수() == 1, _팝업수()
+            assert not any("퀘스트" in t for t in _팝업글()), _팝업글()
+            _찍기("town_npc_seria")
+            결과["단계"].append(
+                "마을 [NPC]: 엘븐가드 라이너스만 -> 퀘스트 받기 -> 진행 중, 로리엔 클리어 뒤 세리아가 생기고 "
+                "라이너스 완료 보고로 10G, 세리아는 대사만"
+            )
+        finally:
+            _팝업_닫기()
+            진행도["현재마을"] = 원래[0]
+            진행도["클리어한던전"] = 원래[1]
+            진행도["퀘스트"] = 원래[2]
+            상태["소지품"]["골드"] = 원래[3]
             마을.메시지라벨.text = ""
 
     def _단계_화면_틀(self, 매니저):

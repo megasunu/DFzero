@@ -82,3 +82,4 @@ from game.controller.ctl_skills import *  # noqa: F403
 from game.controller.ctl_collection import *  # noqa: F403
 from game.controller.ctl_achievement import *  # noqa: F403
 from game.controller.ctl_profession import *  # noqa: F403
+from game.controller.ctl_npc import *  # noqa: F403

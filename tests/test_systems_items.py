@@ -614,7 +614,7 @@ def test_gameflow는_손상오류를_그대로_올린다(임시_세이브폴더)
 def test_세이브에는_버전이_들어_있다(임시_세이브폴더):
     _저장(1)
     저장 = json.loads((임시_세이브폴더 / "slot_1.json").read_text(encoding="utf-8"))
-    assert 저장["버전"] == save_system.세이브_버전 == 16
+    assert 저장["버전"] == save_system.세이브_버전 == 17
 
 
 def test_버전_없는_세이브는_0으로_보고_현재_형태로_변환한다(임시_세이브폴더):
