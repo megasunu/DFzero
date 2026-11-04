@@ -19,6 +19,7 @@ from game.system.combat import (
     flow,
     formula,
     monster_actions,
+    participants,
     reactions,
     resources,
     stats,
@@ -65,6 +66,7 @@ __all__ = [
     "공격대상_목록",
     "감옥_그림",
     "적_HP표시",
+    "적_이름표",
     "아군_목록",
     "새_로그_가져오기",
     "_연출_모양_파일",
@@ -355,6 +357,17 @@ def 감옥_그림(게임상태, 아군참가자):
     감옥 = status.살아있는_감옥(게임상태["전투상태"], 아군참가자)
     그림 = (감옥 or {}).get("감옥그림") or {}
     return 그림.get("뒤"), 그림.get("앞")
+
+
+def 적_이름표(적참가자):
+    """상태칸·대상 고르기 버튼의 몬스터 이름(#551) - 칭호가 있으면 첫 줄이 칭호, 둘째 줄이 이름
+    ("[저주받은 챔피언]\n쿠로가루", 같은 이름 표시 "고블린 A"는 둘째 줄). 없으면 이름 한 줄."""
+    이름 = 적참가자["이름"]
+    칭호 = participants.칭호_글(적참가자.get("원본") or {})
+    머리 = f"[{칭호}-"
+    if 칭호 is None or not 이름.startswith(머리):
+        return 이름
+    return f"[{칭호}]\n{이름[len(머리) :].replace(']', '', 1)}"
 
 
 def 적_HP표시(게임상태, 적참가자):
