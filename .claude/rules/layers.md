@@ -11,7 +11,7 @@ paths:
 ```
 main.py            Kivy 앱 진입점, 화면 등록, 크래시 로그 훅
 gameflow.py        화면 <-> 로직/데이터 컨트롤러의 창구(재수출만). 화면은 이 파일의 함수만 부른다
-game/controller/   컨트롤러 구현 - 주제별 ctl_*.py 19개(battle/shop/party/levelup ...), gameflow.py가 다시 내보낸다
+game/controller/   컨트롤러 구현 - 주제별 ctl_*.py 21개(battle/shop/party/levelup ...), gameflow.py가 다시 내보낸다
 game/screens/      Kivy 화면 (kivy 의존은 여기와 main.py에만)
 game/system/       전투, 스킬, 장비, 세이브 등 게임 로직
   combat/            전투 패키지(모듈 목록은 combat/__init__.py). 쓰는 쪽은

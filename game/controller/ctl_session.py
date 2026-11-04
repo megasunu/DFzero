@@ -9,6 +9,7 @@ from game.system import (
     dungeon_system,
     equipment_system,
     party_system,
+    quest_system,
     save_system,
     town_system,
 )
@@ -97,6 +98,7 @@ def 새_게임_시작(파티구성):
     # 별개로 던전 보스 클리어로 오르는 값) 여기서 직접 채운다. town_system.py(공용 시스템 파일)는 건드리지 않는다.
     진행도["플레이어레벨"] = 1
     진행도.update(achievement_system.빈_진행기록())  # 도감/업적 기록
+    진행도.update(quest_system.빈_진행기록())  # NPC 퀘스트 상태
     게임상태 = 새_게임상태(파티, 진행도)
     # 시작 장비도 소지품 "장비" 개수에 넣어 둔다 - 장비 교체 때 원래 끼던
     # 장비가 사라지지 않게(equipment_system.장착품_소지품_동기화).

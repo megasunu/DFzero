@@ -167,6 +167,11 @@ class 마을화면(Screen):
         스킬버튼.bind(on_release=self._스킬_클릭)
         버튼그리드.add_widget(스킬버튼)
 
+        # [NPC] - 이 마을에서 대화할 수 있는 NPC와 대화·퀘스트(2026-11-04)
+        NPC버튼 = Button(text="NPC")
+        NPC버튼.bind(on_release=self._NPC_클릭)
+        버튼그리드.add_widget(NPC버튼)
+
         나머지.add_widget(버튼그리드)
 
         타이틀버튼 = Button(text="타이틀로 돌아가기", size_hint=(1, 0.2))
@@ -307,6 +312,96 @@ class 마을화면(Screen):
         본문.add_widget(닫기_버튼(팝업))
         팝업.open()
         self._소지품창고_팝업 = 팝업
+
+    def _NPC_클릭(self, *args):
+        """[NPC] - 이 마을에서 지금 대화할 수 있는 NPC 목록 팝업."""
+        게임상태 = App.get_running_app().게임상태
+        이름들 = gameflow.마을_NPC_목록(게임상태)
+        본문 = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12))
+        팝업 = Popup(
+            title="NPC",
+            content=본문,
+            size_hint=(0.8, None),
+            height=dp(140 + 64 * max(1, len(이름들))),
+        )
+
+        def 대화(이름):
+            팝업.dismiss()
+            self._NPC_대화_열기(이름)
+
+        if not 이름들:
+            본문.add_widget(Label(text="대화할 수 있는 NPC가 없습니다."))
+        for 이름 in 이름들:
+            버튼 = Button(text=이름)
+            버튼.bind(on_release=lambda *_, 이름=이름: 대화(이름))
+            본문.add_widget(버튼)
+        본문.add_widget(닫기_버튼(팝업))
+        팝업.open()
+        self._NPC_팝업 = 팝업
+
+    def _NPC_대화_열기(self, 이름):
+        """NPC 대화 팝업 - 대사와 그 NPC의 퀘스트(받기/완료 보고)."""
+        게임상태 = App.get_running_app().게임상태
+        대화 = gameflow.NPC_대화(게임상태, 이름)
+        본문 = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12))
+        팝업 = Popup(
+            title=이름,
+            content=본문,
+            size_hint=(0.9, None),
+            height=dp(260 + 150 * len(대화["퀘스트"])),
+        )
+        대사 = Label(text=f"“{대화['대사']}”", halign="center", valign="middle")
+        대사.bind(size=lambda inst, size: setattr(inst, "text_size", size))
+        본문.add_widget(대사)
+
+        def 다시_열기(문구):
+            팝업.dismiss()
+            self.메시지라벨.text = 문구
+            self._NPC_대화_열기(이름)
+
+        def 받기(퀘스트):
+            gameflow.퀘스트_수락(게임상태, 퀘스트["ID"])
+            다시_열기(f"퀘스트 [{퀘스트['이름']}]을(를) 받았습니다.")
+
+        def 보고(퀘스트):
+            보상 = gameflow.퀘스트_완료_보고(게임상태, 퀘스트["ID"])
+            다시_열기(
+                f"퀘스트 [{퀘스트['이름']}] 완료 - {보상.get('골드', 0)}G를 받았습니다."
+            )
+
+        버튼글 = {
+            "수락전": "퀘스트 받기",
+            "진행중": "진행 중",
+            "완료가능": "완료 보고",
+            "완료": "완료함",
+        }
+        for 퀘스트 in 대화["퀘스트"]:
+            설명 = Label(
+                text=(
+                    f"[퀘스트] {퀘스트['이름']}\n{퀘스트['설명']}\n"
+                    f"보상: {퀘스트['보상']}"
+                ),
+                halign="left",
+                valign="middle",
+                size_hint=(1, None),
+                height=dp(90),
+            )
+            설명.bind(size=lambda inst, size: setattr(inst, "text_size", size))
+            본문.add_widget(설명)
+            버튼 = Button(
+                text=버튼글[퀘스트["상태"]],
+                size_hint=(1, None),
+                height=dp(52),
+                disabled=퀘스트["상태"] in ("진행중", "완료"),
+            )
+            if 퀘스트["상태"] == "수락전":
+                버튼.bind(on_release=lambda *_, q=퀘스트: 받기(q))
+            elif 퀘스트["상태"] == "완료가능":
+                버튼.bind(on_release=lambda *_, q=퀘스트: 보고(q))
+            본문.add_widget(버튼)
+        본문.add_widget(닫기_버튼(팝업, size_hint=(1, None), height=dp(52)))
+        팝업.open()
+        self._NPC_대화_팝업 = 팝업
 
 
 # =====================================================
