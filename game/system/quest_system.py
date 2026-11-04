@@ -5,6 +5,7 @@
 목록에 없는 퀘스트는 "수락전", 진행중인데 조건을 채웠으면 "완료가능"으로 본다.
 """
 
+from game.system import rng
 from game.data.npc.npc_linus import NPC정보 as _라이너스
 from game.data.npc.npc_seria import NPC정보 as _세리아
 
@@ -17,8 +18,8 @@ NPC_목록 = [_라이너스, _세리아]
 
 
 def 빈_진행기록():
-    """새 게임 진행도에 더할 퀘스트 칸."""
-    return {"퀘스트": {}}
+    """새 게임 진행도에 더할 퀘스트 칸과 첫 대화를 마친 NPC 이름들."""
+    return {"퀘스트": {}, "대화한NPC": []}
 
 
 def 조건만족(조건, 진행도):
@@ -62,14 +63,16 @@ def 퀘스트_상태(진행도, ID):
     return 상태
 
 
-def NPC_대사(NPC, 진행도):
-    """퀘스트를 전부 끝냈으면 "완료후대화"(있을 때), 아니면 "대화"."""
-    끝 = NPC["퀘스트"] and all(
-        퀘스트_상태(진행도, q["ID"]) == "완료" for q in NPC["퀘스트"]
-    )
-    if 끝 and NPC.get("완료후대화"):
-        return NPC["완료후대화"]
-    return NPC["대화"]
+def 말걸기(NPC, 진행도):
+    """[대화] 한 번의 대사. 처음이면 "첫대화"(있을 때), 아니면 "대화" 중 하나를 무작위로(rng.대화).
+    이 NPC와 첫 대화를 마쳤다고 진행도에 남긴다."""
+    대화한 = 진행도.setdefault("대화한NPC", [])
+    처음 = NPC["이름"] not in 대화한
+    if 처음:
+        대화한.append(NPC["이름"])
+        if NPC.get("첫대화"):
+            return NPC["첫대화"]
+    return rng.대화.choice(NPC["대화"])
 
 
 def NPC_메뉴(NPC):
