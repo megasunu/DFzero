@@ -25,14 +25,13 @@ def NPC_대화(게임상태, 이름):
     if NPC is None or not quest_system.대화가능(NPC, 진행도["현재마을"], 진행도):
         raise ValueError(f"'{이름}'와(과) 지금은 대화할 수 없다.")
     퀘스트들 = []
-    for ID in NPC["퀘스트"]:
-        퀘스트 = quest_system.퀘스트_찾기(ID)
+    for 퀘스트 in NPC["퀘스트"]:
         퀘스트들.append(
             {
-                "ID": ID,
+                "ID": 퀘스트["ID"],
                 "이름": 퀘스트["이름"],
                 "설명": 퀘스트["설명"],
-                "상태": quest_system.퀘스트_상태(진행도, ID),
+                "상태": quest_system.퀘스트_상태(진행도, 퀘스트["ID"]),
                 "보상": quest_system.보상_문구(퀘스트["보상"]),
             }
         )

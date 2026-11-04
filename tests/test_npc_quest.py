@@ -6,9 +6,8 @@
 import json
 
 import gameflow as gf
-from game.data.npc.npc_list import NPC_목록
-from game.data.quest.quest_list import 퀘스트_목록
 from game.system import quest_system, save_system, town_system
+from game.system.quest_system import NPC_목록, 퀘스트_목록
 from tests import support
 
 로리엔 = "dungeon_01A_D01_Lorien"
@@ -35,7 +34,6 @@ def test_NPC와_퀘스트_데이터는_서로_맞다():
     assert len({n["이름"] for n in NPC_목록}) == len(NPC_목록)
     for npc in NPC_목록:
         assert npc["마을"] == "모든마을" or set(npc["마을"]) <= 마을명들, npc["이름"]
-        assert set(npc["퀘스트"]) <= set(퀘스트ID), npc["이름"]
         assert npc["대화"]
         조건 = npc["대화조건"]
         assert 조건 is None or 조건["타입"] in quest_system.조건_타입
