@@ -17,6 +17,6 @@ paths:
   뒤 라운드는 남는 효과를 받은 참가자 것만 싣는다).
 - 테스트 파일은 한 주제만 갖고 다른 테스트 파일을 불러오지 않는다 - 그 파일과 `support.py`만 읽으면 되게. 둘 이상이 쓰는 도우미는 `support.py`로 옮긴다.
 - 문장 골든(`battle_log_sentences`)은 `UPDATE_GOLDEN=1`일 때 세션 끝에 다시 쓴다(`conftest.pytest_sessionfinish`) - 갱신은 한 번이면 된다.
-- 무작위는 전부 `game/system/rng.py`의 용도별 흐름(주사위/확률/대상/던전/보상/칭호)이고 `rng.시드()` 하나로 재현된다(전역 `random`도 같이 - 테스트의
+- 무작위는 전부 `game/system/rng.py`의 용도별 흐름(주사위/확률/대상/던전/보상/칭호/대화)이고 `rng.시드()` 하나로 재현된다(전역 `random`도 같이 - 테스트의
   플레이어 정책용). 테스트마다 0으로 시작한다(`conftest.전역_난수_시드`). 굴림을 바꿔치기할 때는 그 흐름을 바꾼다(`monkeypatch.setattr(rng.주사위, "randint", ...)`).
 - 골든 갱신은 `python tools/check.py --골든` 한 번(서식 고침 + 직렬 갱신 + `golden_diff.py` 요약, 출력은 실패 줄과 끝 줄만).

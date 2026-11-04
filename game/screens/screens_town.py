@@ -366,7 +366,7 @@ class 마을화면(Screen):
         def 고르기(메뉴):
             팝업.dismiss()
             if 메뉴 == "대화":
-                self._대화_장면_열기(대화)
+                self._대화_장면_열기(gameflow.NPC_말걸기(게임상태, 이름))
             elif 메뉴 == "퀘스트":
                 self._NPC_퀘스트_열기(이름)
             else:  # 상점 - 마을 상점 화면을 이 NPC의 판매목록으로 연다

@@ -39,8 +39,16 @@ def test_시드는_전역_random도_고정한다():
     assert random.random() == 처음
 
 
-def test_흐름은_용도별로_여섯이다():
-    assert list(rng.흐름들) == ["주사위", "확률", "대상", "던전", "보상", "칭호"]
+def test_흐름은_용도별로_일곱이다():
+    assert list(rng.흐름들) == [
+        "주사위",
+        "확률",
+        "대상",
+        "던전",
+        "보상",
+        "칭호",
+        "대화",
+    ]
     assert rng.흐름들["주사위"] is rng.주사위
 
 

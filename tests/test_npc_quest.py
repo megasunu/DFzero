@@ -6,12 +6,17 @@
 import json
 
 import gameflow as gf
-from game.system import quest_system, save_system, town_system
+from game.system import quest_system, rng, save_system, town_system
 from game.system.quest_system import NPC_목록, 퀘스트_목록
 from tests import support
 
 로리엔 = "dungeon_01A_D01_Lorien"
 세리아_감옥 = (15, 3)
+라이너스_평소 = {
+    "망가진 장비는 내게 맡기게.",
+    "장비관리는 잘 하고 있나?",
+    "어이쿠 손이 미끄러졌군.",
+}
 
 
 def _로리엔_클리어(상태):
@@ -34,7 +39,7 @@ def test_NPC와_퀘스트_데이터는_서로_맞다():
     assert len({n["이름"] for n in NPC_목록}) == len(NPC_목록)
     for npc in NPC_목록:
         assert npc["마을"] == "모든마을" or set(npc["마을"]) <= 마을명들, npc["이름"]
-        assert npc["대화"]
+        assert npc["대화"] and all(isinstance(줄, str) and 줄 for 줄 in npc["대화"])
         조건 = npc["대화조건"]
         assert 조건 is None or 조건["타입"] in quest_system.조건_타입
     for 퀘스트 in 퀘스트_목록:
@@ -72,7 +77,7 @@ def test_세리아는_퀘스트가_없다():
     상태 = support.새게임()
     _로리엔_클리어(상태)
     대화 = gf.NPC_대화(상태, "세리아")
-    assert 대화["이름"] == "세리아" and 대화["대사"]
+    assert 대화["이름"] == "세리아"
     assert 대화["퀘스트"] == []
 
 
@@ -97,9 +102,8 @@ def test_조건을_못_채운_NPC와는_대화할_수_없다():
 
 def test_라이너스는_세리아_구출을_부탁한다():
     상태 = support.새게임()
-    대화 = gf.NPC_대화(상태, "라이너스")
-    assert 대화["대사"] == "로리엔에서 세리아를 구출해주게."
-    퀘스트 = _퀘스트(대화, "세리아_구출_의뢰")
+    assert gf.NPC_말걸기(상태, "라이너스")["대사"] == "로리엔에서 세리아를 구출해주게."
+    퀘스트 = _퀘스트(gf.NPC_대화(상태, "라이너스"), "세리아_구출_의뢰")
     assert 퀘스트["상태"] == "수락전"
     assert 퀘스트["보상"] == "10G"
 
@@ -118,9 +122,10 @@ def test_퀘스트는_수락_진행_완료가능_완료로_간다():
     assert gf.퀘스트_완료_보고(상태, ID) == {"골드": 10}
     assert 상태["소지품"]["골드"] == 골드 + 10
     assert 상태["진행도"]["퀘스트"] == {ID: "완료"}
-    대화 = gf.NPC_대화(상태, "라이너스")
-    assert _퀘스트(대화, ID)["상태"] == "완료"
-    assert 대화["대사"] != "로리엔에서 세리아를 구출해주게."  # 다 끝나면 인사가 바뀐다
+    assert _퀘스트(gf.NPC_대화(상태, "라이너스"), ID)["상태"] == "완료"
+    # 첫 대화 뒤로는 평소 대사(퀘스트 진행과 상관없이)
+    gf.NPC_말걸기(상태, "라이너스")
+    assert gf.NPC_말걸기(상태, "라이너스")["대사"] in 라이너스_평소
 
 
 def test_수락_전에_로리엔을_깼으면_수락하자마자_완료할_수_있다():
@@ -183,10 +188,12 @@ def test_옛_세이브는_빈_퀘스트_기록으로_불러온다(임시_세이�
     저장 = json.loads(경로.read_text(encoding="utf-8"))
     저장["버전"] = 16
     저장["진행도"].pop("퀘스트")
+    저장["진행도"].pop("대화한NPC")
     경로.write_text(json.dumps(저장, ensure_ascii=False), encoding="utf-8")
 
     불러온 = gf.게임_불러오기(1)
     assert 불러온["진행도"]["퀘스트"] == {}
+    assert 불러온["진행도"]["대화한NPC"] == []
     assert save_system.세이브_버전 >= 17
     assert gf.마을_NPC_목록(불러온) == ["라이너스"]
 
@@ -234,3 +241,69 @@ def test_NPC_데이터에는_일러스트와_상점_칸이_있다():
     for npc in NPC_목록:
         assert isinstance(npc["일러스트"], str) and npc["일러스트"], npc["이름"]
         assert set(npc["상점판매목록"]) <= 아이템이름, npc["이름"]
+
+
+# ------------------------------------------------------------------ 대화 패턴(첫 대화 / 평소 대사 무작위)
+
+세리아_평소 = {
+    "안녕하세요? 세리아 키르민이에요",
+    "오늘도 좋은 하루 되세요.",
+    "저는 항상 기다리고 있어요.",
+}
+
+
+def test_세리아는_첫_대화에_감사하고_그_뒤로는_평소_대사_셋_중_하나다():
+    상태 = support.새게임()
+    _로리엔_클리어(상태)
+    gf.NPC_대화(상태, "세리아")  # 메뉴를 여는 것은 대화가 아니다
+    assert 상태["진행도"]["대화한NPC"] == []
+    첫 = gf.NPC_말걸기(상태, "세리아")
+    assert 첫 == {"이름": "세리아", "대사": "구해주셔서 감사해요.", "일러스트": "미정"}
+    assert 상태["진행도"]["대화한NPC"] == ["세리아"]
+    나온 = {gf.NPC_말걸기(상태, "세리아")["대사"] for _ in range(60)}
+    assert 나온 == 세리아_평소  # 무작위로 셋 다 나온다(첫 대화 대사는 다시 안 나온다)
+    assert 상태["진행도"]["대화한NPC"] == ["세리아"]
+
+
+def test_평소_대사는_대화_흐름으로만_굴린다():
+    """대화 대사 고르기가 전투·던전·보상 무작위를 밀지 않는다(rng.대화 따로)."""
+    상태 = support.새게임()
+    _로리엔_클리어(상태)
+    gf.NPC_말걸기(상태, "세리아")
+    다른흐름 = {
+        이름: 흐름.getstate() for 이름, 흐름 in rng.흐름들.items() if 이름 != "대화"
+    }
+    for _ in range(5):
+        gf.NPC_말걸기(상태, "세리아")
+    assert {
+        이름: 흐름.getstate() for 이름, 흐름 in rng.흐름들.items() if 이름 != "대화"
+    } == 다른흐름
+
+
+def test_첫_대화_기록은_NPC마다_따로이고_세이브에_남는다(임시_세이브폴더):
+    상태 = support.새게임()
+    _로리엔_클리어(상태)
+    assert gf.NPC_말걸기(상태, "라이너스")["대사"] == "로리엔에서 세리아를 구출해주게."
+    assert gf.NPC_말걸기(상태, "세리아")["대사"] == "구해주셔서 감사해요."
+    assert 상태["진행도"]["대화한NPC"] == ["라이너스", "세리아"]
+    gf.게임_저장(상태, 1)
+    불러온 = gf.게임_불러오기(1)
+    assert 불러온["진행도"]["대화한NPC"] == ["라이너스", "세리아"]
+    assert gf.NPC_말걸기(불러온, "세리아")["대사"] in 세리아_평소
+
+
+def test_대화할_수_없는_NPC에게는_말을_걸_수_없다():
+    상태 = support.새게임()
+    try:
+        gf.NPC_말걸기(상태, "세리아")  # 로리엔 전
+    except ValueError:
+        assert 상태["진행도"]["대화한NPC"] == []
+        return
+    raise AssertionError("로리엔 전에 세리아와 대화가 됐다")
+
+
+def test_라이너스는_첫_대화에_구출을_부탁하고_그_뒤로는_평소_대사_셋_중_하나다():
+    상태 = support.새게임()
+    assert gf.NPC_말걸기(상태, "라이너스")["대사"] == "로리엔에서 세리아를 구출해주게."
+    나온 = {gf.NPC_말걸기(상태, "라이너스")["대사"] for _ in range(60)}
+    assert 나온 == 라이너스_평소
