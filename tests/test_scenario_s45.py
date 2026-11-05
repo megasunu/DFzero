@@ -13,7 +13,7 @@ import gameflow as gf
 import scenario
 import support
 
-시드 = 6  # 레벨 8 파티가 두 전투를 모두 이기는 시드(1~20 중 6·7·14·15)
+시드 = 0  # 레벨 8 파티가 두 전투를 모두 이기는 시드(6 -> 0, 2026-11-05 #476 몬스터 행동불가 수정 뒤)
 _천해 = "dungeon_02A_D15_middleocean_shallow"
 
 
