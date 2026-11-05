@@ -435,7 +435,7 @@ def test_벙커워커는_프라그에서_근력_민첩과_패턴_홀짝만_다�
     assert {k: v for k, v in 벙커.items() if k not in 다른키} == {
         k: v for k, v in 프라그.items() if k not in 다른키
     }
-    assert 벙커["이미지"] == 프라그["이미지"]  # 전용 그림이 생기기 전까지 같이 쓴다
+    assert 벙커["이미지"] == "asset_monster_bunker_walker.webp"  # 전용 그림(#569)
     맞바꿈 = {1: 2, 2: 1, 3: 4, 4: 3, 5: 6, 6: 5}
     assert 벙커["패턴"] == {번호: 프라그["패턴"][원래] for 번호, 원래 in 맞바꿈.items()}
 
