@@ -66,5 +66,5 @@
 
 ## 7. 포함 범위
 
-APK에는 `source.include_exts`에 맞는 파일이 `source.dir = .` 아래에서 들어간다. `tests/`, `bin/`, `원본/`은 `source.exclude_dirs`로 뺀다.
+APK에는 `source.include_exts`에 맞는 파일이 `source.dir = .` 아래에서 들어간다. `tests/`, `bin/`은 `source.exclude_dirs`로 뺀다.
 `tools/`의 `.py`도 같이 들어가지만 무해하다(빼려면 spec 수정, 캐시는 유지된다).
