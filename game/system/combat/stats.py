@@ -1,6 +1,8 @@
 # 전투 시스템 - 수치 집계 - 버프/디버프/장비/특성 반영 능력치, AC/방어력/보호률/최대HP, 이니셔티브/우선도, 수식 컨텍스트.
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
+import re
+
 from game.data import common_names
 from game.system import character_data_system as 캐릭터데이터
 from game.system import dice_utils, equipment_system, rng
@@ -877,6 +879,22 @@ def _기본_공격_속성(참가자, 데미지식, 스킬속성, 속성변환):
                 return 원소["속성"]
         return 무기.get("속성") or "무속성"
     return 스킬속성 or "무속성"
+
+
+_차수주사위 = re.compile(r"\(차수(?:[+-]\d+)?\)d\d+")
+
+
+def 공격_분류(데미지식, 일반공격취급=False):
+    """챔피언 이뮨/강화 방어(#548)가 보는 공격 분류 튜플. "무기공격" - 피해식에 무기공격력/보정공격력이
+    들어가거나 일반공격(취급). "주사위공격" - 규칙의 "차수공격"((차수)dN 주사위 공격). 데이터 문자열에 "차수"를
+    쓰면 수식 변수로 읽혀 이름을 바꿨다. 둘 다일 수도, 아무것도 아닐 수도 있다."""
+    식 = str(데미지식 or "")
+    분류 = []
+    if 일반공격취급 or "보정공격력" in 식 or "무기공격력" in 식:
+        분류.append("무기공격")
+    if _차수주사위.search(식):
+        분류.append("주사위공격")
+    return tuple(분류)
 
 
 def 타격_공격타입(참가자, 데미지식, 스킬공격타입):
