@@ -92,6 +92,7 @@
 | `test_auto_merge_gate.py`, `test_project_bridge.py` | 자동 병합 판정, 보드 브리지(명령 라벨·사건별 상태·STATUS.md) | 값 |
 | `test_rng.py` | 난수 흐름: 같은 시드면 같은 값, 흐름끼리 독립(한 흐름을 더 굴려도 다른 흐름은 그대로) | 값 |
 | `test_balance_sim.py` | `tools/balance_sim.py` 밸런스 모의전투: 승률패턴 계산(판수 모자란 슬롯은 이전 행동 유지)·변형, 규칙 지문, 규칙이 바뀐 기록은 남기고 참고하지 않음, 몇 판 이어서 실행, 시험자는 전직의 1차 직업으로 만들고 파티 전원이 전직 추천 종류의 언커먼 무기를 든다 | 값 |
+| `test_dungeon_sim.py` | `tools/dungeon_sim.py` 던전 밸런스 모의전투(#491): 던전 코드 찾기, 조정안(레벨·차수·마리·보스마리·챔피언)은 사본에만 적용, 적이 준 피해를 몬스터·패턴마다 집계, 요약(승률·피해 비율), 같은 시드는 같은 결과(일꾼 수와 무관), 보스·원정이 끝까지 돌고 챔피언 조정을 되돌림 | 값 |
 | `test_golden_diff.py` | `tools/golden_diff.py` 골든 차이 요약(키별 개수, 로그 갈림 번호, 한글 경로) | 값 |
 | `test_tools_console.py` | `tools/*.py` CLI가 cp1252 콘솔에서도 한글을 찍고 끝나는지(#200) | 값 |
 | `test_imports.py`, `test_repo_hygiene.py` | 모듈 import, LF 줄끝, 비밀값 금지, 시나리오 장부 대조, 게이트(싼 검사 실패 시 멈춤, `--빠른`) | 규칙 |
