@@ -1760,136 +1760,148 @@ class 스모크앱(main.DnfMobileApp):
                 "battle_end_lose",
             ),
         ):
-            원래맵 = 상태["던전상태"]["맵정보"]
-            if 전리품줄 is False:
-                # "전리품 없음": 던전 공용 드랍도, 골드도 없는 전투로 만든다
-                상태["던전상태"]["맵정보"] = {**원래맵, "드랍표": []}
-            gf.전투_시작(상태, 몬스터들, 레벨=6, 차수=2)  # 시작 반응에 안 쓰러지게
-            if 전리품줄 is False:
-                for 적 in gf.적_목록(상태):
-                    적["원본"]["획득골드"] = "미정"
-                    적["원본"][
-                        "드랍표"
-                    ] = []  # 몬스터 개인 드랍(monster_drop.py)도 없앤다
-            support.반응_처리(상태)
-            _아군_차례로(상태)
-            매니저.current = "전투"
-            전투.갱신(신규=True)
-            yield 0.3
-            # 체력 1 몬스터(힐가브)는 전투시작 반응에 쓰러져 이미 팝업이 떠 있을 수 있다
-            if 상태["전투상태"] is not None:
-                if 첫줄 == "도망쳤다!":
-                    원래 = rng.주사위.randint
-                    rng.주사위.randint = lambda a, b: 20
-                    try:
-                        끝내기(상태)
-                    finally:
-                        rng.주사위.randint = 원래
-                else:
-                    끝내기(상태)
-                전투.갱신()
-            yield 0.5
-            글 = next(
-                t
-                for t in _팝업글()
-                if t.split("\n")[0] in ("전투 승리!", "도망쳤다!", "전투 패배!")
+            yield from self._단계_전투종료_한판(
+                상태, 매니저, 전투, 몬스터들, 끝내기, 첫줄, 전리품줄, 도착, 사진
             )
-            줄들 = 글.split("\n")
-            assert 줄들[0] == 첫줄, 글
-            if 전리품줄 is True:
-                assert 줄들[1] == "전리품" and len(줄들) >= 3 and "없음" not in 줄들, 글
-            elif 전리품줄 is False:
-                assert 줄들[1:3] == ["전리품", "없음"], 글
-            else:
-                assert "전리품" not in 줄들, 글
-            if 사진:
-                _찍기(사진)
-            if 상태.get("던전상태"):
-                상태["던전상태"]["맵정보"] = 원래맵
-            if 첫줄 == "전투 승리!":
-                # [확인]은 전투 보상을 받거나 포기하기 전까지 잠겨 있다
-                assert (
-                    _팝업_버튼("확인").disabled and not _팝업_버튼("전투 보상").disabled
-                )
-                칸 = gf.전투_보상_칸(상태)
-                if all(칸) and 칸[0] != 칸[1]:
-                    # 첫 칸 아이템은 소지품에 하나 넣어 둔다 - "보유 1" 줄이 그려지는지 보려고
-                    장비칸 = 상태["소지품"]["장비"]
-                    장비칸[칸[0]] = 장비칸.get(칸[0], 0) + 1
-                _팝업_버튼("전투 보상").dispatch("on_release")
-                yield 0.5
-                assert _팝업_버튼("선택").disabled  # 박스를 누르기 전
-                if 전리품줄 is True:  # 고블린들 - 후보가 있다
-                    assert all(칸), 칸
-                    보유 = 상태["소지품"]["장비"].get(칸[1], 0)
-                    박스 = next(
-                        w
-                        for 팝업 in list(Window.children)[:-1]
-                        for w in 팝업.walk(restrict=True)
-                        if _글(getattr(w, "text", None)).split("\n")[0] == 칸[1]
-                    ).parent.parent  # 이름 라벨 -> 줄 묶음 -> 보상 칸
-                    박스.dispatch("on_release")
-                    yield 0.3
-                    # 칸마다 세 줄: 이름 / 부위 / 보유·착용, 칸 높이는 세 줄에 맞춤
-                    sc = screens_common
-                    for 이름칸 in 칸:
-                        박스_ = next(
-                            w.parent
-                            for 팝업 in list(Window.children)[:-1]
-                            for w in 팝업.walk(restrict=True)
-                            if isinstance(w, sc.가로맞춤_라벨) and _글(w.text) == 이름칸
-                        )
-                        묶음 = 박스_
-                        박스_ = 묶음.parent
-                        줄글 = [_글(w.text) for w in reversed(묶음.children)]
-                        개수글 = gf.전투_보상_보유표시(상태, 이름칸)
-                        # 보유·착용이 없으면 두 줄, 줄 묶음은 칸 가운데
-                        assert 줄글 == [
-                            이름칸,
-                            gf.전투_보상_부위(상태, 이름칸),
-                        ] + ([개수글] if 개수글 else []), 줄글
-                        assert abs(묶음.center_y - 박스_.center_y) < 2, (
-                            묶음.center_y,
-                            박스_.center_y,
-                        )
-                        if 이름칸 == 칸[0] and 칸[0] != 칸[1]:
-                            assert 개수글.startswith("보유 "), 개수글
-                        assert 박스_.height < 3 * sc.글자_높이("15sp") + 60, (
-                            박스_.height
-                        )
-                        for w in 묶음.children:
-                            assert w.texture_size[0] <= w.width, (w.text, w.width)
-                    포기 = _팝업_버튼("포기하기(10골드)")
-                    assert 포기.width > 박스_.parent.width * 0.6, 포기.width
-                    _찍기("battle_reward")
-                    _팝업_버튼("선택").dispatch("on_release")
-                    yield 0.3
-                    assert 상태["소지품"]["장비"][칸[1]] == 보유 + 1
-                    # 받은 아이템이 전투 종료 팝업의 전리품 줄에 더해진다
-                    새글 = _글(next(t for t in _팝업글() if t.startswith("전투 승리!")))
-                    assert 새글 == "\n".join(
-                        gf.전투_종료_문구(상태, "아군승리")
-                    ) and any(줄.startswith(칸[1]) for 줄 in 새글.split("\n")[2:]), 새글
-                    _찍기("battle_end_win_reward")
-                else:  # 힐가브 - 후보 없음, 세 칸 모두 빈칸
-                    assert 칸 == [None, None, None], 칸
-                    _찍기("battle_reward_empty")
-                    골드 = 상태["소지품"]["골드"]
-                    _팝업_버튼("포기하기(10골드)").dispatch("on_release")
-                    yield 0.3
-                    assert 상태["소지품"]["골드"] == 골드 + 10
-                assert not gf.전투_보상_대기중(상태)
-                assert (
-                    not _팝업_버튼("확인").disabled and _팝업_버튼("전투 보상").disabled
-                )
-            _확인_누르기()
-            yield 0.5
-            assert 매니저.current == 도착, 매니저.current
-            if 도착 == "마을":
-                gf.던전_진입(상태, "dungeon_01A_D01_Lorien")
         결과["단계"].append(
             "전투 종료 팝업(승리 전리품/없음, 도망, 패배) + 전투 보상 선택/포기"
         )
+
+    def _단계_전투종료_한판(
+        self, 상태, 매니저, 전투, 몬스터들, 끝내기, 첫줄, 전리품줄, 도착, 사진
+    ):
+        """전투 하나를 끝내 종료 팝업의 첫 줄·전리품 줄을 확인하고, 승리면 전투 보상, [확인] 뒤 도착 화면"""
+        원래맵 = 상태["던전상태"]["맵정보"]
+        if 전리품줄 is False:
+            # "전리품 없음": 던전 공용 드랍도, 골드도 없는 전투로 만든다
+            상태["던전상태"]["맵정보"] = {**원래맵, "드랍표": []}
+        gf.전투_시작(상태, 몬스터들, 레벨=6, 차수=2)  # 시작 반응에 안 쓰러지게
+        if 전리품줄 is False:
+            for 적 in gf.적_목록(상태):
+                적["원본"]["획득골드"] = "미정"
+                적["원본"]["드랍표"] = []  # 몬스터 개인 드랍(monster_drop.py)도 없앤다
+        support.반응_처리(상태)
+        _아군_차례로(상태)
+        매니저.current = "전투"
+        전투.갱신(신규=True)
+        yield 0.3
+        # 체력 1 몬스터(힐가브)는 전투시작 반응에 쓰러져 이미 팝업이 떠 있을 수 있다
+        if 상태["전투상태"] is not None:
+            if 첫줄 == "도망쳤다!":
+                원래 = rng.주사위.randint
+                rng.주사위.randint = lambda a, b: 20
+                try:
+                    끝내기(상태)
+                finally:
+                    rng.주사위.randint = 원래
+            else:
+                끝내기(상태)
+            전투.갱신()
+        yield 0.5
+        글 = next(
+            t
+            for t in _팝업글()
+            if t.split("\n")[0] in ("전투 승리!", "도망쳤다!", "전투 패배!")
+        )
+        줄들 = 글.split("\n")
+        assert 줄들[0] == 첫줄, 글
+        if 전리품줄 is True:
+            assert 줄들[1] == "전리품" and len(줄들) >= 3 and "없음" not in 줄들, 글
+        elif 전리품줄 is False:
+            assert 줄들[1:3] == ["전리품", "없음"], 글
+        else:
+            assert "전리품" not in 줄들, 글
+        if 사진:
+            _찍기(사진)
+        if 상태.get("던전상태"):
+            상태["던전상태"]["맵정보"] = 원래맵
+        if 첫줄 == "전투 승리!":
+            yield from self._단계_전투보상(상태, 전리품줄)
+        _확인_누르기()
+        yield 0.5
+        assert 매니저.current == 도착, 매니저.current
+        if 도착 == "마을":
+            gf.던전_진입(상태, "dungeon_01A_D01_Lorien")
+
+    def _단계_전투보상(self, 상태, 전리품줄):
+        """승리 팝업의 [전투 보상] - [확인]은 받거나 포기하기 전까지 잠김"""
+        # [확인]은 전투 보상을 받거나 포기하기 전까지 잠겨 있다
+        assert _팝업_버튼("확인").disabled and not _팝업_버튼("전투 보상").disabled
+        칸 = gf.전투_보상_칸(상태)
+        if all(칸) and 칸[0] != 칸[1]:
+            # 첫 칸 아이템은 소지품에 하나 넣어 둔다 - "보유 1" 줄이 그려지는지 보려고
+            장비칸 = 상태["소지품"]["장비"]
+            장비칸[칸[0]] = 장비칸.get(칸[0], 0) + 1
+        _팝업_버튼("전투 보상").dispatch("on_release")
+        yield 0.5
+        assert _팝업_버튼("선택").disabled  # 박스를 누르기 전
+        if 전리품줄 is True:  # 고블린들 - 후보가 있다
+            yield from self._단계_전투보상_받기(상태, 칸)
+        else:  # 힐가브 - 후보 없음
+            yield from self._단계_전투보상_포기(상태, 칸)
+        assert not gf.전투_보상_대기중(상태)
+        assert not _팝업_버튼("확인").disabled and _팝업_버튼("전투 보상").disabled
+
+    def _단계_전투보상_받기(self, 상태, 칸):
+        """후보가 있는 보상 - 칸마다 이름/부위/보유 줄, 고르면 소지품과 전리품 줄에 더해진다"""
+        assert all(칸), 칸
+        보유 = 상태["소지품"]["장비"].get(칸[1], 0)
+        박스 = next(
+            w
+            for 팝업 in list(Window.children)[:-1]
+            for w in 팝업.walk(restrict=True)
+            if _글(getattr(w, "text", None)).split("\n")[0] == 칸[1]
+        ).parent.parent  # 이름 라벨 -> 줄 묶음 -> 보상 칸
+        박스.dispatch("on_release")
+        yield 0.3
+        # 칸마다 세 줄: 이름 / 부위 / 보유·착용, 칸 높이는 세 줄에 맞춤
+        sc = screens_common
+        for 이름칸 in 칸:
+            박스_ = next(
+                w.parent
+                for 팝업 in list(Window.children)[:-1]
+                for w in 팝업.walk(restrict=True)
+                if isinstance(w, sc.가로맞춤_라벨) and _글(w.text) == 이름칸
+            )
+            묶음 = 박스_
+            박스_ = 묶음.parent
+            줄글 = [_글(w.text) for w in reversed(묶음.children)]
+            개수글 = gf.전투_보상_보유표시(상태, 이름칸)
+            # 보유·착용이 없으면 두 줄, 줄 묶음은 칸 가운데
+            assert 줄글 == [
+                이름칸,
+                gf.전투_보상_부위(상태, 이름칸),
+            ] + ([개수글] if 개수글 else []), 줄글
+            assert abs(묶음.center_y - 박스_.center_y) < 2, (
+                묶음.center_y,
+                박스_.center_y,
+            )
+            if 이름칸 == 칸[0] and 칸[0] != 칸[1]:
+                assert 개수글.startswith("보유 "), 개수글
+            assert 박스_.height < 3 * sc.글자_높이("15sp") + 60, 박스_.height
+            for w in 묶음.children:
+                assert w.texture_size[0] <= w.width, (w.text, w.width)
+        포기 = _팝업_버튼("포기하기(10골드)")
+        assert 포기.width > 박스_.parent.width * 0.6, 포기.width
+        _찍기("battle_reward")
+        _팝업_버튼("선택").dispatch("on_release")
+        yield 0.3
+        assert 상태["소지품"]["장비"][칸[1]] == 보유 + 1
+        # 받은 아이템이 전투 종료 팝업의 전리품 줄에 더해진다
+        새글 = _글(next(t for t in _팝업글() if t.startswith("전투 승리!")))
+        assert 새글 == "\n".join(gf.전투_종료_문구(상태, "아군승리")) and any(
+            줄.startswith(칸[1]) for 줄 in 새글.split("\n")[2:]
+        ), 새글
+        _찍기("battle_end_win_reward")
+
+    def _단계_전투보상_포기(self, 상태, 칸):
+        """후보 없는 보상(힐가브) - 세 칸 모두 빈칸, 포기하면 10골드"""
+        assert 칸 == [None, None, None], 칸
+        _찍기("battle_reward_empty")
+        골드 = 상태["소지품"]["골드"]
+        _팝업_버튼("포기하기(10골드)").dispatch("on_release")
+        yield 0.3
+        assert 상태["소지품"]["골드"] == 골드 + 10
 
     def _단계_공어_연속전투(self, 상태, 매니저, 전투):
         """공어 연속전투(#490): 이긴 뒤 [연속전투] 팝업 -> [전투 시작]으로 공왕 크로쿠타 전투 -> 이기면 보상 두 번"""
