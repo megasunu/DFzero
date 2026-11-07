@@ -213,6 +213,18 @@ def _상점_목록이름(상점, 상태):
     ]
 
 
+def _위젯_버튼(위젯, 글):
+    return next(
+        w
+        for w in 위젯.walk(restrict=True)
+        if isinstance(w, Button) and _글(w.text) == 글
+    )
+
+
+def _마을_메뉴_열기(매니저):
+    _위젯_버튼(매니저.get_screen("마을"), "메뉴").trigger_action(duration=0)
+
+
 def _확인_누르기():
     _팝업_버튼("확인").dispatch("on_release")
 
@@ -4481,20 +4493,17 @@ class 스모크앱(main.DnfMobileApp):
         앱.게임상태 = 상태
         상태["전투상태"] = None
         상태["던전상태"] = None
+        yield from self._단계_도감_몬스터(상태, 매니저)
+        yield from self._단계_도감_장비(상태, 매니저)
+        yield from self._단계_업적(상태, 매니저)
+        결과["단계"].append(
+            "도감/업적 - [메뉴] -> [도감] 등록 수, 몬스터(미등록 어둡게/상세보기 못 누름, 상세 팝업), "
+            "장비 고르는 상자 4개(전체 시작, 상위 전체면 중위·하위 못 누름, 무기 -> 귀검사 -> 언커먼), 나가기 -> 마을. [메뉴] -> [업적] 분류 4개, 달성 전 못 누름, 보상받기/전부 받기, "
+            "특수업적 보상받기(봉인 레어 무기와 안내 글)"
+        )
 
-        def 버튼(위젯, 글):
-            return next(
-                w
-                for w in 위젯.walk(restrict=True)
-                if isinstance(w, Button) and _글(w.text) == 글
-            )
-
-        def 팝업():
-            return Window.children[0]
-
-        def 메뉴_열기():
-            버튼(매니저.get_screen("마을"), "메뉴").trigger_action(duration=0)
-
+    def _단계_도감_몬스터(self, 상태, 매니저):
+        """[메뉴] -> [도감] 등록 수, 몬스터 종족 탭(미등록은 [상세보기] 못 누름, 몬스터 상세)"""
         도감 = 상태["진행도"]["도감"]
         for 이름 in ("고블린", "고블린 투척병"):
             if 이름 not in 도감["몬스터"]:
@@ -4502,9 +4511,9 @@ class 스모크앱(main.DnfMobileApp):
         매니저.get_screen("마을").갱신()
         매니저.current = "마을"
         yield 0.3
-        메뉴_열기()
+        _마을_메뉴_열기(매니저)
         yield 0.3
-        버튼(팝업(), "도감").trigger_action(duration=0)
+        _위젯_버튼(Window.children[0], "도감").trigger_action(duration=0)
         yield 0.3
         assert 매니저.current == "도감", 매니저.current
         화면 = 매니저.current_screen
@@ -4529,17 +4538,22 @@ class 스모크앱(main.DnfMobileApp):
         assert "미등록" not in _글(
             " ".join(w.text for w in 행("고블린").children if isinstance(w, Label))
         )
-        assert not 버튼(행("고블린"), "상세보기").disabled
-        assert 버튼(행("프라그"), "상세보기").disabled, "미등록은 상세보기 못 누름"
+        assert not _위젯_버튼(행("고블린"), "상세보기").disabled
+        assert _위젯_버튼(행("프라그"), "상세보기").disabled, (
+            "미등록은 상세보기 못 누름"
+        )
         _찍기("collection_monster")
-        버튼(행("고블린"), "상세보기").trigger_action(duration=0)
+        _위젯_버튼(행("고블린"), "상세보기").trigger_action(duration=0)
         yield 0.3
-        assert 팝업().title == "고블린"
+        assert Window.children[0].title == "고블린"
         _찍기("collection_monster_detail")
         _팝업_닫기()
         yield 0.3
 
-        버튼(화면, "◀ 뒤로").trigger_action(duration=0)
+    def _단계_도감_장비(self, 상태, 매니저):
+        """장비 도감 고르는 상자 4개(상위/중위/하위분류, 레어도), 상세 글, 나가기 -> 연 화면"""
+        화면 = 매니저.current_screen
+        _위젯_버튼(화면, "◀ 뒤로").trigger_action(duration=0)
         yield 0.3
         next(
             w
@@ -4599,19 +4613,21 @@ class 스모크앱(main.DnfMobileApp):
         상자 = 화면.장비필터상자
         assert (상자["중위"].text, 상자["하위"].text) == ("전체", "전체")
         assert 상자["중위"].disabled and 상자["레어도"].text == "언커먼"
-        버튼(화면, "◀ 뒤로").trigger_action(duration=0)
+        _위젯_버튼(화면, "◀ 뒤로").trigger_action(duration=0)
         yield 0.3
-        버튼(화면, "◀ 나가기").trigger_action(duration=0)
+        _위젯_버튼(화면, "◀ 나가기").trigger_action(duration=0)
         yield 0.3
         assert 매니저.current == "마을", "도감의 나가기는 메뉴를 연 화면으로"
 
+    def _단계_업적(self, 상태, 매니저):
+        """[메뉴] -> [업적] 분류 4개, 달성 전 못 누름, 보상받기/특수업적/전부 받기"""
         상태["진행도"]["업적기록"]["일반전투승리"] = max(
             5, 상태["진행도"]["업적기록"]["일반전투승리"]
         )
         상태["진행도"]["받은업적"] = []
-        메뉴_열기()
+        _마을_메뉴_열기(매니저)
         yield 0.3
-        버튼(팝업(), "업적").trigger_action(duration=0)
+        _위젯_버튼(Window.children[0], "업적").trigger_action(duration=0)
         yield 0.3
         assert 매니저.current == "업적", 매니저.current
         화면 = 매니저.current_screen
@@ -4641,7 +4657,7 @@ class 스모크앱(main.DnfMobileApp):
         assert 첫줄.text == "받음" and 첫줄.disabled
         # 특수업적: 세리아 구출 -> [보상받기] = 랜덤 레어 무기(마법으로 봉인된 무기 하나)
         상태["진행도"]["클리어한오브젝트"].add(("dungeon_01A_D01_Lorien", (15, 3)))
-        버튼(화면, "특수업적").trigger_action(duration=0)
+        _위젯_버튼(화면, "특수업적").trigger_action(duration=0)
         yield 0.3
         세리아 = next(
             w
@@ -4660,7 +4676,7 @@ class 스모크앱(main.DnfMobileApp):
         assert len(새장비) == 1 and 새장비[0].startswith("마법으로 봉인된 "), 새장비
         assert 새장비[0] in 화면.안내라벨.text, 화면.안내라벨.text
         _찍기("achievements_special")
-        버튼(화면, "전투업적").trigger_action(duration=0)
+        _위젯_버튼(화면, "전투업적").trigger_action(duration=0)
         yield 0.3
         _찍기("achievements_battle")
         남은 = gf.업적_받을_보상_수(상태)
@@ -4668,14 +4684,9 @@ class 스모크앱(main.DnfMobileApp):
         yield 0.3
         assert 상태["소지품"]["골드"] == 골드 + 10 + 남은 * 10
         assert 화면.전부받기버튼.disabled and gf.업적_받을_보상_수(상태) == 0
-        버튼(화면, "◀ 나가기").trigger_action(duration=0)
+        _위젯_버튼(화면, "◀ 나가기").trigger_action(duration=0)
         yield 0.3
         assert 매니저.current == "마을"
-        결과["단계"].append(
-            "도감/업적 - [메뉴] -> [도감] 등록 수, 몬스터(미등록 어둡게/상세보기 못 누름, 상세 팝업), "
-            "장비 고르는 상자 4개(전체 시작, 상위 전체면 중위·하위 못 누름, 무기 -> 귀검사 -> 언커먼), 나가기 -> 마을. [메뉴] -> [업적] 분류 4개, 달성 전 못 누름, 보상받기/전부 받기, "
-            "특수업적 보상받기(봉인 레어 무기와 안내 글)"
-        )
 
     def _단계_메뉴(self, 상태, 매니저):
         """마을/던전 [메뉴] 팝업 - 저장하기/불러오기/설정/메인메뉴로(확인 창), 던전 안 저장 -> 같은 위치로"""
