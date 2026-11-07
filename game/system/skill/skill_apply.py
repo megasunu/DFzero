@@ -18,7 +18,7 @@ from game.system.skill.skill_grant import (
     상태이상_부여,
     이름있는효과_부여,
     이름있는효과_해제,
-    자원류_효과인가,
+    해제불가_효과인가,
     정수_평가,
 )
 from game.system.skill.skill_target import (
@@ -235,7 +235,7 @@ def _효과_해제(문맥, 항목, 로그):
         후보 = [
             i
             for i in 대상[목록이름]
-            if not 자원류_효과인가(resources.효과정의_조회(i["이름"])[0])
+            if not 해제불가_효과인가(resources.효과정의_조회(i["이름"])[0])
         ]
         rng.대상.shuffle(후보)
         for i in 후보[:해제개수]:
@@ -259,7 +259,7 @@ def _효과_무작위상태이상(문맥, 항목, 로그):
     후보 = [
         i
         for i in 대상["버프"]
-        if not 자원류_효과인가(resources.효과정의_조회(i["이름"])[0])
+        if not 해제불가_효과인가(resources.효과정의_조회(i["이름"])[0])
     ]
     rng.대상.shuffle(후보)
     for i in 후보[: 항목.get("실패시버프해제", 0)]:
