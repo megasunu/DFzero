@@ -33,8 +33,8 @@ import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# 2026-10-14 측정 94.57%(품질 계획 P7에서 90 -> 92). 떨어뜨리지 말고, 올리면 이 값도 올린다.
-COVERAGE_FLOOR = 92
+# 2026-11-07 측정 95.66%(분기 포함, 테스트 3,141개 - #579에서 92 -> 94). 떨어뜨리지 말고, 올리면 이 값도 올린다.
+COVERAGE_FLOOR = 94
 
 PYTEST_BASE = [sys.executable, "-m", "pytest"]
 커버리지_있음 = importlib.util.find_spec("pytest_cov") is not None
