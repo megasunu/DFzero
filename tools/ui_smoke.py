@@ -194,6 +194,37 @@ def _팝업_버튼(글):
     )
 
 
+def _상점_탭들(상점):
+    return [w for w in 상점.내용틀.walk(restrict=True) if isinstance(w, ToggleButton)]
+
+
+def _상점_탭(상점, 글):
+    return next(t for t in _상점_탭들(상점) if t.text == 글)
+
+
+def _상점_목록이름(상점, 상태):
+    """상점 목록에 보이는 현재 장비 탭의 아이템 이름"""
+    return [
+        _글(w.text)
+        for w in 상점._목록틀.walk(restrict=True)
+        if isinstance(w, main.Label)
+        and not isinstance(w, Button)
+        and _글(w.text) in 상태["상점카탈로그"]["장비"].get(상점._현재탭, {})
+    ]
+
+
+def _위젯_버튼(위젯, 글):
+    return next(
+        w
+        for w in 위젯.walk(restrict=True)
+        if isinstance(w, Button) and _글(w.text) == 글
+    )
+
+
+def _마을_메뉴_열기(매니저):
+    _위젯_버튼(매니저.get_screen("마을"), "메뉴").trigger_action(duration=0)
+
+
 def _확인_누르기():
     _팝업_버튼("확인").dispatch("on_release")
 
@@ -370,33 +401,19 @@ class 스모크앱(main.DnfMobileApp):
 
     def _단계_상점_구매판매(self, 상태, 매니저):
         """상점 구매 - 레어도 색, 장비 탭 2줄, 무기 직업군/종류 탭, 방어구 재질 탭, 판매 목록"""
+        yield from self._단계_상점_레어도색(상태, 매니저)
+        yield from self._단계_상점_장비탭(상태, 매니저)
+        yield from self._단계_상점_인형탭(상태, 매니저)
+        yield from self._단계_상점_판매목록(상태, 매니저)
+
+    def _단계_상점_레어도색(self, 상태, 매니저):
+        """상점 구매 장비 목록 - 아이템 이름의 레어도 색"""
         매니저.current = "상점"
         상점 = 매니저.get_screen("상점")
         상점._대분류_그리기("구매")
         상점._탭목록_그리기("구매", "장비")
         yield 0.5
         _찍기("shop_buy")
-        from kivy.uix.togglebutton import ToggleButton
-
-        def 탭들():
-            return [
-                w
-                for w in 상점.내용틀.walk(restrict=True)
-                if isinstance(w, ToggleButton)
-            ]
-
-        def 탭(글):
-            return next(t for t in 탭들() if t.text == 글)
-
-        def 목록이름():
-            return [
-                _글(w.text)
-                for w in 상점._목록틀.walk(restrict=True)
-                if isinstance(w, main.Label)
-                and not isinstance(w, Button)
-                and _글(w.text) in 상태["상점카탈로그"]["장비"].get(상점._현재탭, {})
-            ]
-
         # 아이템 이름은 레어도 색: 언커먼 파랑, 치트는 글자마다 무지개
         이름글 = {
             _글(w.text): w.text
@@ -419,8 +436,12 @@ class 스모크앱(main.DnfMobileApp):
             assert screens_common.아이템_이름_글(
                 {"이름": "가상", "레어도": 레어도}
             ).startswith(f"[color={색}]")
+
+    def _단계_상점_장비탭(self, 상태, 매니저):
+        """상점 장비 탭 2줄, 무기 직업군/종류 탭, 방어구 재질 탭"""
+        상점 = 매니저.get_screen("상점")
         # 부위 탭 2줄이 화면 안에 다 들어간다(밀어서 넘기지 않음)
-        부위 = [t for t in 탭들() if t.group == 탭("무기").group]
+        부위 = [t for t in _상점_탭들(상점) if t.group == _상점_탭(상점, "무기").group]
         assert [t.text for t in 부위] == sum(gf.상점_탭줄("구매", "장비"), [])
         assert all(
             상점.내용틀.x - 1 <= t.x and t.right <= 상점.내용틀.right + 1 for t in 부위
@@ -438,28 +459,29 @@ class 스모크앱(main.DnfMobileApp):
         assert abs(상점.골드라벨.parent.height - sc.글자_높이("20sp")) < 1
         assert abs(상점.안내라벨.height - sc.글자_높이()) < 1
         # 무기: 직업군 탭 -> 거너를 누르면 종류 탭 줄이 생기고 목록은 거너 무기만
-        assert [t.text for t in 탭들() if t.text in gf.상점_무기_직업군탭(상태)][
-            :6
-        ] == gf.상점_무기_직업군탭(상태)
-        탭("거너").trigger_action(duration=0)
+        assert [
+            t.text for t in _상점_탭들(상점) if t.text in gf.상점_무기_직업군탭(상태)
+        ][:6] == gf.상점_무기_직업군탭(상태)
+        _상점_탭(상점, "거너").trigger_action(duration=0)
         yield 0.3
         종류 = gf.상점_무기_종류탭(상태, "거너")
-        assert all(any(t.text == k for t in 탭들()) for k in 종류[1:]), [
-            t.text for t in 탭들()
+        assert all(any(t.text == k for t in _상점_탭들(상점)) for k in 종류[1:]), [
+            t.text for t in _상점_탭들(상점)
         ]
         무기 = 상태["상점카탈로그"]["장비"]["무기"]
-        이름들 = 목록이름()
+        이름들 = _상점_목록이름(상점, 상태)
         assert 이름들 and all(무기[n]["분류"] == "거너 무기" for n in 이름들), 이름들
-        탭(종류[1]).trigger_action(duration=0)
+        _상점_탭(상점, 종류[1]).trigger_action(duration=0)
         yield 0.3
         assert all(
-            gf.상점_분류_일치("무기", 무기[n], None, 종류[1]) for n in 목록이름()
-        ), 목록이름()
+            gf.상점_분류_일치("무기", 무기[n], None, 종류[1])
+            for n in _상점_목록이름(상점, 상태)
+        ), _상점_목록이름(상점, 상태)
         _찍기("shop_buy_weapon_gunner")
         # 방어구: 재질 탭
-        탭("상의").trigger_action(duration=0)
+        _상점_탭(상점, "상의").trigger_action(duration=0)
         yield 0.3
-        탭("판금").trigger_action(duration=0)
+        _상점_탭(상점, "판금").trigger_action(duration=0)
         yield 0.3
         세트글 = [
             w.text
@@ -470,15 +492,21 @@ class 스모크앱(main.DnfMobileApp):
             세트글
         )  # 커먼 방어구 세트 = 초록
         상의 = 상태["상점카탈로그"]["장비"]["상의"]
-        assert all(상의[n]["재질"] == "판금" for n in 목록이름()), 목록이름()
+        assert all(상의[n]["재질"] == "판금" for n in _상점_목록이름(상점, 상태)), (
+            _상점_목록이름(상점, 상태)
+        )
         _찍기("shop_buy_top_plate")
         결과["단계"].append(
             "상점 장비 탭 2줄(한 화면) + 무기 직업군->종류 탭 + 방어구 재질 탭"
         )
+
+    def _단계_상점_인형탭(self, 상태, 매니저):
+        """상점 소모품 인형 탭 - 상점 인형 5종"""
+        상점 = 매니저.get_screen("상점")
         # 소모품 "인형" 탭 - 상점 인형 5종만(28호는 팔지 않는다, #508)
         상점._탭목록_그리기("구매", "소모품")
         yield 0.3
-        탭("인형").trigger_action(duration=0)
+        _상점_탭(상점, "인형").trigger_action(duration=0)
         yield 0.3
         인형글 = [
             _글(w.text)
@@ -493,9 +521,22 @@ class 스모크앱(main.DnfMobileApp):
         ], 인형글
         _찍기("shop_buy_doll")
         결과["단계"].append("상점 소모품 인형 탭(상점 인형 5종, 28호 없음)")
+
+    def _단계_상점_판매목록(self, 상태, 매니저):
+        """상점 판매 장비 목록 - 탭 2줄"""
+        상점 = 매니저.get_screen("상점")
         상점._탭목록_그리기("판매", "장비")
         yield 0.5
-        assert len({t.y for t in 탭들() if t.group == 탭("무기").group}) == 2
+        assert (
+            len(
+                {
+                    t.y
+                    for t in _상점_탭들(상점)
+                    if t.group == _상점_탭(상점, "무기").group
+                }
+            )
+            == 2
+        )
         _찍기("shop_sell")
         결과["단계"].append("상점 구매/판매 목록")
 
@@ -726,7 +767,19 @@ class 스모크앱(main.DnfMobileApp):
         )
 
     def _단계_파티관리_팝업(self, 상태, 매니저):
-        """파티관리 - 능력치 배분, 스킬강화, 스킬습득 팝업"""
+        """파티관리 - 능력치 배분, 전직, 마스터리, 스킬강화, 퍽, 스킬습득 팝업(주제별 단계로 나눔, #581)"""
+        yield from self._단계_능력치배분_팝업(상태, 매니저)
+        yield from self._단계_전직선택_팝업(매니저)
+        yield from self._단계_마스터리선택_팝업(매니저)
+        yield from self._단계_스킬강화_팝업(상태, 매니저)
+        버서커 = yield from self._단계_훔쳐배우기(상태, 매니저)
+        yield from self._단계_퍽선택_팝업(매니저, 버서커)
+        yield from self._단계_약점증가_배분(매니저)
+        yield from self._단계_포켓몬_특성(매니저)
+        yield from self._단계_스킬습득_팝업(상태, 매니저)
+
+    def _단계_능력치배분_팝업(self, 상태, 매니저):
+        """파티관리 - 능력치 배분 팝업"""
         매니저.current = "파티관리"
         매니저.get_screen("파티관리")._능력치배분_팝업(
             상태["파티"]["파티원"][0], 2, lambda 배분: None
@@ -736,6 +789,8 @@ class 스모크앱(main.DnfMobileApp):
         _팝업_닫기()
         결과["단계"].append("능력치 배분 팝업")
 
+    def _단계_전직선택_팝업(self, 매니저):
+        """전직 선택 팝업 - 귀검사 전직 5개, 격투가 넨마스터의 능력치 다시 고르기"""
         # 전직 선택 팝업(레벨 5): 1차 전직이 전부 구현돼 모든 버튼을 누를 수 있다.
         # 따로 만든 게임에서 키우고 난수 상태를 되돌려 뒤 단계에 영향을 주지 않는다
         난수 = rng.상태()
@@ -790,6 +845,8 @@ class 스모크앱(main.DnfMobileApp):
         )  # 닫으면 전직하지 않는다
         결과["단계"].append("격투가 전직(넨마스터)의 능력치 다시 고르기 팝업")
 
+    def _단계_마스터리선택_팝업(self, 매니저):
+        """마스터리 선택 팝업 - 이름 토글 + 상세보기"""
         # 마스터리 선택 팝업: 줄마다 이름 토글 + [상세보기](설명은 상세보기 창에만)
         from kivy.uix.togglebutton import ToggleButton
 
@@ -839,6 +896,8 @@ class 스모크앱(main.DnfMobileApp):
             "마스터리 선택 팝업(이름 토글 + 상세보기, 무기/방어구 하나씩 골라 확인)"
         )
 
+    def _단계_스킬강화_팝업(self, 상태, 매니저):
+        """레벨 12 스킬강화 팝업"""
         # 레벨 12 [스킬강화] 팝업: 보유 스킬마다 버튼, 누르면 그 스킬로 확정
         고른 = []
         강화항목 = gf.전직_레지스트리["귀검사"]["웨펀마스터"]["레벨업테이블"][12]
@@ -859,6 +918,8 @@ class 스모크앱(main.DnfMobileApp):
         assert 고른 == ["귀참"] and len(Window.children) == 1, 고른
         결과["단계"].append("스킬강화 팝업(보유 스킬 버튼 -> 그 스킬로 확정)")
 
+    def _단계_훔쳐배우기(self, 상태, 매니저):
+        """훔쳐배우기 - 퍽 목록에 없고 [스킬습득]에서 산다. 키운 버서커를 돌려준다"""
         # 훔쳐배우기(#365): 퍽이 아니라 [스킬습득]에서 다른 전직의 스킬을 5배 값(500골드)에 산다
         다른 = support.새게임([("", "귀검사")])
         버서커 = 다른["파티"]["파티원"][0]
@@ -892,7 +953,11 @@ class 스모크앱(main.DnfMobileApp):
         결과["단계"].append(
             "훔쳐배우기: 퍽 목록에 없음, [스킬습득]에서 다른 전직 스킬(귀신 : 브레멘)을 500골드에 삼"
         )
+        return 버서커
 
+    def _단계_퍽선택_팝업(self, 매니저, 버서커):
+        """퍽 선택 팝업 - 능력치향상 -> 배분 팝업, 못 고르는 퍽 회색, 배운 퍽 숨김"""
+        고른 = []
         # 퍽 "타입"(#289): 스탯획득 퍽(능력치향상)을 고르면 능력치 배분 팝업이 열린다
         매니저.get_screen("파티관리")._퍽선택_팝업(버서커, 고른.append)
         yield 0.5
@@ -921,7 +986,10 @@ class 스모크앱(main.DnfMobileApp):
         yield 0.6
         결과["단계"].append("퍽 선택: 차수 미달 퍽은 회색(이유), 배운 퍽은 숨김")
 
+    def _단계_약점증가_배분(self, 매니저):
+        """약점증가 - 배분 팝업에서 약점 4개"""
         # 약점증가(사용자 결정 2026-10-20): 주스탯·보조스탯을 뺀 4개가 약점 - 배분 팝업에서 "(약점)"으로 못 올린다
+        고른 = []
         약점캐 = support.새게임([("", "귀검사")])["파티"]["파티원"][0]
         약점캐["보유특성"].append("약점증가")
         매니저.get_screen("파티관리")._능력치배분_팝업(약점캐, 2, 확인콜백=고른.append)
@@ -939,6 +1007,8 @@ class 스모크앱(main.DnfMobileApp):
             "약점증가: 능력치 배분에서 주스탯·보조스탯을 뺀 4개가 (약점)"
         )
 
+    def _단계_포켓몬_특성(self, 매니저):
+        """포켓몬 - 퍽 선택 -> 특성 고르기 팝업"""
         # 포켓몬(4차수): 퍽 선택 -> 특성 고르기 팝업 -> 고른 특성(마중물)을 얻는다
         포켓 = support.새게임([("", "귀검사")])
         포켓캐 = 포켓["파티"]["파티원"][0]
@@ -964,6 +1034,8 @@ class 스모크앱(main.DnfMobileApp):
             "포켓몬: 퍽 선택 -> 특성 고르기 팝업 -> 고른 특성(마중물)을 얻음"
         )
 
+    def _단계_스킬습득_팝업(self, 상태, 매니저):
+        """파티관리 화면 배치와 [스킬습득] 팝업"""
         # [스킬습득] 팝업: 직업 계열 스킬 목록 + 비용, 골드가 모자라면 버튼 잠금, 누르면 배운다
         파티관리 = 매니저.get_screen("파티관리")
         파티관리.갱신()
@@ -1700,136 +1772,148 @@ class 스모크앱(main.DnfMobileApp):
                 "battle_end_lose",
             ),
         ):
-            원래맵 = 상태["던전상태"]["맵정보"]
-            if 전리품줄 is False:
-                # "전리품 없음": 던전 공용 드랍도, 골드도 없는 전투로 만든다
-                상태["던전상태"]["맵정보"] = {**원래맵, "드랍표": []}
-            gf.전투_시작(상태, 몬스터들, 레벨=6, 차수=2)  # 시작 반응에 안 쓰러지게
-            if 전리품줄 is False:
-                for 적 in gf.적_목록(상태):
-                    적["원본"]["획득골드"] = "미정"
-                    적["원본"][
-                        "드랍표"
-                    ] = []  # 몬스터 개인 드랍(monster_drop.py)도 없앤다
-            support.반응_처리(상태)
-            _아군_차례로(상태)
-            매니저.current = "전투"
-            전투.갱신(신규=True)
-            yield 0.3
-            # 체력 1 몬스터(힐가브)는 전투시작 반응에 쓰러져 이미 팝업이 떠 있을 수 있다
-            if 상태["전투상태"] is not None:
-                if 첫줄 == "도망쳤다!":
-                    원래 = rng.주사위.randint
-                    rng.주사위.randint = lambda a, b: 20
-                    try:
-                        끝내기(상태)
-                    finally:
-                        rng.주사위.randint = 원래
-                else:
-                    끝내기(상태)
-                전투.갱신()
-            yield 0.5
-            글 = next(
-                t
-                for t in _팝업글()
-                if t.split("\n")[0] in ("전투 승리!", "도망쳤다!", "전투 패배!")
+            yield from self._단계_전투종료_한판(
+                상태, 매니저, 전투, 몬스터들, 끝내기, 첫줄, 전리품줄, 도착, 사진
             )
-            줄들 = 글.split("\n")
-            assert 줄들[0] == 첫줄, 글
-            if 전리품줄 is True:
-                assert 줄들[1] == "전리품" and len(줄들) >= 3 and "없음" not in 줄들, 글
-            elif 전리품줄 is False:
-                assert 줄들[1:3] == ["전리품", "없음"], 글
-            else:
-                assert "전리품" not in 줄들, 글
-            if 사진:
-                _찍기(사진)
-            if 상태.get("던전상태"):
-                상태["던전상태"]["맵정보"] = 원래맵
-            if 첫줄 == "전투 승리!":
-                # [확인]은 전투 보상을 받거나 포기하기 전까지 잠겨 있다
-                assert (
-                    _팝업_버튼("확인").disabled and not _팝업_버튼("전투 보상").disabled
-                )
-                칸 = gf.전투_보상_칸(상태)
-                if all(칸) and 칸[0] != 칸[1]:
-                    # 첫 칸 아이템은 소지품에 하나 넣어 둔다 - "보유 1" 줄이 그려지는지 보려고
-                    장비칸 = 상태["소지품"]["장비"]
-                    장비칸[칸[0]] = 장비칸.get(칸[0], 0) + 1
-                _팝업_버튼("전투 보상").dispatch("on_release")
-                yield 0.5
-                assert _팝업_버튼("선택").disabled  # 박스를 누르기 전
-                if 전리품줄 is True:  # 고블린들 - 후보가 있다
-                    assert all(칸), 칸
-                    보유 = 상태["소지품"]["장비"].get(칸[1], 0)
-                    박스 = next(
-                        w
-                        for 팝업 in list(Window.children)[:-1]
-                        for w in 팝업.walk(restrict=True)
-                        if _글(getattr(w, "text", None)).split("\n")[0] == 칸[1]
-                    ).parent.parent  # 이름 라벨 -> 줄 묶음 -> 보상 칸
-                    박스.dispatch("on_release")
-                    yield 0.3
-                    # 칸마다 세 줄: 이름 / 부위 / 보유·착용, 칸 높이는 세 줄에 맞춤
-                    sc = screens_common
-                    for 이름칸 in 칸:
-                        박스_ = next(
-                            w.parent
-                            for 팝업 in list(Window.children)[:-1]
-                            for w in 팝업.walk(restrict=True)
-                            if isinstance(w, sc.가로맞춤_라벨) and _글(w.text) == 이름칸
-                        )
-                        묶음 = 박스_
-                        박스_ = 묶음.parent
-                        줄글 = [_글(w.text) for w in reversed(묶음.children)]
-                        개수글 = gf.전투_보상_보유표시(상태, 이름칸)
-                        # 보유·착용이 없으면 두 줄, 줄 묶음은 칸 가운데
-                        assert 줄글 == [
-                            이름칸,
-                            gf.전투_보상_부위(상태, 이름칸),
-                        ] + ([개수글] if 개수글 else []), 줄글
-                        assert abs(묶음.center_y - 박스_.center_y) < 2, (
-                            묶음.center_y,
-                            박스_.center_y,
-                        )
-                        if 이름칸 == 칸[0] and 칸[0] != 칸[1]:
-                            assert 개수글.startswith("보유 "), 개수글
-                        assert 박스_.height < 3 * sc.글자_높이("15sp") + 60, (
-                            박스_.height
-                        )
-                        for w in 묶음.children:
-                            assert w.texture_size[0] <= w.width, (w.text, w.width)
-                    포기 = _팝업_버튼("포기하기(10골드)")
-                    assert 포기.width > 박스_.parent.width * 0.6, 포기.width
-                    _찍기("battle_reward")
-                    _팝업_버튼("선택").dispatch("on_release")
-                    yield 0.3
-                    assert 상태["소지품"]["장비"][칸[1]] == 보유 + 1
-                    # 받은 아이템이 전투 종료 팝업의 전리품 줄에 더해진다
-                    새글 = _글(next(t for t in _팝업글() if t.startswith("전투 승리!")))
-                    assert 새글 == "\n".join(
-                        gf.전투_종료_문구(상태, "아군승리")
-                    ) and any(줄.startswith(칸[1]) for 줄 in 새글.split("\n")[2:]), 새글
-                    _찍기("battle_end_win_reward")
-                else:  # 힐가브 - 후보 없음, 세 칸 모두 빈칸
-                    assert 칸 == [None, None, None], 칸
-                    _찍기("battle_reward_empty")
-                    골드 = 상태["소지품"]["골드"]
-                    _팝업_버튼("포기하기(10골드)").dispatch("on_release")
-                    yield 0.3
-                    assert 상태["소지품"]["골드"] == 골드 + 10
-                assert not gf.전투_보상_대기중(상태)
-                assert (
-                    not _팝업_버튼("확인").disabled and _팝업_버튼("전투 보상").disabled
-                )
-            _확인_누르기()
-            yield 0.5
-            assert 매니저.current == 도착, 매니저.current
-            if 도착 == "마을":
-                gf.던전_진입(상태, "dungeon_01A_D01_Lorien")
         결과["단계"].append(
             "전투 종료 팝업(승리 전리품/없음, 도망, 패배) + 전투 보상 선택/포기"
         )
+
+    def _단계_전투종료_한판(
+        self, 상태, 매니저, 전투, 몬스터들, 끝내기, 첫줄, 전리품줄, 도착, 사진
+    ):
+        """전투 하나를 끝내 종료 팝업의 첫 줄·전리품 줄을 확인하고, 승리면 전투 보상, [확인] 뒤 도착 화면"""
+        원래맵 = 상태["던전상태"]["맵정보"]
+        if 전리품줄 is False:
+            # "전리품 없음": 던전 공용 드랍도, 골드도 없는 전투로 만든다
+            상태["던전상태"]["맵정보"] = {**원래맵, "드랍표": []}
+        gf.전투_시작(상태, 몬스터들, 레벨=6, 차수=2)  # 시작 반응에 안 쓰러지게
+        if 전리품줄 is False:
+            for 적 in gf.적_목록(상태):
+                적["원본"]["획득골드"] = "미정"
+                적["원본"]["드랍표"] = []  # 몬스터 개인 드랍(monster_drop.py)도 없앤다
+        support.반응_처리(상태)
+        _아군_차례로(상태)
+        매니저.current = "전투"
+        전투.갱신(신규=True)
+        yield 0.3
+        # 체력 1 몬스터(힐가브)는 전투시작 반응에 쓰러져 이미 팝업이 떠 있을 수 있다
+        if 상태["전투상태"] is not None:
+            if 첫줄 == "도망쳤다!":
+                원래 = rng.주사위.randint
+                rng.주사위.randint = lambda a, b: 20
+                try:
+                    끝내기(상태)
+                finally:
+                    rng.주사위.randint = 원래
+            else:
+                끝내기(상태)
+            전투.갱신()
+        yield 0.5
+        글 = next(
+            t
+            for t in _팝업글()
+            if t.split("\n")[0] in ("전투 승리!", "도망쳤다!", "전투 패배!")
+        )
+        줄들 = 글.split("\n")
+        assert 줄들[0] == 첫줄, 글
+        if 전리품줄 is True:
+            assert 줄들[1] == "전리품" and len(줄들) >= 3 and "없음" not in 줄들, 글
+        elif 전리품줄 is False:
+            assert 줄들[1:3] == ["전리품", "없음"], 글
+        else:
+            assert "전리품" not in 줄들, 글
+        if 사진:
+            _찍기(사진)
+        if 상태.get("던전상태"):
+            상태["던전상태"]["맵정보"] = 원래맵
+        if 첫줄 == "전투 승리!":
+            yield from self._단계_전투보상(상태, 전리품줄)
+        _확인_누르기()
+        yield 0.5
+        assert 매니저.current == 도착, 매니저.current
+        if 도착 == "마을":
+            gf.던전_진입(상태, "dungeon_01A_D01_Lorien")
+
+    def _단계_전투보상(self, 상태, 전리품줄):
+        """승리 팝업의 [전투 보상] - [확인]은 받거나 포기하기 전까지 잠김"""
+        # [확인]은 전투 보상을 받거나 포기하기 전까지 잠겨 있다
+        assert _팝업_버튼("확인").disabled and not _팝업_버튼("전투 보상").disabled
+        칸 = gf.전투_보상_칸(상태)
+        if all(칸) and 칸[0] != 칸[1]:
+            # 첫 칸 아이템은 소지품에 하나 넣어 둔다 - "보유 1" 줄이 그려지는지 보려고
+            장비칸 = 상태["소지품"]["장비"]
+            장비칸[칸[0]] = 장비칸.get(칸[0], 0) + 1
+        _팝업_버튼("전투 보상").dispatch("on_release")
+        yield 0.5
+        assert _팝업_버튼("선택").disabled  # 박스를 누르기 전
+        if 전리품줄 is True:  # 고블린들 - 후보가 있다
+            yield from self._단계_전투보상_받기(상태, 칸)
+        else:  # 힐가브 - 후보 없음
+            yield from self._단계_전투보상_포기(상태, 칸)
+        assert not gf.전투_보상_대기중(상태)
+        assert not _팝업_버튼("확인").disabled and _팝업_버튼("전투 보상").disabled
+
+    def _단계_전투보상_받기(self, 상태, 칸):
+        """후보가 있는 보상 - 칸마다 이름/부위/보유 줄, 고르면 소지품과 전리품 줄에 더해진다"""
+        assert all(칸), 칸
+        보유 = 상태["소지품"]["장비"].get(칸[1], 0)
+        박스 = next(
+            w
+            for 팝업 in list(Window.children)[:-1]
+            for w in 팝업.walk(restrict=True)
+            if _글(getattr(w, "text", None)).split("\n")[0] == 칸[1]
+        ).parent.parent  # 이름 라벨 -> 줄 묶음 -> 보상 칸
+        박스.dispatch("on_release")
+        yield 0.3
+        # 칸마다 세 줄: 이름 / 부위 / 보유·착용, 칸 높이는 세 줄에 맞춤
+        sc = screens_common
+        for 이름칸 in 칸:
+            박스_ = next(
+                w.parent
+                for 팝업 in list(Window.children)[:-1]
+                for w in 팝업.walk(restrict=True)
+                if isinstance(w, sc.가로맞춤_라벨) and _글(w.text) == 이름칸
+            )
+            묶음 = 박스_
+            박스_ = 묶음.parent
+            줄글 = [_글(w.text) for w in reversed(묶음.children)]
+            개수글 = gf.전투_보상_보유표시(상태, 이름칸)
+            # 보유·착용이 없으면 두 줄, 줄 묶음은 칸 가운데
+            assert 줄글 == [
+                이름칸,
+                gf.전투_보상_부위(상태, 이름칸),
+            ] + ([개수글] if 개수글 else []), 줄글
+            assert abs(묶음.center_y - 박스_.center_y) < 2, (
+                묶음.center_y,
+                박스_.center_y,
+            )
+            if 이름칸 == 칸[0] and 칸[0] != 칸[1]:
+                assert 개수글.startswith("보유 "), 개수글
+            assert 박스_.height < 3 * sc.글자_높이("15sp") + 60, 박스_.height
+            for w in 묶음.children:
+                assert w.texture_size[0] <= w.width, (w.text, w.width)
+        포기 = _팝업_버튼("포기하기(10골드)")
+        assert 포기.width > 박스_.parent.width * 0.6, 포기.width
+        _찍기("battle_reward")
+        _팝업_버튼("선택").dispatch("on_release")
+        yield 0.3
+        assert 상태["소지품"]["장비"][칸[1]] == 보유 + 1
+        # 받은 아이템이 전투 종료 팝업의 전리품 줄에 더해진다
+        새글 = _글(next(t for t in _팝업글() if t.startswith("전투 승리!")))
+        assert 새글 == "\n".join(gf.전투_종료_문구(상태, "아군승리")) and any(
+            줄.startswith(칸[1]) for 줄 in 새글.split("\n")[2:]
+        ), 새글
+        _찍기("battle_end_win_reward")
+
+    def _단계_전투보상_포기(self, 상태, 칸):
+        """후보 없는 보상(힐가브) - 세 칸 모두 빈칸, 포기하면 10골드"""
+        assert 칸 == [None, None, None], 칸
+        _찍기("battle_reward_empty")
+        골드 = 상태["소지품"]["골드"]
+        _팝업_버튼("포기하기(10골드)").dispatch("on_release")
+        yield 0.3
+        assert 상태["소지품"]["골드"] == 골드 + 10
 
     def _단계_공어_연속전투(self, 상태, 매니저, 전투):
         """공어 연속전투(#490): 이긴 뒤 [연속전투] 팝업 -> [전투 시작]으로 공왕 크로쿠타 전투 -> 이기면 보상 두 번"""
@@ -4409,20 +4493,17 @@ class 스모크앱(main.DnfMobileApp):
         앱.게임상태 = 상태
         상태["전투상태"] = None
         상태["던전상태"] = None
+        yield from self._단계_도감_몬스터(상태, 매니저)
+        yield from self._단계_도감_장비(상태, 매니저)
+        yield from self._단계_업적(상태, 매니저)
+        결과["단계"].append(
+            "도감/업적 - [메뉴] -> [도감] 등록 수, 몬스터(미등록 어둡게/상세보기 못 누름, 상세 팝업), "
+            "장비 고르는 상자 4개(전체 시작, 상위 전체면 중위·하위 못 누름, 무기 -> 귀검사 -> 언커먼), 나가기 -> 마을. [메뉴] -> [업적] 분류 4개, 달성 전 못 누름, 보상받기/전부 받기, "
+            "특수업적 보상받기(봉인 레어 무기와 안내 글)"
+        )
 
-        def 버튼(위젯, 글):
-            return next(
-                w
-                for w in 위젯.walk(restrict=True)
-                if isinstance(w, Button) and _글(w.text) == 글
-            )
-
-        def 팝업():
-            return Window.children[0]
-
-        def 메뉴_열기():
-            버튼(매니저.get_screen("마을"), "메뉴").trigger_action(duration=0)
-
+    def _단계_도감_몬스터(self, 상태, 매니저):
+        """[메뉴] -> [도감] 등록 수, 몬스터 종족 탭(미등록은 [상세보기] 못 누름, 몬스터 상세)"""
         도감 = 상태["진행도"]["도감"]
         for 이름 in ("고블린", "고블린 투척병"):
             if 이름 not in 도감["몬스터"]:
@@ -4430,9 +4511,9 @@ class 스모크앱(main.DnfMobileApp):
         매니저.get_screen("마을").갱신()
         매니저.current = "마을"
         yield 0.3
-        메뉴_열기()
+        _마을_메뉴_열기(매니저)
         yield 0.3
-        버튼(팝업(), "도감").trigger_action(duration=0)
+        _위젯_버튼(Window.children[0], "도감").trigger_action(duration=0)
         yield 0.3
         assert 매니저.current == "도감", 매니저.current
         화면 = 매니저.current_screen
@@ -4457,17 +4538,22 @@ class 스모크앱(main.DnfMobileApp):
         assert "미등록" not in _글(
             " ".join(w.text for w in 행("고블린").children if isinstance(w, Label))
         )
-        assert not 버튼(행("고블린"), "상세보기").disabled
-        assert 버튼(행("프라그"), "상세보기").disabled, "미등록은 상세보기 못 누름"
+        assert not _위젯_버튼(행("고블린"), "상세보기").disabled
+        assert _위젯_버튼(행("프라그"), "상세보기").disabled, (
+            "미등록은 상세보기 못 누름"
+        )
         _찍기("collection_monster")
-        버튼(행("고블린"), "상세보기").trigger_action(duration=0)
+        _위젯_버튼(행("고블린"), "상세보기").trigger_action(duration=0)
         yield 0.3
-        assert 팝업().title == "고블린"
+        assert Window.children[0].title == "고블린"
         _찍기("collection_monster_detail")
         _팝업_닫기()
         yield 0.3
 
-        버튼(화면, "◀ 뒤로").trigger_action(duration=0)
+    def _단계_도감_장비(self, 상태, 매니저):
+        """장비 도감 고르는 상자 4개(상위/중위/하위분류, 레어도), 상세 글, 나가기 -> 연 화면"""
+        화면 = 매니저.current_screen
+        _위젯_버튼(화면, "◀ 뒤로").trigger_action(duration=0)
         yield 0.3
         next(
             w
@@ -4527,19 +4613,21 @@ class 스모크앱(main.DnfMobileApp):
         상자 = 화면.장비필터상자
         assert (상자["중위"].text, 상자["하위"].text) == ("전체", "전체")
         assert 상자["중위"].disabled and 상자["레어도"].text == "언커먼"
-        버튼(화면, "◀ 뒤로").trigger_action(duration=0)
+        _위젯_버튼(화면, "◀ 뒤로").trigger_action(duration=0)
         yield 0.3
-        버튼(화면, "◀ 나가기").trigger_action(duration=0)
+        _위젯_버튼(화면, "◀ 나가기").trigger_action(duration=0)
         yield 0.3
         assert 매니저.current == "마을", "도감의 나가기는 메뉴를 연 화면으로"
 
+    def _단계_업적(self, 상태, 매니저):
+        """[메뉴] -> [업적] 분류 4개, 달성 전 못 누름, 보상받기/특수업적/전부 받기"""
         상태["진행도"]["업적기록"]["일반전투승리"] = max(
             5, 상태["진행도"]["업적기록"]["일반전투승리"]
         )
         상태["진행도"]["받은업적"] = []
-        메뉴_열기()
+        _마을_메뉴_열기(매니저)
         yield 0.3
-        버튼(팝업(), "업적").trigger_action(duration=0)
+        _위젯_버튼(Window.children[0], "업적").trigger_action(duration=0)
         yield 0.3
         assert 매니저.current == "업적", 매니저.current
         화면 = 매니저.current_screen
@@ -4569,7 +4657,7 @@ class 스모크앱(main.DnfMobileApp):
         assert 첫줄.text == "받음" and 첫줄.disabled
         # 특수업적: 세리아 구출 -> [보상받기] = 랜덤 레어 무기(마법으로 봉인된 무기 하나)
         상태["진행도"]["클리어한오브젝트"].add(("dungeon_01A_D01_Lorien", (15, 3)))
-        버튼(화면, "특수업적").trigger_action(duration=0)
+        _위젯_버튼(화면, "특수업적").trigger_action(duration=0)
         yield 0.3
         세리아 = next(
             w
@@ -4588,7 +4676,7 @@ class 스모크앱(main.DnfMobileApp):
         assert len(새장비) == 1 and 새장비[0].startswith("마법으로 봉인된 "), 새장비
         assert 새장비[0] in 화면.안내라벨.text, 화면.안내라벨.text
         _찍기("achievements_special")
-        버튼(화면, "전투업적").trigger_action(duration=0)
+        _위젯_버튼(화면, "전투업적").trigger_action(duration=0)
         yield 0.3
         _찍기("achievements_battle")
         남은 = gf.업적_받을_보상_수(상태)
@@ -4596,14 +4684,9 @@ class 스모크앱(main.DnfMobileApp):
         yield 0.3
         assert 상태["소지품"]["골드"] == 골드 + 10 + 남은 * 10
         assert 화면.전부받기버튼.disabled and gf.업적_받을_보상_수(상태) == 0
-        버튼(화면, "◀ 나가기").trigger_action(duration=0)
+        _위젯_버튼(화면, "◀ 나가기").trigger_action(duration=0)
         yield 0.3
         assert 매니저.current == "마을"
-        결과["단계"].append(
-            "도감/업적 - [메뉴] -> [도감] 등록 수, 몬스터(미등록 어둡게/상세보기 못 누름, 상세 팝업), "
-            "장비 고르는 상자 4개(전체 시작, 상위 전체면 중위·하위 못 누름, 무기 -> 귀검사 -> 언커먼), 나가기 -> 마을. [메뉴] -> [업적] 분류 4개, 달성 전 못 누름, 보상받기/전부 받기, "
-            "특수업적 보상받기(봉인 레어 무기와 안내 글)"
-        )
 
     def _단계_메뉴(self, 상태, 매니저):
         """마을/던전 [메뉴] 팝업 - 저장하기/불러오기/설정/메인메뉴로(확인 창), 던전 안 저장 -> 같은 위치로"""
