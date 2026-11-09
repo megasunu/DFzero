@@ -164,6 +164,8 @@
 #   monster_actions  몬스터 턴 - 패턴(공격/다중/자폭/버프/회복/내성)과 몬스터 소환수
 #   reactions        캐릭터 반응스킬(회피/반격/피격시/공격후/전투시작 반응)
 #   flow             전투 흐름 - 전투 시작, 턴 시작/종료, 턴 순서, 다음 턴, 전투 이탈
+#   contribution     밸런스 체크(#617) - 다섯 지표(딜지분·딜기여도·탱지분·탱기여도) 계산, 받은 피해, 수치만 보는 기대값.
+#                    맨 위 - 다른 combat 모듈은 부르지 않고 도구·테스트만 부른다(버퍼를 끄는 판정은 core.꺼진_효과)
 #
 # 의존 방향(아래가 위를 부르지 않는다): core/formula -> participants/status -> resources -> stats/traits
 # -> damage -> reactions/attacks -> monster_actions -> flow. 다른 모듈에서 부르는 이름은 밑줄 없는
