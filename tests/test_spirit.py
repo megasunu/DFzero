@@ -219,3 +219,20 @@ def test_속성_정령의_공격은_모두_자기_속성이다(monkeypatch, 이�
     flow.턴_시작_처리(전투상태, 몬스터)
     monster_actions.몬스터_턴_실행(전투상태, 몬스터)
     assert 받은 and set(받은) == {속성}
+
+
+@pytest.mark.parametrize(
+    "소환수, 기대",
+    [("샐리스트", "샐리스트의 일격"), ("고블린", "고블린의 몽둥이질")],
+)
+def test_소환수_행동_이름은_소환수_이름을_한_번만_붙인다(monkeypatch, 소환수, 기대):
+    """행동 이름에 이미 "소환수이름의 "가 있으면(정령의 일격) 다시 붙이지 않는다(#613)."""
+    from game.data.buff import summon_00
+    from game.system.skill import skill_run
+
+    전투상태, 적, 아군 = support.시험_전투(["고블린"])
+    support.주사위고정(monkeypatch, 15)
+    행동표 = summon_00.소환수목록[소환수]["행동표"]
+    눈 = next(k for k, h in 행동표.items() if 기대.endswith(h["이름"]))
+    skill_run._소환수_한번_행동(전투상태, 아군[3], 소환수, 행동표, 눈=눈)
+    assert 전투상태["로그"][-1]["스킬"] == 기대
