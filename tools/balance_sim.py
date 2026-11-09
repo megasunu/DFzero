@@ -4,6 +4,8 @@
     python tools/balance_sim.py 검귀 --판 200     # 저장된 승률패턴에서 이어서(승률·랜덤·변형 1/3씩)
     python tools/balance_sim.py 검귀 --비교       # 같은 200판으로 일반공격만 / 스킬 하나씩 / 승률패턴
     python tools/balance_sim.py 전체 --딜 --판 200  # 24종 전원 자동전투 판당 딜(인형은 따로, 기록하지 않음)
+    python tools/balance_sim.py 전체 --지표 --판 200  # 딜지분·승률(버퍼를 끈 판까지, #617). --전체지표면 다섯 가지
+    python tools/balance_sim.py 크루세이더 --기대      # 전투 없이 수치만 본 기대값(일반공격·피격·버프별)
 
 패턴 = 시험 직업의 차례 1~슬롯수마다 고를 행동(일반공격 또는 보유 스킬). 차례마다 슬롯의 스킬을 먼저
 쓰고, 그 스킬이 일반행동을 쓰지 않았으면(보조행동·소모 없음) 같은 차례에 다음 슬롯도 쓴다(최대 3칸 -
@@ -18,6 +20,7 @@
 
 import argparse
 import collections
+import copy
 import datetime
 import hashlib
 import json
@@ -301,18 +304,33 @@ class 측정:
         gf.전투_결과_정리(상태)
         return 승, 실제, 의도
 
-    def 자동전투(self, 시드):
+    def 자동전투(self, 시드, 끌사람=None):
         """기본 파티 전원 자동전투("전력전투") 한 판 -> (승리, {이름: 적에게 넣은 피해}, 인형 이름들).
-        피해는 core.피해_집계(넘친 피해 빼고 흡수된 피해 포함, 인형은 따로, 지속 피해는 건 사람)."""
-        from game.system.combat import core
+        피해는 core.피해_집계(넘친 피해 빼고 흡수된 피해 포함, 인형은 따로, 지속 피해는 건 사람).
+        끌사람(캐릭터명)을 주면 그가 남에게 건 버프·적에게 건 디버프의 효과만 끈 판이다(#617)."""
+        r = self.자동전투_결과(시드, 끌사람)
+        return r["승"], r["딜"], r["인형"]
+
+    def 자동전투_결과(self, 시드, 끌사람=None):
+        """자동전투 한 판 -> {"승", "딜": {이름: 적에게 넣은 피해}, "받음": {이름: 받은 피해}, "인형": 이름들}.
+        판마다 같은 파티 상태(복사본)에서 시작한다 - 끈 판과 본 판이 같은 시드면 같은 구성으로 시작한다."""
+        from game.system.combat import contribution, core
 
         gf = self.gf
-        상태 = self._상태(self.기본파티)
-        gf.휴식(상태)
+        원본 = self._상태(self.기본파티)
+        gf.휴식(원본)
+        상태 = copy.deepcopy(원본)
         self.rng.시드(시드)
         rr = random.Random(시드)
         몹 = [rr.choice(조건["몬스터"]) for _ in range(rr.randint(*조건["마리"]))]
         gf.전투_시작(상태, 몹, 레벨=조건["몬스터레벨"], 차수=조건["몬스터차수"])
+        전투상태 = 상태["전투상태"]
+        if 끌사람 is not None:
+            전투상태["기여끄기"] = next(
+                p["id"]
+                for p in 전투상태["참가자"]
+                if p["진영"] == "아군" and p["원본"].get("캐릭터명") == 끌사람
+            )
         self.support.반응_처리(상태)
         for _ in range(판당_최대턴):
             if gf.전투_종료됨(상태):
@@ -322,12 +340,12 @@ class 측정:
                 gf.자동전투_한_턴(상태)
             else:
                 gf.턴_넘기기(상태)
-        전투상태 = 상태["전투상태"]
-        승 = 전투상태["종료"] == "아군승리"
-        집계 = core.피해_집계(전투상태)
-        인형 = {p["이름"] for p in 전투상태["참가자"] if p.get("인형")}
-        gf.전투_결과_정리(상태)
-        return 승, 집계, 인형
+        return {
+            "승": 전투상태["종료"] == "아군승리",
+            "딜": core.피해_집계(전투상태),
+            "받음": contribution.받은피해_집계(전투상태),
+            "인형": {p["이름"] for p in 전투상태["참가자"] if p.get("인형")},
+        }
 
     def _시험자_차례(self, 상태, p, 패턴, 실제, 의도):
         gf, 적 = self.gf, self.scenario._살아있는_적
@@ -521,6 +539,135 @@ def 판당_딜(m, 판=200):
     }
 
 
+def 판당_지표(m, 판=200):
+    """시드 0..판-1로 전원 자동전투 본 판과, 파티원마다 그를 끈 판(#617)을 돌려 다섯 지표를 낸다 -> {"승", "판",
+    "시험자", "지표": {이름: {"딜지분", "딜기여도", "탱지분", "탱기여도"}(백분율)}, "딜", "받음"(본 판 판당)}.
+    판수는 (1 + 파티원 수)배로 돈다."""
+    from game.system.combat import contribution
+
+    파티 = [c["캐릭터명"] for c in m._상태(m.기본파티)["파티"]["파티원"]]
+    본 = {"딜": collections.Counter(), "받음": collections.Counter()}
+    끈 = {
+        이름: {"딜": collections.Counter(), "받음": collections.Counter()}
+        for 이름 in 파티
+    }
+    승수 = 0
+    for 시드 in range(판):
+        r = m.자동전투_결과(시드)
+        승수 += r["승"]
+        for 칸 in ("딜", "받음"):
+            본[칸].update(r[칸])
+        for 이름 in 파티:
+            r = m.자동전투_결과(시드, 끌사람=이름)
+            for 칸 in ("딜", "받음"):
+                끈[이름][칸].update(r[칸])
+
+    def 평균(c):
+        return {k: v / 판 for k, v in c.items()}
+
+    본 = {칸: 평균(c) for 칸, c in 본.items()}
+    끈 = {이름: {칸: 평균(c) for 칸, c in d.items()} for 이름, d in 끈.items()}
+    return {
+        "승": 승수,
+        "판": 판,
+        "시험자": 파티[0],
+        "지표": contribution.지표_계산(본, 끈),
+        "딜": 본["딜"],
+        "받음": 본["받음"],
+    }
+
+
+def _목록(값):
+    return [값] if isinstance(값, str) else list(값 or [])
+
+
+def 기대_표(직업):
+    """수치만 보는 기대값(전투를 돌리지 않는다, #617) - 측정 파티(레벨 9)와 측정 몬스터 11종 각 한 마리로 전투만
+    열어 두고 계산한다. {"일반공격": 시험자 일반공격 1회 기대 피해(몬스터 평균), "피격": 몬스터 공격 1회에 시험자가
+    받을 기대 피해, "버프": {스킬: {"딜기여", "탱기여"}}} - 버프·디버프 스킬 한 번이 다른 아군의 일반공격 기대
+    피해를 올리고 받을 피해를 줄이는 양 x 지속턴(받는 사람·걸린 적 수만큼, 단일 대상이면 한 명 평균)."""
+    m = 측정(직업)  # sys.path를 맞춘다 - game을 부르기 전에
+    from game.system.combat import contribution
+    from game.system.skill import skill_grant
+
+    gf = m.gf
+    상태 = copy.deepcopy(m._상태(m.기본파티))
+    gf.휴식(상태)
+    m.rng.시드(0)
+    gf.전투_시작(
+        상태, list(조건["몬스터"]), 레벨=조건["몬스터레벨"], 차수=조건["몬스터차수"]
+    )
+    시험자원본 = 상태["파티"]["파티원"][0]
+    정의모음 = 상태["스킬데이터모음"]
+
+    def 편(전투상태):
+        참가자 = 전투상태["참가자"]
+        아군 = [p for p in 참가자 if p["진영"] == "아군"]
+        나 = next(
+            p
+            for p in 아군
+            if p["원본"] is 시험자원본
+            or p["원본"].get("캐릭터명") == 시험자원본["캐릭터명"]
+        )
+        return (
+            나,
+            [p for p in 아군 if p is not 나],
+            [p for p in 참가자 if p["진영"] == "적"],
+        )
+
+    def 딜(전투상태, p, 적):
+        return sum(contribution.일반공격_기대피해(전투상태, p, e) for e in 적) / len(적)
+
+    def 맞음(전투상태, p, 적):
+        return sum(contribution.몬스터_기대피해(전투상태, e, p) for e in 적) / len(적)
+
+    전투상태 = 상태["전투상태"]
+    나, 남, 적 = 편(전투상태)
+    표 = {"일반공격": 딜(전투상태, 나, 적), "피격": 맞음(전투상태, 나, 적), "버프": {}}
+    for 스킬 in 시험자원본.get("보유스킬") or []:
+        데이터 = 정의모음.get(스킬) or {}
+        효과들 = [
+            e
+            for e in _목록(데이터.get("효과")) + _목록(데이터.get("조건부효과"))
+            if isinstance(e, dict) and e.get("종류") in ("자동디버프", "내성디버프")
+        ]
+        버프 = 데이터.get("분류") == "버프스킬" and 데이터.get("타겟") != "자신"
+        if not (버프 or 효과들):
+            continue
+        사본 = copy.deepcopy(전투상태)
+        나2, 남2, 적2 = 편(사본)
+        전딜 = [딜(사본, p, 적2) for p in 남2]
+        전맞음 = [맞음(사본, p, 적2) for p in 남2]
+        if 버프:
+            받는이 = 남2
+            for p in 받는이:
+                for 이름 in _목록(데이터.get("버프획득")):
+                    skill_grant.이름있는효과_부여(사본, p, 이름, 시전자=나2)
+            지속 = 데이터.get("지속턴") or 1
+            단일 = str(데이터.get("타겟")).endswith("단일")
+        else:
+            for e in 적2:
+                for 효과 in 효과들:
+                    skill_grant.이름있는효과_부여(사본, e, 효과["이름"], 시전자=나2)
+            지속 = max((e.get("지속턴") or 1) for e in 효과들)
+            단일 = not str(데이터.get("타겟", "")).startswith("적전체")
+        후딜 = [딜(사본, p, 적2) for p in 남2]
+        후맞음 = [맞음(사본, p, 적2) for p in 남2]
+        딜차 = sum(b - a for a, b in zip(전딜, 후딜))
+        탱차 = sum(a - b for a, b in zip(전맞음, 후맞음))
+        if 단일:  # 한 명(한 마리)에게만 - 받는 사람 평균
+            딜차, 탱차 = 딜차 / max(len(남2), 1), 탱차 / max(len(남2), 1)
+            if not 버프:
+                딜차, 탱차 = 딜차 / len(적2), 탱차 / len(적2)
+        if 딜차 or 탱차:
+            표["버프"][스킬] = {
+                "딜기여": round(딜차 * 지속, 2),
+                "탱기여": round(탱차 * 지속, 2),
+            }
+    표["일반공격"], 표["피격"] = round(표["일반공격"], 2), round(표["피격"], 2)
+    return 표
+
+
 def main(argv=None):
     for stream in (sys.stdout, sys.stderr):  # cp1252 콘솔에서도 한글(#200)
         if hasattr(stream, "reconfigure"):
@@ -538,13 +685,44 @@ def main(argv=None):
         action="store_true",
         help="전원 자동전투 --판 판의 판당 딜만 잰다(기록하지 않는다). 직업 자리에 '전체'면 24종",
     )
+    p.add_argument(
+        "--지표",
+        action="store_true",
+        help="버퍼를 끈 판까지 돌려 딜지분·승률을 잰다(#617, 판수 x5). 직업 자리에 '전체'면 24종",
+    )
+    p.add_argument(
+        "--전체지표",
+        action="store_true",
+        help="--지표와 함께: 딜기여도·탱지분·탱기여도까지 보인다",
+    )
+    p.add_argument(
+        "--기대",
+        action="store_true",
+        help="전투 없이 수치만으로 일반공격·피격·버프별 기대값(#617)",
+    )
     a = p.parse_args(argv)
+    직업들 = (
+        [j for 전직들 in 측정_전직표().values() for j in 전직들]
+        if a.직업 == "전체"
+        else [a.직업]
+    )
+    if a.지표:
+        for 직업 in 직업들:
+            r = 판당_지표(측정(직업), a.판)
+            나 = r["지표"][r["시험자"]]
+            줄 = f"{직업}\t딜지분 {나['딜지분']:.1f}%\t승 {r['승']}/{r['판']}"
+            if a.전체지표:
+                줄 += (
+                    f"\t딜기여도 {나['딜기여도']:.1f}%\t탱지분 {나['탱지분']:.1f}%"
+                    f"\t탱기여도 {나['탱기여도']:.1f}%"
+                )
+            print(줄, flush=True)
+        return 0
+    if a.기대:
+        for 직업 in 직업들:
+            print(직업, json.dumps(기대_표(직업), ensure_ascii=False), flush=True)
+        return 0
     if a.딜:
-        직업들 = (
-            [j for 전직들 in 측정_전직표().values() for j in 전직들]
-            if a.직업 == "전체"
-            else [a.직업]
-        )
         for 직업 in 직업들:
             r = 판당_딜(측정(직업), a.판)
             인형 = "".join(f"  인형 {n} {v}" for n, v in r["인형"].items())

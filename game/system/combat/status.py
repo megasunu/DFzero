@@ -95,6 +95,8 @@ def 버프_분류목록(전투상태, 참가자, 변동대상):
     "상태이상면역분류"/"상태이상내성이점". stats를 부르지 않도록 버프정의를 직접 읽는다."""
     결과 = []
     for 항목 in 참가자.get("버프") or []:
+        if core.꺼진_효과(전투상태, 참가자, 항목):
+            continue
         효과 = (전투상태.get("버프정의", {}).get(항목["이름"]) or {}).get("효과")
         for 원소 in [효과] if isinstance(효과, dict) else 효과 or []:
             if isinstance(원소, dict) and common_names.같은_변동대상(
