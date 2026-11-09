@@ -7,8 +7,6 @@
 import pathlib
 import re
 
-from PIL import Image
-
 _폴더 = pathlib.Path(__file__).resolve().parents[1] / "game" / "assets" / "npc"
 _이름규칙 = re.compile(r"^asset_npc_([a-z]+)_(\d{2})\.webp$")
 
@@ -44,9 +42,15 @@ def test_파일이름이_규칙을_따르고_번호가_01부터_빈틈없다():
     }
 
 
-def test_모든_그림이_열리고_프레임이_있다():
+def test_모든_그림이_움직이는_웹피다():
+    # CI에는 그림 라이브러리가 없어 웹피 머리를 직접 읽는다: RIFF/WEBP, VP8X(캔버스 크기·움직임 표시), 프레임(ANMF).
     for 파일 in sorted(_폴더.glob("*.webp")):
-        with Image.open(파일) as 그림:
-            assert 그림.format == "WEBP", 파일.name
-            assert 그림.n_frames >= 1, 파일.name
-            assert 그림.size[0] > 0 and 그림.size[1] > 0, 파일.name
+        내용 = 파일.read_bytes()
+        assert 내용[:4] == b"RIFF" and 내용[8:12] == b"WEBP", 파일.name
+        assert int.from_bytes(내용[4:8], "little") + 8 == len(내용), 파일.name
+        assert 내용[12:16] == b"VP8X", 파일.name
+        assert 내용[20] & 0x02, 파일.name  # 움직임 표시
+        너비 = int.from_bytes(내용[24:27], "little") + 1
+        높이 = int.from_bytes(내용[27:30], "little") + 1
+        assert 0 < 너비 < 400 and 0 < 높이 < 400, 파일.name
+        assert b"ANMF" in 내용, 파일.name
