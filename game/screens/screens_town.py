@@ -15,6 +15,7 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.popup import Popup
 from kivy.uix.image import Image
+from kivy.core.image import Image as CoreImage
 from kivy.uix.spinner import Spinner
 from kivy.uix.textinput import TextInput
 from kivy.metrics import dp
@@ -413,13 +414,15 @@ class 마을화면(Screen):
         self.대화창.bind(on_release=self._대화_닫기)
         self._대화층.add_widget(self.대화창)
         self._대화중 = False
+        self._NPC장면_예약 = None
+        self.NPC장면번호 = -1
 
     def _대화_장면_열기(self, 대화):
         """마을 그림 위에 NPC 일러스트(그림이 있으면)와 대화창을 띄운다."""
         self._대화_닫기()
         경로 = _에셋_경로("npc", 대화["일러스트"])
-        if 경로:
-            self.NPC그림.source = 경로
+        if 경로 and 대화.get("일러스트장면"):
+            self._NPC장면_시작(경로, 대화["일러스트장면"])
             self._그림틀.add_widget(self.NPC그림)
         self.대화창.text = f"[b]{대화['이름']}[/b]\n\n{대화['대사']}"
         self._그림틀.add_widget(self._대화층)
@@ -428,10 +431,39 @@ class 마을화면(Screen):
     def _대화_닫기(self, *args):
         if not self._대화중:
             return
+        if self._NPC장면_예약 is not None:
+            self._NPC장면_예약.cancel()
+            self._NPC장면_예약 = None
         for 위젯 in (self.NPC그림, self._대화층):
             if 위젯.parent is not None:
                 self._그림틀.remove_widget(위젯)
         self._대화중 = False
+
+    def _NPC장면_시작(self, 경로, 장면):
+        """장면을 이어 붙인 일러스트를 장면 크기로 잘라 장면별 시간마다 넘긴다(대화를 닫으면 멈춘다).
+        게임은 움직이는 웹피를 열지 못해 정지 그림 + 장면 정보(gameflow.NPC_말걸기의 "일러스트장면")로 움직인다."""
+        전체 = CoreImage(경로).texture
+        전체.mag_filter = "nearest"
+        가로, 세로, 열 = 장면["가로"], 장면["세로"], 장면["열"]
+        # 텍스처 좌표는 아래에서 위로 센다 - 그림의 첫 줄이 텍스처의 맨 위다
+        self._NPC장면들 = [
+            전체.get_region(
+                (번호 % 열) * 가로, 전체.height - (번호 // 열 + 1) * 세로, 가로, 세로
+            )
+            for 번호 in range(len(장면["시간"]))
+        ]
+        self._NPC장면시간 = [밀리초 / 1000 for 밀리초 in 장면["시간"]]
+        self.NPC장면번호 = -1
+        self._NPC장면_넘기기()
+
+    def _NPC장면_넘기기(self, *args):
+        self.NPC장면번호 = (self.NPC장면번호 + 1) % len(self._NPC장면들)
+        self.NPC그림.texture = self._NPC장면들[self.NPC장면번호]
+        self._NPC장면_예약 = None
+        if len(self._NPC장면들) > 1:
+            self._NPC장면_예약 = Clock.schedule_once(
+                self._NPC장면_넘기기, self._NPC장면시간[self.NPC장면번호]
+            )
 
     def _NPC_퀘스트_열기(self, 이름):
         """NPC 퀘스트 팝업 - 그 NPC의 퀘스트(받기/완료 보고)."""

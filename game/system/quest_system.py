@@ -8,6 +8,7 @@
 from game.system import rng
 from game.data.npc.npc_linus import NPC정보 as _라이너스
 from game.data.npc.npc_seria import NPC정보 as _세리아
+from game.data.npc.npc_illust_frames import 장면정보 as _장면정보
 
 # 새 NPC 파일을 만들면 여기에 import + 추가한다(순서 = [NPC] 화면 순서)
 NPC_목록 = [_라이너스, _세리아]
@@ -15,6 +16,28 @@ NPC_목록 = [_라이너스, _세리아]
 
 조건_타입 = ("던전클리어",)
 모든마을 = "모든마을"
+
+# NPC 일러스트는 장면을 격자로 이어 붙인 정지 그림이다(게임은 움직이는 웹피를 열지 못한다).
+# 휴대폰 그래픽 장치가 띄울 수 있게 그림 한 변을 이 크기 안에 두고, 넘치면 줄을 바꿔 붙인다.
+장면그림_최대크기 = 2048
+
+
+def 장면_열수(가로, 장수):
+    """장면 그림 한 줄에 붙이는 장면 수 - 변환 도구(tools/npc_sheet.py)와 화면이 같은 규칙을 쓴다."""
+    return max(1, min(장수, 장면그림_최대크기 // 가로))
+
+
+def 일러스트_장면(파일명):
+    """일러스트 파일의 장면 정보 {"가로", "세로", "열", "시간": [밀리초, ...]}. "미정"이거나 정보가 없으면 None."""
+    정보 = _장면정보.get(파일명)
+    if 정보 is None:
+        return None
+    return {
+        "가로": 정보["가로"],
+        "세로": 정보["세로"],
+        "열": 장면_열수(정보["가로"], len(정보["시간"])),
+        "시간": list(정보["시간"]),
+    }
 
 
 def 빈_진행기록():

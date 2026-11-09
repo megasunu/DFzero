@@ -17,6 +17,7 @@ tests/는 kivy 없이 gameflow 이하만 검사한다. 화면(game/screens) 코�
 import json
 import re
 import os
+import pathlib
 import shutil
 import sys
 import tempfile
@@ -42,6 +43,7 @@ import main  # noqa: E402 - 크래시 로그 훅/폰트 등록 등 앱 초기화
 from kivy.animation import Animation  # noqa: E402
 from kivy.app import App  # noqa: E402
 from kivy.clock import Clock  # noqa: E402
+from kivy.core.image import Image as CoreImage  # noqa: E402
 from kivy.core.window import Window  # noqa: E402
 from kivy.uix.button import Button  # noqa: E402
 from kivy.uix.label import Label  # noqa: E402
@@ -56,6 +58,7 @@ from game.system import quest_system, save_system, skill_system  # noqa: E402
 from game.system.combat import flow  # noqa: E402
 from tests import support  # noqa: E402
 
+_NPC그림폴더 = pathlib.Path(__file__).resolve().parents[1] / "game" / "assets" / "npc"
 스크린샷폴더 = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else "ui_smoke_shots")
 결과 = {"단계": [], "오류": None}
 전직 = {
@@ -3153,16 +3156,26 @@ class 스모크앱(main.DnfMobileApp):
             )  # 언커먼 장비 상점(#164)
             _찍기("town_npc_menu")
 
-            # [대화] - 팝업이 닫히고 마을 그림 위에 대화창(일러스트는 아직 미정이라 없음)
+            # 엔피시 그림은 모두 게임(SDL2 그림 읽기)이 실제로 열 수 있어야 한다 - 움직이는 웹피는 못 연다
+            for 그림 in sorted(_NPC그림폴더.glob("*.webp")):
+                CoreImage(str(그림))
+
+            # [대화] - 팝업이 닫히고 마을 그림 위에 일러스트(장면을 넘기며 움직임)와 대화창
+            장면 = gf.NPC_대화(상태, "라이너스")["일러스트장면"]
             _팝업_버튼("대화").trigger_action(duration=0)
-            yield 0.4
+            yield 0.05
             assert _팝업수() == 0 and 마을._대화중
             assert "세리아를 구출해주게" in 마을.대화창.text, 마을.대화창.text
-            assert 마을.대화창.parent is not None and 마을.NPC그림.parent is None
+            assert 마을.대화창.parent is not None and 마을.NPC그림.parent is not None
+            assert tuple(마을.NPC그림.texture.size) == (장면["가로"], 장면["세로"])
+            처음 = (마을.NPC장면번호, 마을.NPC그림.texture)
             _찍기("town_npc_talk")
+            yield 장면["시간"][0] / 1000 + 0.15
+            assert 마을.NPC장면번호 != 처음[0] and 마을.NPC그림.texture is not 처음[1]
             마을.대화창.trigger_action(duration=0)  # 대화창을 누르면 닫힘
             yield 0.3
             assert not 마을._대화중 and 마을._대화층.parent is None
+            assert 마을.NPC그림.parent is None and 마을._NPC장면_예약 is None
             yield from 메뉴("라이너스")
             _팝업_버튼("대화").trigger_action(duration=0)
             yield 0.3
