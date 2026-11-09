@@ -210,9 +210,32 @@ def test_NPC마다_메뉴_버튼이_다르다():
     ]  # 퀘스트 없음, 판매 목록 비어 있음
 
 
-def test_일러스트는_아직_미정이다():
+def test_일러스트는_01번_그림과_장면정보를_함께_준다():
     상태 = support.새게임()
-    assert gf.NPC_대화(상태, "라이너스")["일러스트"] == "미정"
+    _로리엔_클리어(상태)
+    for 이름, 파일 in (
+        ("라이너스", "asset_npc_linus_01.webp"),
+        ("세리아", "asset_npc_seria_01.webp"),
+    ):
+        for 대화 in (gf.NPC_대화(상태, 이름), gf.NPC_말걸기(상태, 이름)):
+            assert 대화["일러스트"] == 파일
+            장면 = 대화["일러스트장면"]
+            assert set(장면) == {"가로", "세로", "열", "시간"}
+            assert 장면["열"] == quest_system.장면_열수(장면["가로"], len(장면["시간"]))
+
+
+def test_일러스트가_미정이면_장면정보가_없다(monkeypatch):
+    상태 = support.새게임()
+    monkeypatch.setitem(quest_system.NPC_찾기("라이너스"), "일러스트", "미정")
+    assert gf.NPC_대화(상태, "라이너스")["일러스트장면"] is None
+    assert gf.NPC_말걸기(상태, "라이너스")["일러스트장면"] is None
+
+
+def test_모든_NPC의_일러스트는_장면정보가_있는_그림이다():
+    from game.data.npc.npc_illust_frames import 장면정보
+
+    for NPC in NPC_목록:
+        assert NPC["일러스트"] == "미정" or NPC["일러스트"] in 장면정보, NPC["이름"]
 
 
 def test_판매목록이_있는_NPC는_상점_메뉴가_생기고_그_품목만_판다(monkeypatch):
@@ -294,7 +317,8 @@ def test_세리아는_첫_대화에_감사하고_그_뒤로는_평소_대사_셋
     gf.NPC_대화(상태, "세리아")  # 메뉴를 여는 것은 대화가 아니다
     assert 상태["진행도"]["대화한NPC"] == []
     첫 = gf.NPC_말걸기(상태, "세리아")
-    assert 첫 == {"이름": "세리아", "대사": "구해주셔서 감사해요.", "일러스트": "미정"}
+    assert (첫["이름"], 첫["대사"]) == ("세리아", "구해주셔서 감사해요.")
+    assert 첫["일러스트"] == "asset_npc_seria_01.webp"
     assert 상태["진행도"]["대화한NPC"] == ["세리아"]
     나온 = {gf.NPC_말걸기(상태, "세리아")["대사"] for _ in range(60)}
     assert 나온 == 세리아_평소  # 무작위로 셋 다 나온다(첫 대화 대사는 다시 안 나온다)
