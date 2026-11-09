@@ -3,6 +3,7 @@
     python tools/balance_sim.py 검귀 --처음부터   # 다섯 단계 1000판 + 최종 200판
     python tools/balance_sim.py 검귀 --판 200     # 저장된 승률패턴에서 이어서(승률·랜덤·변형 1/3씩)
     python tools/balance_sim.py 검귀 --비교       # 같은 200판으로 일반공격만 / 스킬 하나씩 / 승률패턴
+    python tools/balance_sim.py 전체 --딜 --판 200  # 24종 전원 자동전투 판당 딜(인형은 따로, 기록하지 않음)
 
 패턴 = 시험 직업의 차례 1~슬롯수마다 고를 행동(일반공격 또는 보유 스킬). 차례마다 슬롯의 스킬을 먼저
 쓰고, 그 스킬이 일반행동을 쓰지 않았으면(보조행동·소모 없음) 같은 차례에 다음 슬롯도 쓴다(최대 3칸 -
@@ -300,6 +301,34 @@ class 측정:
         gf.전투_결과_정리(상태)
         return 승, 실제, 의도
 
+    def 자동전투(self, 시드):
+        """기본 파티 전원 자동전투("전력전투") 한 판 -> (승리, {이름: 적에게 넣은 피해}, 인형 이름들).
+        피해는 core.피해_집계(넘친 피해 빼고 흡수된 피해 포함, 인형은 따로, 지속 피해는 건 사람)."""
+        from game.system.combat import core
+
+        gf = self.gf
+        상태 = self._상태(self.기본파티)
+        gf.휴식(상태)
+        self.rng.시드(시드)
+        rr = random.Random(시드)
+        몹 = [rr.choice(조건["몬스터"]) for _ in range(rr.randint(*조건["마리"]))]
+        gf.전투_시작(상태, 몹, 레벨=조건["몬스터레벨"], 차수=조건["몬스터차수"])
+        self.support.반응_처리(상태)
+        for _ in range(판당_최대턴):
+            if gf.전투_종료됨(상태):
+                break
+            p = gf.현재_턴_참가자(상태)
+            if p["진영"] == "아군" and p["생존"]:
+                gf.자동전투_한_턴(상태)
+            else:
+                gf.턴_넘기기(상태)
+        전투상태 = 상태["전투상태"]
+        승 = 전투상태["종료"] == "아군승리"
+        집계 = core.피해_집계(전투상태)
+        인형 = {p["이름"] for p in 전투상태["참가자"] if p.get("인형")}
+        gf.전투_결과_정리(상태)
+        return 승, 집계, 인형
+
     def _시험자_차례(self, 상태, p, 패턴, 실제, 의도):
         gf, 적 = self.gf, self.scenario._살아있는_적
         전투상태 = 상태["전투상태"]
@@ -466,6 +495,32 @@ def 비교(m, 기록, 판=200):
     기록["비교"] = {"날짜": _오늘(), "판": 판, "결과": 결과, "채택": 채택}
 
 
+def 측정_전직표():
+    if ROOT not in sys.path:
+        sys.path.insert(0, ROOT)
+    import gameflow
+
+    return gameflow.전직_레지스트리
+
+
+def 판당_딜(m, 판=200):
+    """시드 0..판-1로 전원 자동전투 -> {"승": 승수, "시험자": 판당 딜, "인형": {이름: 판당 딜}} - 시험자는 1번
+    파티원, 인형은 그 판에 나온 인형마다 따로(누가 불렀든, 2026-11-09 사용자 결정)."""
+    시험자 = m._상태(m.기본파티)["파티"]["파티원"][0]["캐릭터명"]
+    승수, 딜, 인형딜 = 0, 0, collections.Counter()
+    for 시드 in range(판):
+        승, 집계, 인형 = m.자동전투(시드)
+        승수 += 승
+        딜 += 집계.get(시험자, 0)
+        for 이름 in 인형:
+            인형딜[이름] += 집계.get(이름, 0)
+    return {
+        "승": 승수,
+        "시험자": round(딜 / 판, 1),
+        "인형": {이름: round(v / 판, 1) for 이름, v in 인형딜.items()},
+    }
+
+
 def main(argv=None):
     for stream in (sys.stdout, sys.stderr):  # cp1252 콘솔에서도 한글(#200)
         if hasattr(stream, "reconfigure"):
@@ -478,7 +533,23 @@ def main(argv=None):
     p.add_argument(
         "--기록", default=기록경로, help="기록 파일(기본 docs/balance/patterns.json)"
     )
+    p.add_argument(
+        "--딜",
+        action="store_true",
+        help="전원 자동전투 --판 판의 판당 딜만 잰다(기록하지 않는다). 직업 자리에 '전체'면 24종",
+    )
     a = p.parse_args(argv)
+    if a.딜:
+        직업들 = (
+            [j for 전직들 in 측정_전직표().values() for j in 전직들]
+            if a.직업 == "전체"
+            else [a.직업]
+        )
+        for 직업 in 직업들:
+            r = 판당_딜(측정(직업), a.판)
+            인형 = "".join(f"  인형 {n} {v}" for n, v in r["인형"].items())
+            print(f"{직업}\t판당 {r['시험자']}\t승 {r['승']}/{a.판}{인형}", flush=True)
+        return 0
 
     기록 = 기록_읽기(a.기록)
     지문 = 규칙지문()
