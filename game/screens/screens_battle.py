@@ -27,6 +27,7 @@ from game.screens.screens_common import (
     _테두리박스,
     _캐릭터이미지_경로,
     _에셋_경로,
+    _도트_필터,
     뒤로키_버튼,
     아이템_이름_글_찾아서,
     고른간격줄,
@@ -393,7 +394,8 @@ def _전리품_글(게임상태, 줄들):
     )
 
 
-# 아군 그림 크기 - 칸에 꽉 맞춘 크기 대비(2026-10-07 사용자 지정 2/3, 칸 바닥에 붙인다)
+# 아군 그림 크기 - 보통 크기 캐릭터 그림을 칸에 꽉 맞춘 크기 대비(2026-10-07 사용자 지정 2/3,
+# 칸 바닥에 붙인다). 도트 하나의 크기는 모든 직업이 같다(gameflow.캐릭터_도트배율, 2026-11-10).
 _아군그림_배율 = 2 / 3
 
 
@@ -419,8 +421,8 @@ def _아군그림_맞추기(틀, 이미지):
     tw, th = 이미지.texture_size
     if not tw or not th:
         return
-    맞춤 = min(틀.width / tw, 틀.height / th) * _아군그림_배율
-    이미지.size = (tw * 맞춤, th * 맞춤)
+    도트 = gameflow.캐릭터_도트배율(틀.width, 틀.height, _아군그림_배율)
+    이미지.size = (tw * 도트, th * 도트)  # 칸을 넘는 그림은 넘는 대로(사용자 결정)
     이미지.pos = (틀.center_x - 이미지.width / 2, 틀.y)
 
 
@@ -896,6 +898,7 @@ class 전투화면(Screen):
                 else _캐릭터이미지_경로(gameflow.초상화_코드(아군["원본"])),
                 opacity=0 if 아군.get("인형") else 1,
             )
+            _도트_필터(이미지)
             틀.add_widget(이미지)
             if 감옥앞:
                 감옥그림(감옥앞)
@@ -910,6 +913,8 @@ class 전투화면(Screen):
             for 그림 in 감옥그림들:
                 그림.bind(texture_size=맞추기)
             그래픽박스.add_widget(틀)
+            그래픽박스.칸번호 = len(self.아군그래픽행.children)  # 파티칸줄 배치 순서
+            그래픽박스.그림폭 = 이미지.texture_size[0]
             self.아군그래픽행.add_widget(그래픽박스)
             self._그림칸[아군["id"]] = 그래픽박스
             그래픽박스.bind(on_release=lambda inst, p=아군: self._효과목록_열기(p))
@@ -918,7 +923,17 @@ class 전투화면(Screen):
                 (그래픽박스, gameflow.상태_아이콘(게임상태, 아군))
             )
             그래픽박스.bind(pos=self._아군아이콘_예약, size=self._아군아이콘_예약)
+        self._아군그림_겹침순서()
         self._아군아이콘_예약()
+
+    def _아군그림_겹침순서(self):
+        """칸을 넘는 넓은 그림을 먼저(뒤에) 그려 이웃 캐릭터 뒤로 가려지게 한다(2026-11-10 사용자 결정).
+        자리는 칸번호로 정해지므로(파티칸줄) 위젯을 다시 넣어도 위치는 그대로다."""
+        박스들 = sorted(self.아군그래픽행.children, key=lambda w: w.칸번호)
+        순서 = gameflow.캐릭터_그리는_순서([w.그림폭 for w in 박스들])
+        self.아군그래픽행.clear_widgets()
+        for 번호 in 순서:
+            self.아군그래픽행.add_widget(박스들[번호])
 
     def _아군아이콘_예약(self, *_):
         Clock.unschedule(self._아군아이콘_그리기)

@@ -2063,22 +2063,37 @@ class 스모크앱(main.DnfMobileApp):
             0
         ] == "타우 비스트"
         assert len(set(칸들)) == 3
-        # 아군 그림: 칸에 꽉 맞춘 크기의 2/3, 칸 바닥 가운데
+        # 아군 그림: 모든 직업이 같은 정수 도트 배율(보통 크기 그림이 칸에 맞는 크기의 2/3), 칸 바닥 가운데.
+        # 칸을 넘는 넓은 그림은 이웃보다 먼저(뒤에) 그린다 - 자리는 그대로
         from kivy.uix.image import Image as 그림
 
         아군그림 = [
-            w for w in 전투.아군그래픽행.walk(restrict=True) if isinstance(w, 그림)
+            w
+            for w in 전투.아군그래픽행.walk(restrict=True)
+            if isinstance(w, 그림) and not getattr(w, "감옥그림", None) and w.texture
         ]
-        assert 아군그림, "아군 그림 없음"
+        assert len(아군그림) >= 2, "아군 그림 부족"
+        assert len({tuple(w.texture_size) for w in 아군그림}) >= 2, "크기가 같은 그림뿐"
+        도트들 = set()
         for 이미지 in 아군그림:
             틀 = 이미지.parent
             tw, th = 이미지.texture_size
-            맞춤 = min(틀.width / tw, 틀.height / th) * 2 / 3
-            assert abs(이미지.height - th * 맞춤) < 1, (이미지.size, 틀.size)
+            도트 = gf.캐릭터_도트배율(틀.width, 틀.height, 2 / 3)
+            assert abs(이미지.width - tw * 도트) < 1, (이미지.size, 틀.size)
+            assert abs(이미지.height - th * 도트) < 1, (이미지.size, 틀.size)
             assert abs(이미지.y - 틀.y) < 1 and abs(이미지.center_x - 틀.center_x) < 1
+            도트들.add(도트)
+        assert len(도트들) == 1, 도트들
+        박스들 = list(reversed(전투.아군그래픽행.children))  # 그리는 순서(뒤 -> 앞)
+        assert [b.그림폭 for b in 박스들] == sorted(
+            (b.그림폭 for b in 박스들), reverse=True
+        )
+        assert sorted(박스들, key=lambda b: b.x) == sorted(
+            박스들, key=lambda b: b.칸번호
+        )
         _찍기("battle_monster_size")
         결과["단계"].append(
-            "몬스터 크기 배율(소 1/2, 중 3/4, 대 1) + 발바닥 맞춤 + 대형이 뒤, 아군 그림 2/3 바닥 맞춤"
+            "몬스터 크기 배율(소 1/2, 중 3/4, 대 1) + 발바닥 맞춤 + 대형이 뒤, 아군 그림 같은 도트 배율(보통 그림 기준 2/3) 바닥 맞춤 + 넓은 그림이 뒤"
         )
 
     def _단계_익스펠러_석상(self, 상태, 매니저, 전투):
@@ -2485,6 +2500,27 @@ class 스모크앱(main.DnfMobileApp):
         assert 지도._열수 * 칸폭 >= 지도.width, "가로 끝까지 칸을 그리지 않음"
         assert 지도._타일("풀밭") is None or id(지도._타일("풀밭")) not in 그린것
         _찍기("dungeon_map_tiles")
+        # 플레이어 그림: 직업(그림 크기)이 달라도 도트 하나 크기가 같고, 원래 비율로 칸 가운데에 선다
+        원래코드 = 지도.초상화코드
+        도트들 = set()
+        for 코드 in ("034f", "073m"):  # 가장 작은 그림(22x36)과 가장 넓은 그림(71x48)
+            지도.초상화코드 = 코드
+            지도._다시그리기()
+            yield 0.2
+            사각 = 지도._플레이어_사각
+            tw, th = 사각.texture.size
+            assert abs(사각.size[0] / tw - 사각.size[1] / th) < 0.01, (코드, 사각.size)
+            assert 사각.texture.mag_filter == "nearest"
+            x, _ = 지도._칸위치(지도._열수 // 2, 지도._행수 // 2)
+            assert abs(사각.pos[0] + 사각.size[0] / 2 - (x + 칸폭 / 2)) < 1
+            도트들.add(round(사각.size[0] / tw, 3))
+            _찍기(f"dungeon_player_dot_{코드}")
+        assert len(도트들) == 1 and 도트들.pop() >= 1, 도트들
+        지도.초상화코드 = 원래코드
+        지도._다시그리기()
+        결과["단계"].append(
+            "던전 지도 플레이어 그림 - 직업(그림 크기)이 달라도 같은 도트 배율, 원래 비율, 칸 가운데"
+        )
 
         # 로리엔 보스(15,3) - 세리아 감옥은 한 칸이지만 2x2칸 크기로, 바닥 위/플레이어 아래
         gf.던전_진입(상태, "dungeon_01A_D01_Lorien")
@@ -3804,7 +3840,7 @@ class 스모크앱(main.DnfMobileApp):
         전투.갱신()
         yield 0.3
         상태칸 = list(reversed(전투.아군상태틀.children))
-        그림칸 = list(reversed(전투.아군그래픽행.children))
+        그림칸 = sorted(전투.아군그래픽행.children, key=lambda w: w.x)  # 왼쪽부터
         assert len(상태칸) == 5 and len(그림칸) == 5, (len(상태칸), len(그림칸))
         글 = [
             w.text for w in 상태칸[-1].walk(restrict=True) if isinstance(w, main.Label)

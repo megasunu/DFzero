@@ -706,6 +706,9 @@ class 파티칸줄(Widget):
 
     def _배치(self, *args):
         자식들 = list(reversed(self.children))  # add_widget 순서 = 왼쪽부터
+        if 자식들 and all(hasattr(w, "칸번호") for w in 자식들):
+            # 그리는 순서(겹침)를 자리와 따로 정한 줄 - 자리는 칸번호(전투 아군 그림 줄)
+            자식들.sort(key=lambda w: w.칸번호)
         n = len(자식들)
         if not n:
             return
