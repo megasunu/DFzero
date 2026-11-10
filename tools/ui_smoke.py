@@ -407,6 +407,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_봉인(상태, 매니저)
         yield from self._단계_장비강화(상태, 매니저)
         yield from self._단계_인형사(상태, 매니저)
+        yield from self._단계_연금술(상태, 매니저)
 
     def _단계_상점_구매판매(self, 상태, 매니저):
         """상점 구매 - 레어도 색, 장비 탭 2줄, 무기 직업군/종류 탭, 방어구 재질 탭, 판매 목록"""
@@ -564,13 +565,14 @@ class 스모크앱(main.DnfMobileApp):
             for w in 상점.내용틀.walk(restrict=True)
             if isinstance(w, Button)
         ]
-        assert 메뉴글[:6] == [
+        assert 메뉴글[:7] == [
             ("장비강화", False),
             ("장비해체", False),
             ("마법부여 (미구현)", True),
             ("봉인해제", False),
             ("봉인변환", False),
             ("인형사", False),
+            ("연금술", False),
         ], 메뉴글
         _찍기("profession_menu")
         # 장비해체: 장비 목록에서 해체하면 소울/큐브 조각이 재료로
@@ -638,7 +640,7 @@ class 스모크앱(main.DnfMobileApp):
         assert not gf.상점_일괄해체_대상(상태, "커먼", "전체")
         _찍기("shop_dismantle_batch_after")
         결과["단계"].append(
-            "전문직업 메뉴 6개(마법부여 미구현), 상점에 해체 없음, "
+            "전문직업 메뉴 7개(마법부여 미구현), 상점에 해체 없음, "
             "장비해체(장비 -> 소울 + 큐브 조각, [전체] 탭, 일괄해체 커먼/전체 확인 팝업)"
         )
 
@@ -709,6 +711,7 @@ class 스모크앱(main.DnfMobileApp):
         gf.장비_교체(상태, 귀검사, "무기", "강철 소검")
         소지품["골드"] = 1000
         소지품["재료"]["언커먼 소울"] = 3
+        소지품["재료"]["라이언 코크스"] = 3
 
         def 버튼들(틀, 글):
             return [
@@ -748,6 +751,7 @@ class 스모크앱(main.DnfMobileApp):
         assert 귀검사["장착장비"]["무기"] == "+1강 강철 소검", 귀검사["장착장비"]
         assert "+1강 강철 소검" in 화면.안내라벨.text, 화면.안내라벨.text
         assert 소지품["골드"] == 900 and 소지품["재료"]["언커먼 소울"] == 2
+        assert 소지품["재료"]["라이언 코크스"] == 2
         _찍기("profession_enhance_done")
         # 강화한 무기는 증폭할 수 없다(버튼이 꺼진다), [◀ 뒤로]는 장비강화 선택지로
         화면._강화_그리기("무기증폭")
@@ -759,7 +763,7 @@ class 스모크앱(main.DnfMobileApp):
         화면._나가기()
         yield 0.3
         결과["단계"].append(
-            "장비강화(선택지 6개, 착용 중인 무기 강화 (착용중)/100G+언커먼 소울, 강화한 무기 증폭 불가, 뒤로)"
+            "장비강화(선택지 6개, 착용 중인 무기 강화 (착용중)/100G+언커먼 소울+라이언 코크스, 강화한 무기 증폭 불가, 뒤로)"
         )
 
     def _단계_인형사(self, 상태, 매니저):
@@ -835,6 +839,67 @@ class 스모크앱(main.DnfMobileApp):
         결과["단계"].append(
             "인형사: 인형제작 창(레어 소울 0/10이면 제작 못 누름), 상세보기(직업스타일/수식/인형무기/패턴 6개), "
             "제작 -> 소지품 1개 + 도감 인형"
+        )
+
+    def _단계_연금술(self, 상태, 매니저):
+        """[전문직업] 연금술 - 탭 전체/재료/소모품, 라이언 코크스 -> 강렬한 기운, 무색 큐브 조각 -> 포션,
+        재료가 모자라면 [제작] 못 누름"""
+
+        def 버튼(위젯, 글):
+            return next(
+                w
+                for w in 위젯.walk(restrict=True)
+                if isinstance(w, Button) and w.text == 글
+            )
+
+        def 행(화면, 이름):
+            return next(
+                w.parent
+                for w in 화면._목록틀.walk(restrict=True)
+                if isinstance(w, Label) and w.text.startswith(이름 + "  (")
+            )
+
+        매니저.current = "전문직업"
+        yield 0.3
+        화면 = 매니저.get_screen("전문직업")
+        재료 = 상태["소지품"]["재료"]
+        재료["라이언 코크스"] = 1
+        재료["무색 큐브 조각"] = 10
+        화면._메인_그리기()
+        버튼(화면.내용틀, "연금술").dispatch("on_release")
+        yield 0.3
+        탭들 = [
+            w.text
+            for w in 화면.내용틀.walk(restrict=True)
+            if isinstance(w, ToggleButton)
+        ]
+        assert 탭들 == ["전체", "재료", "소모품"], 탭들
+        _찍기("profession_alchemy_all")
+        버튼(화면.내용틀, "재료").dispatch("on_release")
+        yield 0.3
+        assert "라이언 코크스 1/1" in 행(화면, "강렬한 기운").children[-1].text
+        버튼(행(화면, "강렬한 기운"), "제작").dispatch("on_release")
+        yield 0.3
+        assert 재료["강렬한 기운"] == 1 and "라이언 코크스" not in 재료, 재료
+        assert 버튼(행(화면, "모순의 결정체"), "제작").disabled, (
+            "코크스가 없으면 못 만듦"
+        )
+        _찍기("profession_alchemy_material")
+        버튼(화면.내용틀, "소모품").dispatch("on_release")
+        yield 0.3
+        assert 버튼(행(화면, "입문자용 HP 포션"), "제작").disabled  # 조각 10 < 20
+        보유전 = 상태["소지품"].get("포션", {}).get("초보자용 HP 포션", 0)
+        버튼(행(화면, "초보자용 HP 포션"), "제작").dispatch("on_release")
+        yield 0.3
+        assert 상태["소지품"]["포션"]["초보자용 HP 포션"] == 보유전 + 1
+        assert "무색 큐브 조각" not in 재료, 재료
+        _찍기("profession_alchemy_potion")
+        재료.pop("강렬한 기운")
+        화면._나가기()
+        yield 0.3
+        결과["단계"].append(
+            "연금술: 탭 전체/재료/소모품, 라이언 코크스 1 -> 강렬한 기운(코크스 없으면 제작 못 누름), "
+            "무색 큐브 조각 10 -> 초보자용 HP 포션(입문자용은 못 누름)"
         )
 
     def _단계_파티관리_팝업(self, 상태, 매니저):
