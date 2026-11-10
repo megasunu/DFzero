@@ -19,6 +19,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.image import Image
 from kivy.metrics import dp
 from kivy.core.image import Image as CoreImage
+from kivy.core.text import Label as CoreLabel
 from kivy.graphics import Color, Rectangle
 
 import gameflow
@@ -53,6 +54,9 @@ _적슬롯_최대 = 5
 _아군슬롯_최대 = 4  # 인형(인형사)을 부르면 맨 오른쪽에 한 칸 더 - 5
 # 상태/그래픽/배경 박스 테두리 색 - 전부 흰색 테두리로 통일한다.
 _박스_테두리색 = (1, 1, 1, 1)
+# 그림 칸 위에 겹치는 글(챔피언 버프, #621) - 글자 크기와 칸 위 테두리에서 띄울 거리
+_칸글_크기 = dp(8)
+_칸글_여백 = dp(4)
 
 
 _텍스처_모음 = {}
@@ -685,6 +689,11 @@ class 전투화면(Screen):
             그래픽박스목록.append(그래픽박스)
             self._그림칸[적["id"]] = 그래픽박스
 
+        self._챔피언버프목록 = [
+            (그래픽박스목록[번호], gameflow.적_챔피언버프(적))
+            for 번호, 적 in enumerate(적목록)
+        ]
+
         # 적이 5마리보다 적으면 칸 사이 간격이 넓어져 가운데로 모인다.
         self.적상태틀.clear_widgets()
         self.적그래픽행.clear_widgets()
@@ -726,6 +735,23 @@ class 전투화면(Screen):
                 맞춤 = min(칸.width / tw, 칸.height / th) * 배율
                 w, h = tw * 맞춤, th * 맞춤
                 Rectangle(texture=텍스처, pos=(칸.center_x - w / 2, 칸.y), size=(w, h))
+            self._칸글_그리기()
+
+    def _칸글_그리기(self):
+        """그림 칸 위에 겹치는 글 - 몬스터 그림보다 나중에 그려 언제나 보인다.
+        챔피언 버프(#621, 사용자 지정 2026-11-10): 칸 위쪽부터 한 줄에 하나씩, 흰 글자 가운데 정렬,
+        배경 없음. 칸 오른쪽 아래는 상태 아이콘 자리로 비워 둔다."""
+        self._그린_칸글 = []  # (칸, 글, (x, y, w, h)) - 화면 스모크가 확인한다
+        for 칸, 버프목록 in getattr(self, "_챔피언버프목록", []):
+            y = 칸.top - _칸글_여백
+            for 이름 in 버프목록:
+                글 = CoreLabel(text=이름, font_size=_칸글_크기)
+                글.refresh()
+                tw, th = 글.texture.size
+                y -= th
+                x = 칸.center_x - tw / 2
+                Rectangle(texture=글.texture, pos=(x, y), size=(tw, th))
+                self._그린_칸글.append((칸, 이름, (x, y, tw, th)))
 
     def _아군_박스_갱신(self, 게임상태, 현재참가자):
         self.아군상태틀.clear_widgets()
