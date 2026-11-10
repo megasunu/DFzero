@@ -5,6 +5,7 @@ from game.data.buff.status_effects import 상태이상목록
 from game.system import drink_system, town_system
 from game.controller.ctl_party import 내아내몬_보유, 인형_동기화, 파티_최대치로_회복
 from game.controller.ctl_registry import 던전_레지스트리
+from game.controller.ctl_session import 자동_저장
 
 __all__ = [
     "현재_마을정보",
@@ -14,6 +15,7 @@ __all__ = [
     "던전_열림",
     "던전목록_표시",
     "휴식",
+    "패배_귀환",
 ]
 
 
@@ -34,6 +36,7 @@ def 이동가능마을목록(게임상태):
 
 def 마을_이동(게임상태, 목표마을명):
     town_system.마을_이동(게임상태["진행도"], 목표마을명)
+    자동_저장(게임상태)  # 다른 마을에 도착 - 자동 저장 칸에 덮어쓴다
 
 
 def 이동가능던전목록(게임상태):
@@ -75,3 +78,10 @@ def 던전목록_표시(게임상태):
         )
         for 파일명 in 이동가능던전목록(게임상태)
     ]
+
+
+def 패배_귀환(게임상태):
+    """파티가 전멸해 마을로 돌아온다 - 부활/페널티 없이 휴식으로 다 회복하고(town_system.휴식_처리 주석의
+    임시 가정) 자동 저장 칸에 덮어쓴다."""
+    휴식(게임상태)
+    자동_저장(게임상태)

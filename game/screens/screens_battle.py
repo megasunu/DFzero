@@ -1517,7 +1517,7 @@ class 전투화면(Screen):
             # (town_system.휴식_처리의 주석 참고 - "마을에 도착한 것
             # 자체를 무사히 돌아왔다로 취급"하는 임시 가정). 그래서 파티가
             # 전멸하면 HP/MP를 전부 회복시켜 마을로 돌려보낸다.
-            gameflow.휴식(앱.게임상태)
+            gameflow.패배_귀환(앱.게임상태)  # 휴식 + 자동 저장
             self.manager.get_screen("마을").갱신()
             self.manager.current = "마을"
         else:

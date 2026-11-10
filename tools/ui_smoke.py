@@ -14,6 +14,7 @@ tests/는 kivy 없이 gameflow 이하만 검사한다. 화면(game/screens) 코�
 스크린샷 기본 폴더: ui_smoke_shots/ (.gitignore에 들어 있다).
 """
 
+import copy
 import json
 import re
 import os
@@ -234,7 +235,10 @@ def _확인_누르기():
 
 class 스모크앱(main.DnfMobileApp):
     def _세이브_폴더_준비(self):
-        pass  # 이 스모크는 세이브를 임시 폴더로 바꿔서 쓴다(실제 앱 데이터 폴더를 건드리지 않는다)
+        # 이 스모크는 세이브를 임시 폴더로 바꿔서 쓴다(실제 앱 데이터 폴더를 건드리지 않는다) -
+        # 자동 저장(#638)이 마을에 올 때마다 쓰므로 실행 내내 임시 폴더를 쓴다
+        폴더 = tempfile.mkdtemp(prefix="ui_smoke_saves_all_")
+        save_system._폴더_재정의 = 폴더
 
     def on_start(self):
         self._단계 = self._단계들()
@@ -285,6 +289,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_출입구_위(상태, 매니저)
         yield from self._단계_목록_스크롤(상태, 매니저)
         yield from self._단계_세이브(상태, 매니저)
+        yield from self._단계_자동저장(상태, 매니저)
         yield from self._단계_설정(매니저)
         yield from self._단계_화면_배치(상태, 매니저)
         yield from self._단계_던전목록(상태, 매니저)
@@ -2823,6 +2828,7 @@ class 스모크앱(main.DnfMobileApp):
         # 실제 game/saves/ 대신 임시 폴더를 쓴다.
         세이브폴더 = tempfile.mkdtemp(prefix="ui_smoke_saves_")
         원래폴더 = save_system._세이브_폴더
+        원래재정의 = save_system._폴더_재정의  # 스모크 전체가 쓰는 임시 폴더
         save_system._세이브_폴더 = lambda: 세이브폴더
         try:
             self.게임상태 = 상태
@@ -2850,7 +2856,8 @@ class 스모크앱(main.DnfMobileApp):
             yield 0.4
             _찍기("save_slots_corrupt")
             불러오기 = 매니저.get_screen("불러오기목록")
-            줄들 = list(reversed(불러오기.목록틀.children))  # 위에서 아래(슬롯 1, 2, 3)
+            # 위에서 아래(맨 위 자동 저장 칸을 빼면 슬롯 1, 2, 3)
+            자동칸, *줄들 = list(reversed(불러오기.목록틀.children))
 
             def 줄_글(줄):
                 return next(
@@ -2865,6 +2872,8 @@ class 스모크앱(main.DnfMobileApp):
             assert "더 새로운 버전" in 줄_글(줄들[0]), 줄_글(줄들[0])
             assert 줄_버튼(줄들[0]).disabled and not 줄_버튼(줄들[2]).disabled
             assert 줄_버튼(줄들[1]).disabled, "손상 슬롯은 불러올 수 없다"
+            assert 줄_글(자동칸) == "자동 저장 - (비어 있음)", 줄_글(자동칸)
+            assert 줄_버튼(자동칸).disabled, "빈 자동 저장 칸은 불러올 수 없다"
 
             불러오기._선택(2)  # 막혀 있어도 호출되면 앱이 죽지 않고 안내만 한다
             assert 매니저.current == "불러오기목록" and "손상" in 불러오기.안내라벨.text
@@ -2903,7 +2912,7 @@ class 스모크앱(main.DnfMobileApp):
                 )
             finally:
                 save_system._기본_세이브_폴더 = 기본폴더
-                save_system._폴더_재정의 = None
+                save_system._폴더_재정의 = 원래재정의
                 save_system._세이브_폴더 = lambda: 세이브폴더
                 shutil.rmtree(앱데이터, ignore_errors=True)
                 shutil.rmtree(옛위치, ignore_errors=True)
@@ -2913,6 +2922,88 @@ class 스모크앱(main.DnfMobileApp):
         finally:
             save_system._세이브_폴더 = 원래폴더
             shutil.rmtree(세이브폴더, ignore_errors=True)
+            매니저.current = "마을"
+
+    def _단계_자동저장(self, 상태, 매니저):
+        """자동 저장 칸(#638) - 새 게임 시작/패배 귀환/마을 이동 화면에서 0번 칸에 덮어쓰고,
+        저장하기 목록에서는 고를 수 없고 불러오기 목록에서는 불러올 수 있다"""
+        세이브폴더 = tempfile.mkdtemp(prefix="ui_smoke_autosave_")
+        원래폴더 = save_system._세이브_폴더
+        save_system._세이브_폴더 = lambda: 세이브폴더
+        자동 = gf.자동저장슬롯
+
+        def 저장본():
+            with open(
+                os.path.join(세이브폴더, f"slot_{자동}.json"), encoding="utf-8"
+            ) as f:
+                return json.load(f)
+
+        try:
+            # 새 게임 시작 -> 마을, 자동 저장 칸이 채워진다
+            파티생성 = 매니저.get_screen("파티생성")
+            for 칸 in 파티생성.슬롯목록:
+                칸["이름입력"].text = ""
+            매니저.current = "파티생성"
+            yield 0.3
+            파티생성._시작()
+            assert 매니저.current == "마을", 매니저.current
+            assert gf.세이브_존재(자동), "새 게임 시작은 자동 저장한다"
+            새파티 = [c["캐릭터명"] for c in self.게임상태["파티"]["파티원"]]
+            assert [
+                c["캐릭터명"] for c in 저장본()["플레이어"]["파티"]["파티원"]
+            ] == 새파티
+            yield 0.3
+
+            # 전투에서 져서 마을로 -> 휴식한 상태로 덮어쓴다(공용 상태는 건드리지 않게 복사본)
+            self.게임상태 = 사본 = copy.deepcopy(상태)
+            for c in 사본["파티"]["파티원"]:
+                c["현재HP"] = 0
+            매니저.get_screen("전투")._전투종료_이동("적승리")
+            assert 매니저.current == "마을", 매니저.current
+            저장 = 저장본()
+            assert all(c["현재HP"] > 0 for c in 저장["플레이어"]["파티"]["파티원"])
+            assert [c["캐릭터명"] for c in 저장["플레이어"]["파티"]["파티원"]] == [
+                c["캐릭터명"] for c in 상태["파티"]["파티원"]
+            ]
+            yield 0.3
+
+            # 다른 마을로 이동 -> 그 마을로 덮어쓴다
+            사본["진행도"]["클리어한던전"].update(gf.던전_레지스트리)
+            목표 = gf.이동가능마을목록(사본)[0]["마을명"]
+            매니저.get_screen("마을이동목록")._선택(목표)
+            assert 매니저.current == "마을"
+            assert 저장본()["진행도"]["현재마을"] == 목표
+            yield 0.3
+
+            # 저장하기 목록: 맨 위 "자동 저장" 칸은 고를 수 없다
+            매니저.current = "저장목록"
+            yield 0.4
+            _찍기("save_slots_autosave")
+            저장목록 = 매니저.get_screen("저장목록")
+            맨위 = list(reversed(저장목록.목록틀.children))[0]
+            글 = next(w.text for w in 맨위.children if type(w) is Label)
+            assert 글.startswith("자동 저장 - ") and 목표 in 글, 글
+            assert next(w for w in 맨위.children if isinstance(w, Button)).disabled
+            이전 = (저장본(), 저장목록.안내라벨.text)
+            저장목록._선택(자동)  # 막혀 있어도 호출되면 아무것도 하지 않는다
+            assert (저장본(), 저장목록.안내라벨.text) == 이전
+
+            # 불러오기 목록: 자동 저장 칸을 불러와 마을로(불러오기는 자동 저장하지 않는다)
+            매니저.current = "불러오기목록"
+            yield 0.3
+            불러오기 = 매니저.get_screen("불러오기목록")
+            맨위 = list(reversed(불러오기.목록틀.children))[0]
+            assert not next(w for w in 맨위.children if isinstance(w, Button)).disabled
+            불러오기._선택(자동)
+            assert 매니저.current == "마을"
+            assert self.게임상태["진행도"]["현재마을"] == 목표
+            결과["단계"].append(
+                "자동 저장 칸(새 게임/패배 귀환/마을 이동에서 덮어씀, 저장하기 목록에서 막힘, 불러오기 됨)"
+            )
+        finally:
+            save_system._세이브_폴더 = 원래폴더
+            shutil.rmtree(세이브폴더, ignore_errors=True)
+            self.게임상태 = 상태
             매니저.current = "마을"
 
     def _단계_설정(self, 매니저):
