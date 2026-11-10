@@ -7,6 +7,7 @@ from game.system import (
     character_data_system as 캐릭터데이터,
     collection_system,
     dungeon_system,
+    enhance_system,
     equipment_system,
     party_system,
     quest_system,
@@ -16,6 +17,7 @@ from game.system import (
 from game.controller.ctl_party import (
     인형_동기화,
     새_게임상태,
+    장비데이터모음_생성,
     이름_자르기,
     캐릭터_생성,
     캐릭터_직업스타일,
@@ -165,6 +167,21 @@ def 게임_불러오기(슬롯번호):
         character_creation_system.레벨1_스킬_습득(
             캐릭터, 직업_레지스트리[캐릭터["직업"]]["스킬목록"]
         )
+    # 강화한 장비(#636)는 이름으로만 저장된다 - 소지품/장착 칸의 이름으로 카탈로그에 다시 만든다
+    enhance_system.카탈로그_복원(
+        게임상태["상점카탈로그"]["장비"],
+        [
+            *게임상태["소지품"].get("장비", {}),
+            *(
+                이름
+                for 캐릭터 in 게임상태["파티"]["파티원"] + 게임상태["모험단숙소"]
+                for 이름 in 캐릭터.get("장착장비", {}).values()
+            ),
+        ],
+    )
+    게임상태["장비데이터모음"] = 장비데이터모음_생성(
+        게임상태["파티"], 게임상태["상점카탈로그"]
+    )
     equipment_system.장착품_소지품_동기화(플레이어뷰(게임상태))
     인형_동기화(
         게임상태
