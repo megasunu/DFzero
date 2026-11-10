@@ -304,6 +304,53 @@ class _대상선택팝업(Popup):
         self._취소콜백()
 
 
+class _효과목록팝업(Popup):
+    """칸을 누르면 뜨는 적용 중인 효과 목록(#627) - gameflow.상태_목록의 묶음마다 [묶음] 제목과 한 줄에
+    하나씩, 없으면 "적용 중인 효과 없음". 길면 스크롤, 맨 아래 [닫기](뒤로 키)."""
+
+    def __init__(self, 제목, 묶음들, **kwargs):
+        줄들 = []
+        for 묶음, 글들 in 묶음들:
+            줄들.append(f"[b][{묶음}][/b]")
+            줄들 += 글들
+        self.글 = (
+            "\n".join(줄들) if 줄들 else "적용 중인 효과 없음"
+        )  # 화면 스모크가 확인한다
+
+        틀 = BoxLayout(orientation="vertical", spacing=dp(6), padding=dp(6))
+        스크롤 = ScrollView()
+        라벨 = Label(
+            text=self.글,
+            markup=True,
+            size_hint_y=None,
+            halign="left",
+            valign="top",
+            font_size="15sp",
+        )
+        라벨.bind(
+            width=lambda 글칸, w: setattr(글칸, "text_size", (w, None)),
+            texture_size=lambda 글칸, s: setattr(글칸, "height", s[1]),
+        )
+        스크롤.add_widget(라벨)
+        틀.add_widget(스크롤)
+        닫기 = Button(
+            text="닫기",
+            size_hint_y=None,
+            height=dp(48),
+            background_normal="",
+            background_color=(0.3, 0.31, 0.35, 1),
+        )
+        뒤로키_버튼(닫기)
+        닫기.bind(on_release=lambda *_: self.dismiss(animation=False))
+        틀.add_widget(닫기)
+
+        줄수 = max(1, len(줄들))
+        kwargs.setdefault("title", 제목)
+        kwargs.setdefault("size_hint", (0.8, None))
+        kwargs.setdefault("height", dp(min(560, 150 + 24 * 줄수)))
+        super().__init__(content=틀, **kwargs)
+
+
 class _행동선택팝업(Popup):
     """스킬의 일반행동을 낼 수단이 여러 개일 때(쇼타임행동/일반행동/보조행동) 고르는
     팝업 - 수단마다 버튼(남은 개수 표시)과 맨 아래 [취소]."""
@@ -705,10 +752,13 @@ class 전투화면(Screen):
             )
             상태박스.disabled = not 적["생존"]
             상태박스.현재턴_표시(적 is 현재참가자)
+            # 적 대상은 팝업에서 고르므로 칸 누르기는 효과 목록(#627)만
+            상태박스.bind(on_release=lambda inst, p=적: self._효과목록_열기(p))
             상태박스목록.append(상태박스)
 
             그래픽박스 = _테두리박스(_박스_테두리색)
             그래픽박스.bind(pos=self._적그림_예약, size=self._적그림_예약)
+            그래픽박스.bind(on_release=lambda inst, p=적: self._효과목록_열기(p))
             그래픽박스목록.append(그래픽박스)
             self._그림칸[적["id"]] = 그래픽박스
 
@@ -811,7 +861,7 @@ class 전투화면(Screen):
                     f"{아군['이름']}\nHP {아군['현재HP']}/{최대HP}{MP줄}{상태}"
                 )
             )
-            # 아군단일 스킬 대상 선택용.
+            # 아군단일 스킬 대상 선택용, 대상을 고르는 중이 아니면 효과 목록(#627).
             상태박스.bind(on_release=lambda inst, p=아군: self._아군_선택(p))
             상태박스.현재턴_표시(아군 is 현재참가자)
             self.아군상태틀.add_widget(상태박스)
@@ -862,6 +912,7 @@ class 전투화면(Screen):
             그래픽박스.add_widget(틀)
             self.아군그래픽행.add_widget(그래픽박스)
             self._그림칸[아군["id"]] = 그래픽박스
+            그래픽박스.bind(on_release=lambda inst, p=아군: self._효과목록_열기(p))
             # 상태 아이콘(#623)은 아군 그래픽 줄 위층에 - 캐릭터·감옥 그림보다 위
             self._아군아이콘목록.append(
                 (그래픽박스, gameflow.상태_아이콘(게임상태, 아군))
@@ -1048,8 +1099,20 @@ class 전투화면(Screen):
         else:
             self._스킬_실행(이름, None)
 
+    def _효과목록_열기(self, 참가자):
+        """칸을 누르면 그 참가자에게 적용 중인 효과 목록 팝업(#627)을 연다."""
+        게임상태 = App.get_running_app().게임상태
+        이름 = 참가자["이름"].replace("\n", " ")
+        self._효과목록팝업 = _효과목록팝업(  # 화면 스모크가 확인한다
+            f"{이름} - 적용 중인 효과", gameflow.상태_목록(게임상태, 참가자)
+        )
+        self._효과목록팝업.open()
+
     def _아군_선택(self, 아군참가자):
-        if self.선택모드 is None or self.선택모드[0] != "스킬아군":
+        if self.선택모드 is None:
+            self._효과목록_열기(아군참가자)
+            return
+        if self.선택모드[0] != "스킬아군":
             return
         if not 아군참가자["생존"]:
             self.안내라벨.text = "쓰러진 아군은 대상으로 고를 수 없습니다."
