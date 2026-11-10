@@ -13,6 +13,7 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.popup import Popup
 from kivy.uix.image import Image
 from kivy.core.image import Image as CoreImage
@@ -1278,6 +1279,8 @@ class 전문직업화면(상점화면):
                 버튼.bind(on_release=lambda *_: self._인형사_그리기())
             elif 메뉴 == "장비강화":
                 버튼.bind(on_release=lambda *_: self._강화메뉴_그리기())
+            elif 메뉴 == "연금술":
+                버튼.bind(on_release=lambda *_: self._연금술_그리기())
             elif 구현됨:
                 버튼.bind(on_release=lambda *_, m=메뉴: self._봉인_그리기(m))
             self.내용틀.add_widget(버튼)
@@ -1533,6 +1536,64 @@ class 전문직업화면(상점화면):
         self.안내라벨.text = (
             f"인형 '{이름}'을(를) 만들었습니다. (소지품 > 소모품 > 인형)"
         )
+
+    # ------------------------------------------------------------ 연금술 (전체/재료/소모품 탭)
+
+    def _연금술_그리기(self, 탭="전체"):
+        self._하위창_틀("연금술")
+        탭줄 = BoxLayout(
+            orientation="horizontal", size_hint=(1, None), height=글자_높이()
+        )
+        for 이름 in gameflow.연금술_탭목록:
+            탭버튼 = ToggleButton(
+                text=이름, group="연금술탭", state="down" if 이름 == 탭 else "normal"
+            )
+            탭버튼.bind(on_release=lambda *_, t=이름: self._연금술_그리기(t))
+            탭줄.add_widget(탭버튼)
+        self.내용틀.add_widget(탭줄, index=1)  # 제목 줄과 목록 사이
+        self._연금술탭 = 탭
+        self._연금술목록_채우기()
+
+    def _연금술목록_채우기(self):
+        self._목록틀.clear_widgets()
+        상태 = App.get_running_app().게임상태
+        for 항목 in gameflow.전문직업_연금술목록(상태, self._연금술탭):
+            self._목록틀.add_widget(self._연금술_행(항목))
+
+    def _연금술_행(self, 항목):
+        글자 = _행_글자크기
+        행 = BoxLayout(
+            orientation="horizontal", size_hint=(1, None), height=56, spacing=4
+        )
+        이름라벨 = Label(
+            text=f"{항목['이름']}  ({항목['재료글']})",
+            size_hint=(0.8, 1),
+            halign="left",
+            valign="middle",
+            font_size=글자,
+            shorten=True,
+            shorten_from="right",
+        )
+        이름라벨.bind(size=lambda inst, size: setattr(inst, "text_size", size))
+        행.add_widget(이름라벨)
+        제작버튼 = Button(
+            text="제작",
+            size_hint=(0.2, 1),
+            font_size=글자,
+            disabled=not 항목["제작가능"],
+        )
+        제작버튼.bind(on_release=lambda *_: self._연금술_제작(항목))
+        행.add_widget(제작버튼)
+        return 행
+
+    def _연금술_제작(self, 항목):
+        try:
+            gameflow.전문직업_연금술(App.get_running_app().게임상태, 항목)
+        except ValueError as 오류:
+            self.안내라벨.text = str(오류)
+            return
+        self._연금술목록_채우기()
+        self.안내라벨.text = f"'{항목['이름']}'을(를) 만들었습니다."
 
 
 class 소지품화면(상점화면):
