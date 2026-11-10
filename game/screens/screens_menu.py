@@ -360,6 +360,7 @@ class 파티생성화면(Screen):
         except ValueError as 오류:  # 이름 중복/스탯 덜 고름 - 시작하지 않고 알려 준다
             self.안내라벨.text = str(오류)
             return
+        gameflow.자동_저장(앱.게임상태)  # 처음 마을에 들어갈 때도 자동 저장 칸에 쓴다
         self.manager.get_screen("마을").갱신()
         self.manager.current = "마을"
 
@@ -411,20 +412,25 @@ class _슬롯목록화면(Screen):
             )
 
             if 요약.get("비어있음"):
-                설명 = f"{요약['슬롯번호']}번 슬롯 - (비어 있음)"
+                설명 = f"{_슬롯_이름(요약)} - (비어 있음)"
             elif 요약.get("새버전"):
-                설명 = f"{요약['슬롯번호']}번 슬롯 - (더 새로운 버전의 세이브)"
+                설명 = f"{_슬롯_이름(요약)} - (더 새로운 버전의 세이브)"
             elif 요약.get("손상"):
-                설명 = f"{요약['슬롯번호']}번 슬롯 - (손상됨, 불러올 수 없음)"
+                설명 = f"{_슬롯_이름(요약)} - (손상됨, 불러올 수 없음)"
             else:
                 표시 = (
                     " [백업]" if 요약.get("복구본") else ""
                 )  # 길어서 잘리는 줄 끝 말고 앞에 둔다
                 설명 = (
-                    f"{요약['슬롯번호']}번 슬롯{표시} - {요약['대표캐릭터명']} 외 "
+                    f"{_슬롯_이름(요약)}{표시} - {요약['대표캐릭터명']} 외 "
                     f"{요약['파티인원수']}명 / {_저장_장소(요약)} / {요약['저장시각']}"
                 )
-            줄.add_widget(Label(text=설명, font_size="16sp", halign="left"))
+            # 칸 너비에서 줄을 바꾼다 - 채워진 슬롯 글이 길어 앞("자동 저장"/"N번 슬롯")이 화면 밖으로 잘리던 것
+            설명라벨 = Label(
+                text=설명, font_size="16sp", halign="left", valign="middle"
+            )
+            설명라벨.bind(size=lambda w, 크기: setattr(w, "text_size", 크기))
+            줄.add_widget(설명라벨)
 
             버튼 = Button(text=self.버튼글자, size_hint=(0.28, 1))
             버튼.disabled = self._비활성(요약)
@@ -438,6 +444,13 @@ class _슬롯목록화면(Screen):
 
     def _선택(self, 슬롯번호):
         raise NotImplementedError
+
+
+def _슬롯_이름(요약):
+    """슬롯 목록 줄의 이름 - 맨 위 자동 저장 칸은 "자동 저장", 나머지는 "N번 슬롯"."""
+    if 요약["슬롯번호"] == gameflow.자동저장슬롯:
+        return "자동 저장"
+    return f"{요약['슬롯번호']}번 슬롯"
 
 
 def _저장_장소(요약):
@@ -474,9 +487,14 @@ class 저장목록화면(_슬롯목록화면):
     버튼글자 = "저장"
     돌아갈화면 = "마을"
 
+    def _비활성(self, 요약):
+        return (
+            요약["슬롯번호"] == gameflow.자동저장슬롯
+        )  # 자동 저장 칸은 직접 덮어쓰지 않는다
+
     def _선택(self, 슬롯번호):
         앱 = App.get_running_app()
-        if 앱.게임상태 is None:
+        if 앱.게임상태 is None or 슬롯번호 == gameflow.자동저장슬롯:
             return
         gameflow.게임_저장(앱.게임상태, 슬롯번호)
         self.안내라벨.text = f"{슬롯번호}번 슬롯에 저장했습니다."

@@ -6,6 +6,7 @@ from game.system import dungeon_system, effect_engine, potion_system, town_syste
 from game.system.combat import formula
 from game.controller.ctl_battle import 전투_시작
 from game.controller.ctl_party import 캐릭터_장비데이터, 캐릭터_최대HP
+from game.controller.ctl_session import 자동_저장
 from game.controller.ctl_registry import (
     던전_레지스트리,
     마을파일_레지스트리,
@@ -65,6 +66,7 @@ def 연결지역_처리(게임상태, 연결정보):
         게임상태["던전상태"] = None
         마을명 = 마을파일_레지스트리[연결맵]["마을명"]
         게임상태["진행도"]["현재마을"] = 마을명
+        자동_저장(게임상태)  # 던전에서 마을로 돌아왔다 - 자동 저장 칸에 덮어쓴다
         return {"타입": "마을", "마을명": 마을명}
     if 연결맵 in 던전_레지스트리:
         # 던전 -> 던전 연결(로리엔 -> 로리엔 안쪽, 숏컷 등). "진입좌표"로

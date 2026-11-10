@@ -443,7 +443,12 @@ def test_세이브_구버전_형식과_요약(임시_세이브폴더):
         "파티인원수": 1,
     }
     요약 = save_system.전체_세이브_요약()
-    assert [s.get("비어있음", False) for s in 요약] == [True, False, True]
+    assert [s.get("비어있음", False) for s in 요약] == [
+        True,
+        True,
+        False,
+        True,
+    ]  # 0번은 자동 저장 칸
     with pytest.raises(FileNotFoundError):
         save_system.게임_불러오기(1)
     save_system.세이브_삭제(1)  # 없는 슬롯 삭제는 조용히 넘어간다
@@ -569,9 +574,9 @@ def test_세이브_본파일도_백업도_못_읽으면_손상오류_요약은_�
 
     # 슬롯 하나가 망가져도 목록은 만들어지고 다른 슬롯은 그대로다(메인 메뉴가 막히지 않는다)
     요약 = save_system.전체_세이브_요약()
-    assert 요약[0]["대표캐릭터명"] == "온전"
-    assert 요약[1] == {"슬롯번호": 2, "손상": True}
-    assert 요약[2] == {"슬롯번호": 3, "비어있음": True}
+    assert 요약[1]["대표캐릭터명"] == "온전"
+    assert 요약[2] == {"슬롯번호": 2, "손상": True}
+    assert 요약[3] == {"슬롯번호": 3, "비어있음": True}
 
     # 형태가 틀린 JSON(리스트, 진행도 없음)도 손상으로 본다
     (임시_세이브폴더 / "slot_3.json").write_text("[1, 2]", encoding="utf-8")
@@ -605,7 +610,7 @@ def test_gameflow는_손상오류를_그대로_올린다(임시_세이브폴더)
     assert gf.세이브_손상오류 is save_system.세이브_손상오류
     with pytest.raises(gf.세이브_손상오류):
         gf.게임_불러오기(1)
-    assert gf.전체_세이브_요약()[0] == {"슬롯번호": 1, "손상": True}
+    assert gf.전체_세이브_요약()[1] == {"슬롯번호": 1, "손상": True}
 
 
 # 세이브 버전과 마이그레이션(N1b)
