@@ -251,7 +251,9 @@ class 던전맵위젯(Widget):
             return None
         if 코드 not in self._텍스처_캐시:
             try:
-                self._텍스처_캐시[코드] = CoreImage(_캐릭터이미지_경로(코드)).texture
+                텍스처 = CoreImage(_캐릭터이미지_경로(코드)).texture
+                텍스처.mag_filter = "nearest"  # 도트가 번지지 않게
+                self._텍스처_캐시[코드] = 텍스처
             except Exception:  # kivy는 못 읽는 그림에 Exception 자체를 던진다
                 self._텍스처_캐시[코드] = None
         return self._텍스처_캐시[코드]
@@ -482,8 +484,17 @@ class 던전맵위젯(Widget):
         플레이어크기 = (칸폭 - 여백폭 * 2, 칸높이 - 여백높이 * 2)
         텍스처 = self._플레이어_텍스처()
         if 텍스처 is not None:
+            # 원래 비율 그대로, 도트 하나 크기는 모든 직업이 같다(gameflow.캐릭터_도트배율 -
+            # 보통 크기 그림이 칸 안쪽에 맞는 배율, 2026-11-10). 칸 바닥 가운데에 세우고 큰 그림은
+            # 칸을 넘는 대로 둔다(사용자 결정).
+            도트 = gameflow.캐릭터_도트배율(*플레이어크기)
+            폭, 높이 = 텍스처.width * 도트, 텍스처.height * 도트
             Color(1, 1, 1, 1)
-            Rectangle(texture=텍스처, pos=플레이어위치, size=플레이어크기)
+            self._플레이어_사각 = Rectangle(
+                texture=텍스처,
+                pos=(x + 칸폭 / 2 - 폭 / 2, y + 여백높이 / 2),
+                size=(폭, 높이),
+            )
         else:
             Color(1, 0.15, 0.15, 1)
             Ellipse(pos=플레이어위치, size=플레이어크기)
