@@ -68,6 +68,8 @@ __all__ = [
     "적_HP표시",
     "적_이름표",
     "적_챔피언버프",
+    "상태아이콘_파일",
+    "상태_아이콘",
     "아군_목록",
     "새_로그_가져오기",
     "_연출_모양_파일",
@@ -375,6 +377,52 @@ def 적_챔피언버프(적참가자):
     """전투 화면 그림 칸 위쪽에 나열할 챔피언 버프 이름(#621) - 뽑힌 순서 그대로, 돌연변이는 빼고
     (이름표 첫 줄에 보인다). 챔피언이 아니면 빈 목록."""
     return list((적참가자.get("원본") or {}).get("챔피언버프") or [])
+
+
+# 전투 화면 그림 칸 오른쪽 아래에 쌓는 상태 아이콘(#623, 사용자 지정 2026-11-10) - 이 19개뿐이고
+# 그 밖의 상태는 아이콘이 없다. 순서는 쌓는 순서(사용자가 준 목록 순). 그림은 game/assets/status/.
+# 가속 = 버프 "일반행동증가", 무적 = 상태이상 "무적" 또는 시전자무적 홀딩이 남은 시전자(홀딩무적).
+상태아이콘_파일 = {
+    "출혈": "asset_status_bleeding.png",
+    "화상": "asset_status_burn.png",
+    "감전": "asset_status_shock.png",
+    "중독": "asset_status_poison.png",
+    "암흑": "asset_status_darkness.png",
+    "기절": "asset_status_stun.png",
+    "석화": "asset_status_stone.png",
+    "빙결": "asset_status_freeze.png",
+    "수면": "asset_status_sleep.png",
+    "혼란": "asset_status_confusion.png",
+    "구속": "asset_status_bind.png",
+    "둔화": "asset_status_slow.png",
+    "저주": "asset_status_curse.png",
+    "슈퍼아머": "asset_status_superarmor.png",
+    "가속": "asset_status_haste.png",
+    "축복": "asset_status_bless.png",
+    "무적": "asset_status_invincible.png",
+    "공격력감소": "asset_status_attack_down.png",
+    "방어감소": "asset_status_defense_down.png",
+}
+
+
+def 상태_아이콘(게임상태, 참가자):
+    """참가자 그림 칸에 쌓을 상태 아이콘 [(이름, 파일), ...] - 상태이상·디버프·버프 중 아이콘이 있는 것만,
+    같은 것은 하나, 상태아이콘_파일 순서로. 쓰러지거나 도망친 대상은 빈 목록."""
+    if not 참가자.get("생존") or 참가자.get("도망"):
+        return []
+    걸린 = {
+        {"일반행동증가": "가속"}.get(항목.get("이름"), 항목.get("이름"))
+        for 칸 in ("상태이상", "디버프", "버프")
+        for 항목 in 참가자.get(칸) or []
+    }
+    # 홀딩무적 - damage.홀딩무적인가와 같은 조건이지만 화면 조회라 홀딩을 정리하지 않는다
+    if any(
+        항목.get("시전자무적") and 항목.get("시전자id") == 참가자.get("id")
+        for p in 게임상태["전투상태"]["참가자"]
+        for 항목 in damage.홀딩_목록(p)
+    ):
+        걸린.add("무적")
+    return [(이름, 파일) for 이름, 파일 in 상태아이콘_파일.items() if 이름 in 걸린]
 
 
 def 적_HP표시(게임상태, 적참가자):
