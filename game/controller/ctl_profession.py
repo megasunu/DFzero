@@ -3,11 +3,17 @@
 # (화면은 gameflow.py 창구만 부른다. 설명은 gameflow.py 머리말)
 #
 # 봉인해제/봉인변환 규칙은 magic_seal_system.py. 장비해체는 상점에 있던 것을 옮겨 온 것이라
-# 함수는 ctl_shop의 상점_해체*를 그대로 쓴다. 장비강화/마법부여는 아직 미구현.
+# 함수는 ctl_shop의 상점_해체*를 그대로 쓴다. 마법부여는 아직 미구현.
+# 장비강화(강화/증폭/재련, #636) 규칙은 enhance_system.py.
 # 인형사: item_doll.py 인형을 "제작재료"로 만든다 - 소지품 소모품에 1개, 처음이면 도감 "인형"에 등록.
 
 from game.data.item.item_doll import 인형_데이터
-from game.system import collection_system, magic_seal_system, player_system
+from game.system import (
+    collection_system,
+    enhance_system,
+    magic_seal_system,
+    player_system,
+)
 from game.controller.ctl_registry import 직업_레지스트리
 from game.controller.ctl_party import 플레이어뷰
 from game.controller.ctl_equip import 장비변경_후처리
@@ -22,11 +28,15 @@ __all__ = [
     "전문직업_인형목록",
     "전문직업_인형상세",
     "전문직업_인형제작",
+    "장비강화_메뉴",
+    "전문직업_강화목록",
+    "전문직업_강화",
     "_실행",
 ]
 
 전문직업_메뉴 = ["장비강화", "장비해체", "마법부여", "봉인해제", "봉인변환", "인형사"]
-전문직업_구현됨 = {"장비해체", "봉인해제", "봉인변환", "인형사"}
+전문직업_구현됨 = {"장비강화", "장비해체", "봉인해제", "봉인변환", "인형사"}
+장비강화_메뉴 = list(enhance_system.메뉴)
 전문직업_비용글 = f"{magic_seal_system.비용['골드']}G + 레어 소울 {magic_seal_system.비용['레어 소울']}개"
 
 
@@ -101,3 +111,28 @@ def 전문직업_인형제작(게임상태, 이름):
         플레이어뷰(게임상태), "소모품", 이름, 인형_데이터[이름]["제작재료"]
     )
     collection_system.등록(게임상태["진행도"], "인형", 이름)
+
+
+def 전문직업_강화목록(게임상태, 선택지):
+    """[장비강화] 선택지(무기강화 등)의 대상 - [{"이름", "아이템", "탭", "캐릭터", "슬롯", "수량", "비용",
+    "비용글", "불가"}]. 장착 중인 것(파티원/숙소 동료)은 캐릭터마다 한 줄. 커먼/봉인된 장비는 없다."""
+    목록 = enhance_system.대상목록(
+        플레이어뷰(게임상태),
+        게임상태["상점카탈로그"]["장비"],
+        선택지,
+        숙소=게임상태.get("모험단숙소", []),
+    )
+    for 항목 in 목록:
+        항목["비용글"] = enhance_system.비용글(항목["비용"])
+    return 목록
+
+
+def 전문직업_강화(게임상태, 항목, 선택지):
+    """항목 하나를 1 올린다(항상 성공). 새 이름. 안 되거나 비용이 모자라면 ValueError."""
+    return _실행(
+        게임상태,
+        항목,
+        lambda 플레이어, 항목: enhance_system.실행(
+            플레이어, 게임상태["상점카탈로그"]["장비"], 항목, 선택지
+        ),
+    )

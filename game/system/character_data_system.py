@@ -19,7 +19,7 @@ from game.data.job_level.job_level_000x_style import (
     직업스타일,
     직업스타일_성장레벨,
 )
-from game.system import dice_utils
+from game.system import dice_utils, enhance_system
 from game.system.combat import formula
 
 # =====================================================
@@ -214,8 +214,13 @@ def 약점스탯_목록(캐릭터):
 
 def 차수_계산(캐릭터):
     """레벨 1~5는 1차수(비전직), 6~10은 2차수(1차전직), 11~15는 3차수(각성),
-    16~20은 4차수(2차각성)다 (job_level_format.py 참고)."""
-    return ((캐릭터["레벨"] - 1) // 5) + 1
+    16~20은 4차수(2차각성)다 (job_level_format.py 참고). 증폭한 무기를 장착하면 증폭만큼 더한다
+    (장비강화 #636 - 본인의 차수를 쓰는 모든 곳)."""
+    return (
+        ((캐릭터["레벨"] - 1) // 5)
+        + 1
+        + enhance_system.무기_증폭(캐릭터.get("장착장비"))
+    )
 
 
 def 최대HP_공식(레벨, 레벨당체력증가, 건강보정치):

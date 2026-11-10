@@ -1257,7 +1257,7 @@ class 상점화면(Screen):
 class 전문직업화면(상점화면):
     """마을 [전문직업] - 장비강화/장비해체/마법부여/봉인해제/봉인변환(2026-10-15 사용자 결정), 인형사(2026-10-19).
     장비해체는 상점에 있던 [해체]를 옮겨 온 것(상점화면의 해체 목록을 그대로 쓴다).
-    봉인해제/봉인변환은 장착 중인 장비도 고를 수 있다. 장비강화/마법부여는 미구현.
+    봉인해제/봉인변환/장비강화(#636)는 장착 중인 장비도 고를 수 있다. 마법부여는 미구현.
     인형사는 인형제작 창 - 인형마다 필요 재료(보유/필요), [상세보기], [제작]."""
 
     제목 = "전문직업"
@@ -1276,6 +1276,8 @@ class 전문직업화면(상점화면):
                 버튼.bind(on_release=lambda *_: self._탭목록_그리기("해체", "장비"))
             elif 메뉴 == "인형사":
                 버튼.bind(on_release=lambda *_: self._인형사_그리기())
+            elif 메뉴 == "장비강화":
+                버튼.bind(on_release=lambda *_: self._강화메뉴_그리기())
             elif 구현됨:
                 버튼.bind(on_release=lambda *_, m=메뉴: self._봉인_그리기(m))
             self.내용틀.add_widget(버튼)
@@ -1284,15 +1286,16 @@ class 전문직업화면(상점화면):
         나가기버튼.bind(on_release=self._나가기)
         self.내용틀.add_widget(나가기버튼)
 
-    def _하위창_틀(self, 제목글):
-        """[◀ 뒤로] + 제목 줄과 스크롤 목록틀(self._목록틀)을 그린다 - 봉인해제/봉인변환/인형사 공용."""
+    def _하위창_틀(self, 제목글, 뒤로=None):
+        """[◀ 뒤로] + 제목 줄과 스크롤 목록틀(self._목록틀)을 그린다 - 봉인해제/봉인변환/인형사/장비강화 공용.
+        뒤로를 주면 [◀ 뒤로]가 그것을 부른다(기본은 전문직업 메뉴)."""
         self._비우기()
         상단 = BoxLayout(
             orientation="horizontal", size_hint=(1, None), height=글자_높이()
         )
         뒤로버튼 = Button(text="◀ 뒤로", size_hint=(0.32, 1))
         뒤로키_버튼(뒤로버튼)
-        뒤로버튼.bind(on_release=lambda *_: self._메인_그리기())
+        뒤로버튼.bind(on_release=lambda *_: (뒤로 or self._메인_그리기)())
         상단.add_widget(뒤로버튼)
         상단.add_widget(Label(text=제목글, size_hint=(0.68, 1)))
         self.내용틀.add_widget(상단)
@@ -1368,6 +1371,98 @@ class 전문직업화면(상점화면):
             return
         self._골드_갱신()
         self._봉인목록_채우기(모드)
+        self.안내라벨.text = f"{항목['이름']} -> {새이름}"
+
+    # ------------------------------------------------------------ 장비강화 (#636)
+
+    def _강화메뉴_그리기(self):
+        """[장비강화] - 무기강화/무기증폭/무기재련/방어구강화/악세재련/특수장비증폭."""
+        self._하위창_틀("장비강화")
+        self.안내라벨.text = ""
+        for 선택지 in gameflow.장비강화_메뉴:
+            버튼 = Button(
+                text=선택지,
+                font_size=_버튼_폰트크기,
+                size_hint=(1, None),
+                height=글자_높이() * 1.6,
+            )
+            버튼.bind(on_release=lambda *_, s=선택지: self._강화_그리기(s))
+            self._목록틀.add_widget(버튼)
+
+    def _강화_그리기(self, 선택지):
+        """선택지의 소지품/장착 장비 목록 - 줄마다 이름(장착 중이면 (착용중)), 비용, [자세히], 실행 버튼."""
+        self._하위창_틀(선택지, 뒤로=self._강화메뉴_그리기)
+        self._강화목록_채우기(선택지)
+
+    def _강화목록_채우기(self, 선택지):
+        목록틀 = self._목록틀
+        목록틀.clear_widgets()
+        항목들 = gameflow.전문직업_강화목록(App.get_running_app().게임상태, 선택지)
+        if not 항목들:
+            목록틀.add_widget(
+                Label(
+                    text="강화할 수 있는 장비가 없습니다.",
+                    size_hint=(1, None),
+                    height=글자_높이(),
+                )
+            )
+            return
+        for 항목 in 항목들:
+            목록틀.add_widget(self._강화_행(선택지, 항목))
+
+    def _강화_행(self, 선택지, 항목):
+        글자 = _행_글자크기
+        행 = BoxLayout(
+            orientation="horizontal", size_hint=(1, None), height=72, spacing=4
+        )
+        위치 = (
+            f" (착용중) - {항목['캐릭터']['캐릭터명']}"
+            if 항목["캐릭터"] is not None
+            else f" x{항목['수량']}"
+        )
+        왼쪽 = BoxLayout(orientation="vertical", size_hint=(0.6, 1))
+        for 글, 크기 in (
+            (f"{아이템_이름_글(항목['아이템'])}{위치}", 글자),
+            (
+                항목["불가"] or f"비용: {항목['비용글']}",
+                "13sp",
+            ),  # 아래 줄 - 비용 또는 못 하는 이유
+        ):
+            라벨 = Label(
+                text=글,
+                markup=True,
+                halign="left",
+                valign="middle",
+                font_size=크기,
+                shorten=True,
+                shorten_from="right",
+            )
+            라벨.bind(size=lambda inst, size: setattr(inst, "text_size", size))
+            왼쪽.add_widget(라벨)
+        행.add_widget(왼쪽)
+        자세히버튼 = Button(text="자세히", size_hint=(0.16, 1), font_size=글자)
+        자세히버튼.bind(on_release=lambda *_: self._자세히보기(항목["아이템"]))
+        행.add_widget(자세히버튼)
+        실행버튼 = Button(
+            text=선택지[-2:],
+            size_hint=(0.24, 1),
+            font_size=글자,
+            disabled=bool(항목["불가"]),
+        )
+        실행버튼.bind(on_release=lambda *_: self._강화_실행(선택지, 항목))
+        행.add_widget(실행버튼)
+        return 행
+
+    def _강화_실행(self, 선택지, 항목):
+        try:
+            새이름 = gameflow.전문직업_강화(
+                App.get_running_app().게임상태, 항목, 선택지
+            )
+        except ValueError as 오류:
+            self.안내라벨.text = str(오류)
+            return
+        self._골드_갱신()
+        self._강화목록_채우기(선택지)
         self.안내라벨.text = f"{항목['이름']} -> {새이름}"
 
     # ------------------------------------------------------------ 인형사 (인형제작 창)

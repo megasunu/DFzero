@@ -400,6 +400,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_상점_구매판매(상태, 매니저)
         yield from self._단계_상점_해체(상태, 매니저)
         yield from self._단계_봉인(상태, 매니저)
+        yield from self._단계_장비강화(상태, 매니저)
         yield from self._단계_인형사(상태, 매니저)
 
     def _단계_상점_구매판매(self, 상태, 매니저):
@@ -559,7 +560,7 @@ class 스모크앱(main.DnfMobileApp):
             if isinstance(w, Button)
         ]
         assert 메뉴글[:6] == [
-            ("장비강화 (미구현)", True),
+            ("장비강화", False),
             ("장비해체", False),
             ("마법부여 (미구현)", True),
             ("봉인해제", False),
@@ -632,7 +633,7 @@ class 스모크앱(main.DnfMobileApp):
         assert not gf.상점_일괄해체_대상(상태, "커먼", "전체")
         _찍기("shop_dismantle_batch_after")
         결과["단계"].append(
-            "전문직업 메뉴 6개(장비강화/마법부여 미구현), 상점에 해체 없음, "
+            "전문직업 메뉴 6개(마법부여 미구현), 상점에 해체 없음, "
             "장비해체(장비 -> 소울 + 큐브 조각, [전체] 탭, 일괄해체 커먼/전체 확인 팝업)"
         )
 
@@ -692,6 +693,68 @@ class 스모크앱(main.DnfMobileApp):
         yield 0.3
         결과["단계"].append(
             "봉인해제(착용 중인 무기 -> 마법의 무기, 100G/레어 소울), 봉인변환(다른 능력), 소울 부족 안내"
+        )
+
+    def _단계_장비강화(self, 상태, 매니저):
+        """[전문직업] 장비강화(#636) - 여섯 선택지, 착용 중인 무기 강화((착용중) 표시), 강화한 무기는 증폭 못 함"""
+        화면 = 매니저.get_screen("전문직업")
+        소지품 = 상태["소지품"]
+        귀검사 = 상태["파티"]["파티원"][0]
+        소지품["장비"]["강철 소검"] = 소지품["장비"].get("강철 소검", 0) + 1
+        gf.장비_교체(상태, 귀검사, "무기", "강철 소검")
+        소지품["골드"] = 1000
+        소지품["재료"]["언커먼 소울"] = 3
+
+        def 버튼들(틀, 글):
+            return [
+                w
+                for w in 틀.walk(restrict=True)
+                if isinstance(w, Button) and w.text == 글
+            ]
+
+        매니저.current = "전문직업"
+        yield 0.3
+        화면._메인_그리기()
+        버튼들(화면.내용틀, "장비강화")[0].dispatch("on_release")
+        yield 0.3
+        선택지 = [
+            w.text for w in 화면._목록틀.walk(restrict=True) if isinstance(w, Button)
+        ]
+        assert 선택지 == gf.장비강화_메뉴, 선택지
+        _찍기("profession_enhance_menu")
+        버튼들(화면._목록틀, "무기강화")[0].dispatch("on_release")
+        yield 0.3
+
+        def 줄_버튼(이름, 버튼글):
+            """이름 글(과 "(착용중)")이 든 줄의 실행 버튼 - 목록에는 다른 장비 줄도 있다."""
+            행 = next(
+                행
+                for 행 in 화면._목록틀.children
+                if any(
+                    isinstance(w, Label) and 이름 in w.text and "(착용중)" in w.text
+                    for w in 행.walk(restrict=True)
+                )
+            )
+            return 버튼들(행, 버튼글)[0]
+
+        _찍기("profession_enhance_list")
+        줄_버튼("강철 소검", "강화").dispatch("on_release")
+        yield 0.3
+        assert 귀검사["장착장비"]["무기"] == "+1강 강철 소검", 귀검사["장착장비"]
+        assert "+1강 강철 소검" in 화면.안내라벨.text, 화면.안내라벨.text
+        assert 소지품["골드"] == 900 and 소지품["재료"]["언커먼 소울"] == 2
+        _찍기("profession_enhance_done")
+        # 강화한 무기는 증폭할 수 없다(버튼이 꺼진다), [◀ 뒤로]는 장비강화 선택지로
+        화면._강화_그리기("무기증폭")
+        yield 0.3
+        assert 줄_버튼("+1강 강철 소검", "증폭").disabled
+        버튼들(화면.내용틀, "◀ 뒤로")[0].dispatch("on_release")
+        yield 0.3
+        assert 버튼들(화면._목록틀, "특수장비증폭")
+        화면._나가기()
+        yield 0.3
+        결과["단계"].append(
+            "장비강화(선택지 6개, 착용 중인 무기 강화 (착용중)/100G+언커먼 소울, 강화한 무기 증폭 불가, 뒤로)"
         )
 
     def _단계_인형사(self, 상태, 매니저):
