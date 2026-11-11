@@ -1258,7 +1258,7 @@ class 상점화면(Screen):
 class 전문직업화면(상점화면):
     """마을 [전문직업] - 장비강화/장비해체/마법부여/봉인해제/봉인변환(2026-10-15 사용자 결정), 인형사(2026-10-19).
     장비해체는 상점에 있던 [해체]를 옮겨 온 것(상점화면의 해체 목록을 그대로 쓴다).
-    봉인해제/봉인변환/장비강화(#636)는 장착 중인 장비도 고를 수 있다. 마법부여는 미구현.
+    봉인해제/봉인변환/장비강화(#636)/마법부여(#178)는 장착 중인 장비도 고를 수 있다.
     인형사는 인형제작 창 - 인형마다 필요 재료(보유/필요), [상세보기], [제작]."""
 
     제목 = "전문직업"
@@ -1279,6 +1279,8 @@ class 전문직업화면(상점화면):
                 버튼.bind(on_release=lambda *_: self._인형사_그리기())
             elif 메뉴 == "장비강화":
                 버튼.bind(on_release=lambda *_: self._강화메뉴_그리기())
+            elif 메뉴 == "마법부여":
+                버튼.bind(on_release=lambda *_: self._부여_그리기())
             elif 메뉴 == "연금술":
                 버튼.bind(on_release=lambda *_: self._연금술_그리기())
             elif 구현됨:
@@ -1466,6 +1468,130 @@ class 전문직업화면(상점화면):
             return
         self._골드_갱신()
         self._강화목록_채우기(선택지)
+        self.안내라벨.text = f"{항목['이름']} -> {새이름}"
+
+    # ------------------------------------------------------------ 마법부여 (#178)
+
+    def _부여_그리기(self, 탭=None):
+        """[마법부여] - 부위 탭 2줄 + 그 부위의 소지품/장착 장비 목록(줄마다 [자세히], [선택])."""
+        탭줄들 = gameflow.마법부여_탭줄()
+        self._부여탭 = 탭 or 탭줄들[0][0]
+        self._하위창_틀("마법부여")
+        칸수 = max(len(줄) for 줄 in 탭줄들)
+        그룹 = f"마법부여부위{id(self)}"
+        for 줄 in 탭줄들:  # 제목 줄과 목록 사이에 넣는다(목록 스크롤이 맨 끝 = index 0)
+            self.내용틀.add_widget(
+                탭_줄(
+                    줄,
+                    self._부여목록_채우기,
+                    self._부여탭,
+                    높이=글자_높이("14sp"),
+                    그룹=그룹,
+                    칸수=칸수,
+                ),
+                index=1,
+            )
+        self._부여목록_채우기(self._부여탭)
+
+    def _부여목록_채우기(self, 탭):
+        self._부여탭 = 탭
+        목록틀 = self._목록틀
+        목록틀.clear_widgets()
+        항목들 = gameflow.전문직업_마법부여목록(App.get_running_app().게임상태, 탭)
+        if not 항목들:
+            목록틀.add_widget(
+                Label(
+                    text=f"{탭} 장비가 없습니다.",
+                    size_hint=(1, None),
+                    height=글자_높이(),
+                )
+            )
+            return
+        for 항목 in 항목들:
+            아래 = 항목["불가"] or (
+                f"마법부여: {항목['아이템'].get('마법부여') or '없음'}"
+            )
+            목록틀.add_widget(
+                self._부여_행(
+                    항목,
+                    아래,
+                    "선택",
+                    lambda 항목=항목: self._부여선택_그리기(항목),
+                    자세히=True,
+                )
+            )
+
+    def _부여_행(self, 항목, 아래글, 버튼글, 누르기, 자세히=False):
+        """[이름(위치) / 아래글] + ([자세히]) + 실행 버튼 한 줄 - 장비 목록과 마법부여 목록 공용."""
+        글자 = _행_글자크기
+        행 = BoxLayout(
+            orientation="horizontal", size_hint=(1, None), height=72, spacing=4
+        )
+        if "아이템" in 항목:
+            위치 = (
+                f" (착용중) - {항목['캐릭터']['캐릭터명']}"
+                if 항목["캐릭터"] is not None
+                else f" x{항목['수량']}"
+            )
+            위글 = f"{아이템_이름_글(항목['아이템'])}{위치}"
+        else:
+            위글 = f"{항목['이름']} - {항목['설명']}"
+        왼쪽 = BoxLayout(orientation="vertical", size_hint=(0.6 if 자세히 else 0.76, 1))
+        for 글, 크기 in ((위글, 글자), (아래글, "13sp")):
+            라벨 = Label(
+                text=글,
+                markup=True,
+                halign="left",
+                valign="middle",
+                font_size=크기,
+                shorten=True,
+                shorten_from="right",
+            )
+            라벨.bind(size=lambda inst, size: setattr(inst, "text_size", size))
+            왼쪽.add_widget(라벨)
+        행.add_widget(왼쪽)
+        if 자세히:
+            자세히버튼 = Button(text="자세히", size_hint=(0.16, 1), font_size=글자)
+            자세히버튼.bind(on_release=lambda *_: self._자세히보기(항목["아이템"]))
+            행.add_widget(자세히버튼)
+        실행버튼 = Button(
+            text=버튼글,
+            size_hint=(0.24, 1),
+            font_size=글자,
+            disabled=bool(항목["불가"]),
+        )
+        실행버튼.bind(on_release=lambda *_: 누르기())
+        행.add_widget(실행버튼)
+        return 행
+
+    def _부여선택_그리기(self, 항목):
+        """장비 하나에 걸 수 있는 마법부여 목록 - 줄마다 이름·효과, 비용(또는 못 거는 이유), [부여]."""
+        탭 = self._부여탭
+        self._하위창_틀(
+            f"마법부여 - {항목['이름']}", 뒤로=lambda: self._부여_그리기(탭)
+        )
+        self.안내라벨.text = ""
+        게임상태 = App.get_running_app().게임상태
+        for 선택지 in gameflow.전문직업_마법부여선택지(게임상태, 항목):
+            self._목록틀.add_widget(
+                self._부여_행(
+                    선택지,
+                    선택지["불가"] or f"비용: {선택지['비용글']}",
+                    "부여",
+                    lambda s=선택지["이름"]: self._부여_실행(항목, s),
+                )
+            )
+
+    def _부여_실행(self, 항목, 부여):
+        try:
+            새이름 = gameflow.전문직업_마법부여(
+                App.get_running_app().게임상태, 항목, 부여
+            )
+        except ValueError as 오류:
+            self.안내라벨.text = str(오류)
+            return
+        self._골드_갱신()
+        self._부여_그리기(self._부여탭)
         self.안내라벨.text = f"{항목['이름']} -> {새이름}"
 
     # ------------------------------------------------------------ 인형사 (인형제작 창)
