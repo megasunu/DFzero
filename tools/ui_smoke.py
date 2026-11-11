@@ -406,6 +406,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_상점_해체(상태, 매니저)
         yield from self._단계_봉인(상태, 매니저)
         yield from self._단계_장비강화(상태, 매니저)
+        yield from self._단계_마법부여(상태, 매니저)
         yield from self._단계_인형사(상태, 매니저)
         yield from self._단계_연금술(상태, 매니저)
 
@@ -568,7 +569,7 @@ class 스모크앱(main.DnfMobileApp):
         assert 메뉴글[:7] == [
             ("장비강화", False),
             ("장비해체", False),
-            ("마법부여 (미구현)", True),
+            ("마법부여", False),
             ("봉인해제", False),
             ("봉인변환", False),
             ("인형사", False),
@@ -640,7 +641,7 @@ class 스모크앱(main.DnfMobileApp):
         assert not gf.상점_일괄해체_대상(상태, "커먼", "전체")
         _찍기("shop_dismantle_batch_after")
         결과["단계"].append(
-            "전문직업 메뉴 7개(마법부여 미구현), 상점에 해체 없음, "
+            "전문직업 메뉴 7개, 상점에 해체 없음, "
             "장비해체(장비 -> 소울 + 큐브 조각, [전체] 탭, 일괄해체 커먼/전체 확인 팝업)"
         )
 
@@ -764,6 +765,82 @@ class 스모크앱(main.DnfMobileApp):
         yield 0.3
         결과["단계"].append(
             "장비강화(선택지 6개, 착용 중인 무기 강화 (착용중)/100G+언커먼 소울+라이언 코크스, 강화한 무기 증폭 불가, 뒤로)"
+        )
+
+    def _단계_마법부여(self, 상태, 매니저):
+        """[전문직업] 마법부여(#178) - 부위 탭 2줄, 착용 중인 무기 [선택] -> 비노슈 [부여](100G, 화속성),
+        같은 것은 다시 못 건다, 무기가 아닌 부위는 [선택]이 꺼진다"""
+        화면 = 매니저.get_screen("전문직업")
+        소지품 = 상태["소지품"]
+        귀검사 = 상태["파티"]["파티원"][0]
+        무기 = 귀검사["장착장비"]["무기"]  # 장비강화 단계가 남긴 +1강 강철 소검
+        소지품["골드"] = 1000
+
+        def 버튼들(틀, 글):
+            return [
+                w
+                for w in 틀.walk(restrict=True)
+                if isinstance(w, (Button, ToggleButton)) and w.text == 글
+            ]
+
+        def 줄_버튼(이름, 버튼글):
+            행 = next(
+                행
+                for 행 in 화면._목록틀.children
+                if any(
+                    isinstance(w, Label) and 이름 in w.text and "(착용중)" in w.text
+                    for w in 행.walk(restrict=True)
+                )
+            )
+            return 버튼들(행, 버튼글)[0]
+
+        매니저.current = "전문직업"
+        yield 0.3
+        화면._메인_그리기()
+        버튼들(화면.내용틀, "마법부여")[0].dispatch("on_release")
+        yield 0.3
+        탭들 = [
+            w.text
+            for w in 화면.내용틀.walk(restrict=True)
+            if isinstance(w, ToggleButton)
+        ]
+        assert 탭들 == [t for 줄 in gf.마법부여_탭줄() for t in 줄], 탭들
+        _찍기("profession_enchant_list")
+        줄_버튼(무기, "선택").dispatch("on_release")
+        yield 0.3
+        _찍기("profession_enchant_choices")
+        부여버튼 = 버튼들(화면._목록틀, "부여")
+        assert len(부여버튼) == 1 and not 부여버튼[0].disabled
+        부여버튼[0].dispatch("on_release")
+        yield 0.3
+        새이름 = f"{무기} [비노슈]"
+        assert 귀검사["장착장비"]["무기"] == 새이름, 귀검사["장착장비"]
+        assert 소지품["골드"] == 900, 소지품["골드"]
+        assert 새이름 in 화면.안내라벨.text, 화면.안내라벨.text
+        무기데이터 = 상태["장비데이터모음"][귀검사["캐릭터명"]]["무기"]
+        assert 무기데이터["속성"] == "화속성", 무기데이터
+        _찍기("profession_enchant_done")
+        # 같은 것은 다시 못 건다(라벨 글은 대괄호가 마크업 회피 글자라 이름 앞부분으로 찾는다)
+        줄_버튼("강철 소검", "선택").dispatch("on_release")
+        yield 0.3
+        assert 버튼들(화면._목록틀, "부여")[0].disabled
+        assert any(
+            isinstance(w, Label) and "이미 부여됨" in w.text
+            for w in 화면._목록틀.walk(restrict=True)
+        )
+        버튼들(화면.내용틀, "◀ 뒤로")[0].dispatch("on_release")
+        yield 0.3
+        # 무기가 아닌 부위는 걸 수 있는 것이 없다
+        버튼들(화면.내용틀, "상의")[0].dispatch("on_release")
+        yield 0.3
+        assert all(b.disabled for b in 버튼들(화면._목록틀, "선택"))
+        # 뒤 단계(공격 연출 등)는 무속성 무기를 기대한다 - 부여 전 무기로 돌려 끼운다
+        소지품["장비"][무기] = 소지품["장비"].get(무기, 0) + 1
+        gf.장비_교체(상태, 귀검사, "무기", 무기)
+        화면._나가기()
+        yield 0.3
+        결과["단계"].append(
+            "마법부여(부위 탭 12개, 착용 중인 +1강 무기 선택 -> 비노슈 100G 화속성, 이미 부여됨, 상의는 선택 꺼짐)"
         )
 
     def _단계_인형사(self, 상태, 매니저):
