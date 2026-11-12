@@ -797,6 +797,43 @@ def test_버프_디버프_상태이상은_필수_키를_가진다(이름, 레지
     assert not 문제, "\n".join(문제)
 
 
+def test_버프_디버프_효과는_사전이거나_사전의_목록이다():
+    """읽는 쪽(combat.stats)은 사전을 [사전]으로 감싸 목록과 같게 처리한다 - 그 밖의 형태(글자,
+    사전이 아닌 원소)는 조용히 무시되므로 여기서 막는다. 빈 목록 = 수치 효과 없음(시한부)."""
+    틀림 = [
+        (이름, 정의.get("효과"))
+        for 레지스트리 in (버프목록, 디버프목록)
+        for 이름, 정의 in 레지스트리.items()
+        if not (
+            정의.get("효과") is None
+            or isinstance(정의["효과"], dict)
+            or (
+                isinstance(정의["효과"], list)
+                and all(isinstance(원소, dict) for 원소 in 정의["효과"])
+            )
+        )
+    ]
+    assert 틀림 == []
+
+
+def test_기술효과_지속턴은_정수나_전투종료나_소모시다():
+    """skill_effects.py 머리말 "지속턴: 숫자 | "전투종료" | "소모시"". 그 밖의 글자는 플레이어 경로
+    (skill_grant._효과_지속턴)가 수식으로 평가하다 0이 되고, 몬스터 경로(combat.resources)는 정수만
+    받아 영구 버프가 된다 - "전투 종료" 같은 오타를 여기서 막는다. 키가 없으면 수명을 다른 키가 정한다."""
+    from game.data.buff.skill_effects import 기술효과목록
+
+    틀림 = [
+        (이름, 정의["지속턴"])
+        for 이름, 정의 in 기술효과목록.items()
+        if "지속턴" in 정의
+        and not (
+            (isinstance(정의["지속턴"], int) and not isinstance(정의["지속턴"], bool))
+            or 정의["지속턴"] in ("전투종료", "소모시")
+        )
+    ]
+    assert 틀림 == []
+
+
 @pytest.mark.parametrize(
     "이름,레지스트리,접미",
     [("버프", lambda: 버프목록, "버프"), ("디버프", lambda: 디버프목록, "디버프")],
