@@ -2047,6 +2047,7 @@ class 스모크앱(main.DnfMobileApp):
         yield 0.5
         assert 매니저.current == 도착, 매니저.current
         if 도착 == "마을":
+            assert 상태["던전상태"] is None, "패배 귀환 뒤에도 던전 안이다(#671)"
             gf.던전_진입(상태, "dungeon_01A_D01_Lorien")
 
     def _단계_전투보상(self, 상태, 전리품줄):
