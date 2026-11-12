@@ -626,6 +626,53 @@ def test_몬스터_특성_이름은_정의가_있다():
     )
 
 
+_몬스터_발동조건_시점 = {"공격명중시", "턴종료시", "라운드종료시", "전투시작시"}
+
+
+def _해제시_조건인가(조건):
+    return (
+        isinstance(조건, str)
+        and 조건.endswith(" 해제시")
+        and 조건[: -len(" 해제시")] in 상태이상목록
+    )
+
+
+def test_몬스터_특성_발동조건과_효과_형태를_지킨다():
+    """monster_ability.py 양식 3번. traits의 공격명중시·턴종료시·라운드종료시·전투시작시 판정은 글자를
+    != 로만 비교하므로 목록으로 쓰면 조용히 발동하지 않는다. 목록은 해제시 판정만 받는다."""
+    from game.data.monster.monster_ability import 특성목록
+
+    틀림 = {}
+    for 이름, 정의 in 특성목록.items():
+        조건 = 정의.get("발동조건")
+        if 조건 is None:
+            continue
+        if isinstance(조건, list):
+            맞음 = bool(조건) and all(_해제시_조건인가(c) for c in 조건)
+        else:
+            맞음 = 조건 in _몬스터_발동조건_시점 or _해제시_조건인가(조건)
+        효과 = 정의.get("효과")
+        if not 맞음:
+            틀림[이름] = f"발동조건 {조건!r}"
+        elif not (isinstance(효과, dict) and "종류" in 효과):
+            틀림[이름] = f"트리거형인데 효과가 '종류' 사전이 아님: {효과!r}"
+    assert not 틀림, 틀림
+
+
+def test_명중시버프강탈은_True_또는_전부다():
+    """monster_actions.버프_강탈은 "전부"만 따로 보고 나머지 참값은 하나 강탈로 처리한다.
+    True == 1 이므로 is True로 따로 본다."""
+    from game.data.monster.monster_ability import 특성목록
+
+    틀림 = {
+        이름: 정의["명중시버프강탈"]
+        for 이름, 정의 in 특성목록.items()
+        if "명중시버프강탈" in 정의
+        and not (정의["명중시버프강탈"] is True or 정의["명중시버프강탈"] == "전부")
+    }
+    assert not 틀림, 틀림
+
+
 def _이름_참조_모으기(값, 결과):
     """데이터에서 버프/상태이상/자원을 이름으로 가리키는 곳을 모은다."""
     if isinstance(값, dict):
