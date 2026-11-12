@@ -310,19 +310,16 @@ def _소환조건_사유(참가자, 스킬데이터):
     if 그룹 and not any(소환수_마릿수(참가자, n) for n in 소환그룹_이름들(그룹)):
         return "돌려보낼 하급정령이 없다."
     if 스킬데이터.get("분류") == "소환스킬" and not 스킬데이터.get("소환한도"):
-        버프 = 스킬데이터.get("버프획득")
-        효과 = (
-            (resources.효과정의_조회(버프)[0] or {}).get("효과")
-            if isinstance(버프, str)
-            else None
-        )
-        if (
-            isinstance(효과, dict)
-            and 효과.get("타입") == "소환수"
-            and not 효과.get("중첩당공격")
-            and 소환수_마릿수(참가자, 효과.get("소환수이름")) > 0
-        ):
-            return f"'{효과['소환수이름']}'은(는) 이미 소환되어 있다."
+        버프들 = 스킬데이터.get("버프획득") or []
+        for 버프 in [버프들] if isinstance(버프들, str) else 버프들:
+            효과 = (resources.효과정의_조회(버프)[0] or {}).get("효과")
+            if (
+                isinstance(효과, dict)
+                and 효과.get("타입") == "소환수"
+                and not 효과.get("중첩당공격")
+                and 소환수_마릿수(참가자, 효과.get("소환수이름")) > 0
+            ):
+                return f"'{효과['소환수이름']}'은(는) 이미 소환되어 있다."
     return None
 
 
