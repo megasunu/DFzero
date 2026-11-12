@@ -1382,6 +1382,37 @@ def test_퍽은_분류가_퍽이고_타입에_처리종류가_하나다():
     assert 틀림 == []
 
 
+_퍽_선행조건_키 = {"특성보유", "스킬보유", "전직", "가용무기", "최소능력치"}
+
+
+def test_퍽_선행조건과_획득스킬_형태():
+    """ "선행조건"은 None 또는 아는 키 하나의 사전 - 모르는 키는 판정(ctl_levelup._선행조건_만족)을
+    조용히 통과한다. "획득스킬"은 스킬획득 퍽이면 글자 하나, 특성획득 퍽이면 글자의 목록(광기)."""
+    from game.system.character_levelup_system import 퍽_처리타입
+
+    틀림 = []
+    for 모듈이름 in ("0000", "010m", "020f", "030f", "040f", "050f"):
+        모듈 = importlib.import_module(f"game.data.perks.perks_class_{모듈이름}")
+        for 이름, 정의 in 모듈.퍽목록.items():
+            조건 = 정의.get("선행조건")
+            if 조건 is not None and not (
+                isinstance(조건, dict)
+                and len(조건) == 1
+                and set(조건) <= _퍽_선행조건_키
+            ):
+                틀림.append((모듈이름, 이름, "선행조건", 조건))
+            if "획득스킬" in 정의:
+                값, 처리 = 정의["획득스킬"], 퍽_처리타입(정의)
+                맞음 = (처리 == "스킬획득" and isinstance(값, str)) or (
+                    처리 == "특성획득"
+                    and isinstance(값, list)
+                    and all(isinstance(v, str) for v in 값)
+                )
+                if not 맞음:
+                    틀림.append((모듈이름, 이름, "획득스킬", 값))
+    assert 틀림 == []
+
+
 def test_특성의_면역은_효과_원소로_적는다():
     """엔진(combat.status.상태이상_면역)은 특성 "효과"/"상시효과"의 {"변동대상": "상태이상면역"}만 본다 -
     최상위 "면역"/"면역획득" 키는 읽는 곳이 없어 조용히 무시된다(#395 공중사격). "면역특성" 타입은
