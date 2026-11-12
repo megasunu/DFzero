@@ -60,6 +60,7 @@ def test_S53_자동전투_100라운드_패배(monkeypatch, 임시_세이브폴�
     assert gf.전투_결과_정리(상태) == "적승리"
     assert not gf.전투_보상_대기중(상태)
     gf.패배_귀환(상태)
+    assert 상태["던전상태"] is None  # 던전을 나와 마을로(#671)
     assert 웨펀마스터["현재HP"] == gf.캐릭터_최대HP(상태, 웨펀마스터)
     assert gf.세이브_존재(gf.자동저장슬롯)
 
