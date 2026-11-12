@@ -4,7 +4,7 @@
 from game.data.character.job_info import 직업정보
 from game.data.item.item_potion import 포션_데이터
 from game.system import rng, skill_system
-from game.system.combat import formula, resources, stats
+from game.system.combat import flow, formula, resources, stats
 from game.controller.ctl_party import 캐릭터_최대HP
 from game.controller.ctl_potion import 아군_포션사용, 아군_회복포션_목록
 from game.controller.ctl_battle import (
@@ -28,6 +28,7 @@ __all__ = [
     "_자동전투_스킬",
     "_자동전투_포션",
     "자동전투_한_턴",
+    "자동전투_최대라운드",
     "_칠_수_있는_적",
     "_전력전투_차례",
     "_전력전투_제외타겟",
@@ -91,6 +92,11 @@ def _자동전투_포션(게임상태, 참가자):
     return None
 
 
+# 자동전투 라운드 제한(#670, 2026-11-12 사용자 결정) - 자동전투로 진행할 때 전투가 이 라운드를 넘겨도
+# 끝나지 않으면 패배한다(이길 수 없는 이뮨 챔피언 전투가 끝없이 돌지 않게). 라운드는 전투 시작부터 센다.
+자동전투_최대라운드 = 100
+
+
 def 자동전투_한_턴(게임상태):
     """[자동전투] - 현재 턴의 아군이 일반행동(과 열린 추가행동)이 남아 있는 동안 지정 가능한 적
     중 무작위 하나를 일반공격하고(마법사 계열은 매직미사일 - _자동전투_대체스킬),
@@ -105,6 +111,9 @@ def 자동전투_한_턴(게임상태):
     현재 = 현재_턴_참가자(게임상태)
     if 현재["진영"] != "아군" or not 현재["생존"]:
         raise ValueError("자동전투는 아군 차례에만 진행한다.")
+    if 전투상태["라운드"] > 자동전투_최대라운드:
+        flow.시간초과_패배(전투상태, 자동전투_최대라운드)
+        return
     _자동전투_포션(게임상태, 현재)
     if 자동전투_방식() == "전력전투":
         전력전투_한_차례(게임상태)
