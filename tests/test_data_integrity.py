@@ -662,6 +662,17 @@ def _이름_풀림(이름):
     return 이름.startswith("소환:") and 이름[len("소환:") :] in summon_00.소환수목록
 
 
+def test_직업_스킬의_버프획득은_하나여도_리스트다():
+    틀림 = [
+        f"{직업}/{이름}"
+        for 직업, 정보 in gf.직업_레지스트리.items()
+        for 이름, 스킬 in 정보["스킬목록"].items()
+        for 자료 in (스킬, 스킬.get("특성강화") or {})
+        if "버프획득" in 자료 and not isinstance(자료["버프획득"], list)
+    ]
+    assert not 틀림
+
+
 def test_스킬과_몬스터_패턴의_버프_이름은_풀린다():
     참조 = []
     for 직업, 정보 in gf.직업_레지스트리.items():
