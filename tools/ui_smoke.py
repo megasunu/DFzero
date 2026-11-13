@@ -1961,6 +1961,15 @@ class 스모크앱(main.DnfMobileApp):
         while 전투.선택모드 and 전투.선택모드[0] == "반복지정":
             _대상버튼들()[0].trigger_action(duration=0)
         assert _팝업수() == 0, _팝업수()
+        # 스킬은 작업 스레드에서 돈다 - 엔진이 멈출 때까지 기다린 뒤 로그를 본다(#698 CI에서 기다리지 않아
+        # 로그가 아직 비어 한 번 실패했다). 이어지는 적 차례의 반응 팝업은 쓰지 않는다
+        for _ in range(50):
+            if not 전투._엔진중:
+                break
+            if "사용 안 함" in _팝업글():
+                _팝업_버튼("사용 안 함").dispatch("on_release")
+            yield 0.2
+        assert not 전투._엔진중, _팝업글()
         # 상급마법은 캐스팅 - 쓰면 턴이 끝나고(화면이 바로 넘긴다) 밀린 차례에 쏜다(2026-10-22)
         비고들 = [
             str(x.get("비고", "")) for x in 전투상태["로그"] if isinstance(x, dict)
