@@ -6,6 +6,7 @@
     python tools/balance_sim.py 전체 --딜 --판 200  # 24종 전원 자동전투 판당 딜(인형은 따로, 기록하지 않음)
     python tools/balance_sim.py 전체 --지표 --판 200  # 딜지분·승률(버퍼를 끈 판까지, #617). --전체지표면 다섯 가지
     python tools/balance_sim.py 크루세이더 --기대      # 전투 없이 수치만 본 기대값(일반공격·피격·버프별)
+    python tools/balance_sim.py 전체 --분석 --묶음 10 --판 30  # 분석용 전투(#690, tools/balance_analysis.py)
 
 패턴 = 시험 직업의 차례 1~슬롯수마다 고를 행동(일반공격 또는 보유 스킬). 차례마다 슬롯의 스킬을 먼저
 쓰고, 그 스킬이 일반행동을 쓰지 않았으면(보조행동·소모 없음) 같은 차례에 다음 슬롯도 쓴다(최대 3칸 -
@@ -31,6 +32,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 기록경로 = os.path.join(ROOT, "docs", "balance", "patterns.json")
+분석보고서경로 = os.path.join(ROOT, "docs", "balance", "분석.md")
 
 슬롯수 = 10
 판당_최대턴 = 400
@@ -207,20 +209,50 @@ def _오늘():
 # ------------------------------------------------------------------ 전투
 
 
+def 게임():
+    """(gameflow, scenario, support, rng) - tests/의 결정적 성장 도우미와 스킬 대상 고르기를 쓴다
+    (tests/support.py, tests/scenario.py). game을 부르기 전에 sys.path를 맞춘다."""
+    for 경로 in (ROOT, os.path.join(ROOT, "tests")):
+        if 경로 not in sys.path:
+            sys.path.insert(0, 경로)
+    import gameflow as gf
+    import scenario
+    import support
+    from game.system import rng
+
+    return gf, scenario, support, rng
+
+
+def 파티_상태(구성):
+    """[(1차 직업, 전직), ...] -> 측정 조건(파티레벨, 전직 추천 무기, 무기 마스터리)으로 키운 새 게임 상태.
+    구성 순서가 파티원 순서다. 시작 전에 난수를 1로 맞춰 같은 구성이면 언제나 같은 상태다."""
+    gf, scenario, support, rng = 게임()
+    rng.시드(1)
+    상태 = support.새게임([("", 직업) for 직업, _ in 구성])
+    for c, (_, 전직) in zip(상태["파티"]["파티원"], 구성):
+        종류 = scenario.전직_추천무기[전직]
+        시작종류 = gf.캐릭터_장착아이템(상태, c, "무기")["타입"]
+        support.성장(
+            상태,
+            c,
+            조건["파티레벨"],
+            전직=전직,
+            스킬습득=True,
+            무기숙련=[f"{종류} 마스터리", f"{시작종류} 마스터리"],
+        )
+        무기 = scenario.측정_무기(상태, 종류)
+        # 같은 종류를 드는 파티원이 있어도(레인저·패러메딕 리볼버) 한 자루씩
+        상태["소지품"]["장비"][무기] = 상태["소지품"]["장비"].get(무기, 0) + 1
+        gf.장비_교체(상태, c, "무기", 무기)
+    return 상태
+
+
 class 측정:
     """시험 직업 하나의 전투 환경. 파티 구성마다 캐릭터를 한 번 키워 두고 판마다 쉬고 싸운다."""
 
     def __init__(self, 직업):
-        # tests/의 결정적 성장 도우미와 스킬 대상 고르기를 쓴다(tests/support.py, tests/scenario.py)
-        for 경로 in (ROOT, os.path.join(ROOT, "tests")):
-            if 경로 not in sys.path:
-                sys.path.insert(0, 경로)
-        import gameflow as gf
-        import scenario
-        import support
-        from game.system import rng
-
-        self.gf, self.scenario, self.support, self.rng = gf, scenario, support, rng
+        gf, self.scenario, self.support, self.rng = 게임()
+        self.gf = gf
         self.직업 = 직업
         # 시험자는 전직의 1차 직업으로 만든다(배틀메이지면 마법사)
         self.기본직업 = next(
@@ -246,28 +278,7 @@ class 측정:
     def _상태(self, 나머지):
         키 = tuple(나머지)
         if 키 not in self.상태모음:
-            gf, support = self.gf, self.support
-            self.rng.시드(1)
-            상태 = support.새게임(
-                [("", self.기본직업)] + [("", 직업) for 직업, _ in 나머지]
-            )
-            구성 = [(self.기본직업, self.직업)] + list(나머지)
-            for c, (_, 전직) in zip(상태["파티"]["파티원"], 구성):
-                종류 = self.scenario.전직_추천무기[전직]
-                시작종류 = gf.캐릭터_장착아이템(상태, c, "무기")["타입"]
-                support.성장(
-                    상태,
-                    c,
-                    조건["파티레벨"],
-                    전직=전직,
-                    스킬습득=True,
-                    무기숙련=[f"{종류} 마스터리", f"{시작종류} 마스터리"],
-                )
-                무기 = self.scenario.측정_무기(상태, 종류)
-                # 같은 종류를 드는 파티원이 있어도(레인저·패러메딕 리볼버) 한 자루씩
-                상태["소지품"]["장비"][무기] = 상태["소지품"]["장비"].get(무기, 0) + 1
-                gf.장비_교체(상태, c, "무기", 무기)
-            self.상태모음[키] = 상태
+            self.상태모음[키] = 파티_상태([(self.기본직업, self.직업)] + list(나머지))
         return self.상태모음[키]
 
     def 전투(self, 나머지, 패턴, 시드):
@@ -668,6 +679,33 @@ def 기대_표(직업):
     return 표
 
 
+def _분석_명령(a):
+    """--분석: 고른 무작위 파티를 뽑아 분석 전투를 돌리고 보고서를 쓴다(#690)."""
+    if a.직업 != "전체":
+        print("--분석은 전직을 고르게 섞으므로 직업 자리에 '전체'를 쓴다")
+        return 2
+    if ROOT not in sys.path:
+        sys.path.insert(0, ROOT)
+    from tools import balance_analysis as ba
+
+    판 = a.판 or 30
+    파티들 = ba.고른_파티들(측정_전직표(), a.묶음, random.Random(a.분석시드))
+    print(f"분석 전투: 파티 {len(파티들)}개 x {판}판, 일꾼 {a.일꾼}", flush=True)
+    판들 = ba.분석_실행(파티들, 판, a.섞기, a.일꾼, 시작시드=a.분석시드 * 100000)
+    요약 = ba.집계(판들)
+    정보 = {
+        "판": 판,
+        "섞기": a.섞기,
+        "파티": len(파티들),
+        "규칙지문": 규칙지문(),
+        "커밋": _커밋(),
+    }
+    with open(a.보고서, "w", encoding="utf-8", newline="\n") as f:
+        f.write(ba.보고서(요약, 정보))
+    print(f"판 {요약['판']}, 승률 {요약['승률'] * 100:.1f}% - 보고서: {a.보고서}")
+    return 0
+
+
 def main(argv=None):
     for stream in (sys.stdout, sys.stderr):  # cp1252 콘솔에서도 한글(#200)
         if hasattr(stream, "reconfigure"):
@@ -675,7 +713,12 @@ def main(argv=None):
     p = argparse.ArgumentParser(description="직업 밸런스 모의전투(승률패턴)")
     p.add_argument("직업", help="시험할 전직 이름(예: 검귀)")
     p.add_argument("--처음부터", action="store_true", help="다섯 단계를 새로 돌린다")
-    p.add_argument("--판", type=int, default=200, help="단계(또는 이어서)마다 판 수")
+    p.add_argument(
+        "--판",
+        type=int,
+        default=None,
+        help="단계(또는 이어서)마다 판 수(기본 200), --분석이면 파티마다 판 수(기본 30)",
+    )
     p.add_argument("--비교", action="store_true", help="같은 판으로 스킬 하나씩 맞대기")
     p.add_argument(
         "--기록", default=기록경로, help="기록 파일(기본 docs/balance/patterns.json)"
@@ -700,7 +743,33 @@ def main(argv=None):
         action="store_true",
         help="전투 없이 수치만으로 일반공격·피격·버프별 기대값(#617)",
     )
+    p.add_argument(
+        "--분석",
+        action="store_true",
+        help="분석용 전투(#690): 고른 무작위 4인 파티가 무작위 행동으로 싸운다. 직업 자리는 '전체'",
+    )
+    p.add_argument(
+        "--묶음", type=int, default=10, help="--분석: 묶음 수(묶음마다 파티 6개)"
+    )
+    p.add_argument(
+        "--섞기", type=float, default=0.3, help="--분석: 아군 차례가 전력전투일 확률"
+    )
+    p.add_argument(
+        "--분석시드", type=int, default=0, help="--분석: 파티 뽑기와 판 시드"
+    )
+    p.add_argument(
+        "--일꾼", type=int, default=os.cpu_count() or 1, help="--분석: 프로세스 수"
+    )
+    p.add_argument(
+        "--보고서",
+        default=분석보고서경로,
+        help="--분석: 보고서(기본 docs/balance/분석.md)",
+    )
     a = p.parse_args(argv)
+    if a.분석:
+        return _분석_명령(a)
+    if a.판 is None:
+        a.판 = 200
     직업들 = (
         [j for 전직들 in 측정_전직표().values() for j in 전직들]
         if a.직업 == "전체"
