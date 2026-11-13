@@ -6,6 +6,8 @@
 
 import json
 
+import pytest
+
 import gameflow as gf
 from game.system import save_system
 from tests import support
@@ -98,6 +100,38 @@ def test_자동저장_칸도_다른_슬롯처럼_요약된다(임시_세이브�
     요약 = gf.전체_세이브_요약()[0]
     assert 요약["슬롯번호"] == 0 and 요약["현재마을"] == 상태["진행도"]["현재마을"]
     assert 요약["대표캐릭터명"] == 상태["파티"]["파티원"][0]["캐릭터명"]
+
+
+def test_보스를_이긴_맵에서만_귀환하고_마을에_와서_자동_저장한다(임시_세이브폴더):
+    """보스를 이긴 맵(진행도에 영구 기록)에서는 상호작용 버튼이 [귀환]이다(#679, 주인 결정 - 계속 보인다).
+    귀환하면 던전을 나와 들어온 마을로 가고 자동 저장한다."""
+    from game.system import town_system
+
+    상태 = 새게임()
+    마을 = 상태["진행도"]["현재마을"]
+    with pytest.raises(ValueError):
+        gf.던전_귀환(상태)  # 마을에서는 못 한다
+    gf.던전_진입(상태, 던전파일명(1))
+    assert not gf.귀환_가능(상태)
+    with pytest.raises(ValueError):
+        gf.던전_귀환(상태)  # 보스를 이기기 전
+    파일명 = 상태["던전상태"]["던전파일명"]
+    보스좌표 = next(
+        좌표
+        for 좌표, o in 상태["던전상태"]["맵정보"]["오브젝트"].items()
+        if o.get("타입") == "보스전투"
+    )
+    town_system.오브젝트_클리어_기록(상태["진행도"], 파일명, 보스좌표)
+    assert gf.귀환_가능(상태)
+    gf.던전_진입(상태, 던전파일명(2))
+    assert not gf.귀환_가능(상태), "다른 맵의 보스는 아직"
+    gf.던전_진입(상태, 던전파일명(1))
+    assert gf.귀환_가능(상태), "다시 들어와도 계속"
+    assert not gf.세이브_존재(자동)
+    assert gf.던전_귀환(상태) == 마을
+    assert 상태["던전상태"] is None and 상태["진행도"]["현재마을"] == 마을
+    assert _저장본(임시_세이브폴더)["던전위치"] is None
+    assert not gf.귀환_가능(상태)
 
 
 def test_레벨업을_확정하면_마을_상태로_자동_저장한다(임시_세이브폴더):

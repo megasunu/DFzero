@@ -313,6 +313,7 @@ class 스모크앱(main.DnfMobileApp):
         yield from self._단계_스프레이_플라스크(상태, 매니저)
         yield from self._단계_도감_업적(상태, 매니저)
         yield from self._단계_메뉴(상태, 매니저)
+        yield from self._단계_보스_귀환(상태, 매니저)
 
     def _단계_파티생성(self, 상태, 매니저):
         """파티 구성 화면 - 이름칸(안내/글자 수 제한)과 이름 중복"""
@@ -5342,6 +5343,69 @@ class 스모크앱(main.DnfMobileApp):
         _위젯_버튼(화면, "◀ 나가기").trigger_action(duration=0)
         yield 0.3
         assert 매니저.current == "마을"
+
+    def _단계_보스_귀환(self, 상태, 매니저):
+        """보스를 이긴 맵의 [귀환](#679) - 이기기 전에는 꺼진 [상호작용], 이긴 뒤에는 [귀환] ->
+        "귀환하시겠습니까?" [아니요]면 던전 그대로, [예]면 마을. 오브젝트 앞에서는 [상호작용]."""
+        from game.system import town_system
+
+        앱 = App.get_running_app()
+        앱.게임상태 = 상태
+        상태["전투상태"] = None
+        _팝업_닫기()
+        던전 = 매니저.get_screen("던전")
+        gf.던전_진입(상태, "dungeon_01A_D02_Hollow_Lorien")
+        상태["던전상태"]["위치"] = (12, 3)
+        매니저.current = "던전"
+        던전.갱신()
+        yield 0.3
+        버튼 = 던전.상호작용버튼
+        assert 버튼.text == "상호작용" and 버튼.disabled, (버튼.text, 버튼.disabled)
+        town_system.오브젝트_클리어_기록(
+            상태["진행도"], "dungeon_01A_D02_Hollow_Lorien", (15, 3)
+        )
+        던전.갱신()
+        yield 0.3
+        assert 버튼.text == "귀환" and not 버튼.disabled, (버튼.text, 버튼.disabled)
+        _찍기("dungeon_return_button")
+        버튼.trigger_action(duration=0)
+        yield 0.3
+        팝업 = Window.children[0]
+        글들 = [w.text for w in 팝업.walk(restrict=True) if isinstance(w, Label)]
+        assert "귀환하시겠습니까?" in 글들, 글들
+        _찍기("dungeon_return_confirm")
+        next(
+            w
+            for w in 팝업.walk(restrict=True)
+            if isinstance(w, Button) and w.text == "아니요"
+        ).trigger_action(duration=0)
+        yield 0.3
+        assert 매니저.current == "던전" and 상태["던전상태"] is not None
+        # 보스(15,3) 왼쪽 칸에서 보스 쪽으로 - 오브젝트 앞에서는 [상호작용]
+        상태["던전상태"]["위치"] = (14, 3)
+        던전.갱신()
+        던전._이동("오른쪽")
+        yield 0.3
+        assert 버튼.text == "상호작용" and not 버튼.disabled, 버튼.text
+        던전.갱신()
+        yield 0.3
+        버튼.trigger_action(duration=0)
+        yield 0.3
+        팝업 = Window.children[0]
+        next(
+            w
+            for w in 팝업.walk(restrict=True)
+            if isinstance(w, Button) and w.text == "예"
+        ).trigger_action(duration=0)
+        yield 0.3
+        assert 매니저.current == "마을", 매니저.current
+        assert 상태["던전상태"] is None
+        상태["진행도"]["클리어한오브젝트"].discard(
+            ("dungeon_01A_D02_Hollow_Lorien", (15, 3))
+        )
+        결과["단계"].append(
+            "보스를 이긴 맵의 [귀환] - 이기기 전 꺼짐, 이긴 뒤 [귀환] -> 확인 창(아니요/예 -> 마을), 오브젝트 앞은 [상호작용]"
+        )
 
     def _단계_메뉴(self, 상태, 매니저):
         """마을/던전 [메뉴] 팝업 - 저장하기/불러오기/설정/메인메뉴로(확인 창), 던전 안 저장 -> 같은 위치로"""
