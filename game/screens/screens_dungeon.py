@@ -21,6 +21,7 @@ from kivy.graphics import Color, Rectangle, Ellipse, ScissorPush, ScissorPop
 import gameflow
 from game.screens.screens_common import (
     게임메뉴_열기,
+    확인_팝업,
     닫기_버튼,
     스크롤_목록,
     _캐릭터이미지_경로,
@@ -673,8 +674,20 @@ class 던전화면(Screen):
             gameflow.이어진_맵_목록(게임상태),
         )
         self.메시지라벨.text = ""
-        self.상호작용버튼.disabled = True
         self._대기중오브젝트 = None
+        self._상호작용버튼_맞추기()
+
+    def _상호작용버튼_맞추기(self):
+        """오브젝트 앞이면 [상호작용], 아니고 이 맵의 보스를 이겼으면 [귀환](#679), 둘 다 아니면 꺼진 [상호작용]."""
+        if self._대기중오브젝트 is not None:
+            self.상호작용버튼.text = "상호작용"
+            self.상호작용버튼.disabled = False
+        elif gameflow.귀환_가능(App.get_running_app().게임상태):
+            self.상호작용버튼.text = "귀환"
+            self.상호작용버튼.disabled = False
+        else:
+            self.상호작용버튼.text = "상호작용"
+            self.상호작용버튼.disabled = True
 
     def _이동(self, 방향):
         앱 = App.get_running_app()
@@ -685,7 +698,7 @@ class 던전화면(Screen):
 
         elif 결과["결과"] == "오브젝트":
             self._대기중오브젝트 = (결과["위치"], 결과["오브젝트"])
-            self.상호작용버튼.disabled = False
+            self._상호작용버튼_맞추기()
             self.메시지라벨.text = "무언가 있습니다. '말 걸기'를 눌러보세요."
 
         elif 결과["결과"] == "전투시작":
@@ -720,6 +733,8 @@ class 던전화면(Screen):
 
     def _상호작용(self, *args):
         if self._대기중오브젝트 is None:
+            if gameflow.귀환_가능(App.get_running_app().게임상태):
+                확인_팝업("귀환", "귀환하시겠습니까?", self._귀환)
             return
         위치, 오브젝트 = self._대기중오브젝트
         앱 = App.get_running_app()
@@ -736,8 +751,18 @@ class 던전화면(Screen):
         else:
             self.메시지라벨.text = "몬스터 데이터가 없어 전투를 시작할 수 없습니다."
 
-        self.상호작용버튼.disabled = True
         self._대기중오브젝트 = None
+        self._상호작용버튼_맞추기()
+
+    def _귀환(self):
+        """[귀환] 확인 창의 [예] - 마을로(자동 저장 포함, gameflow.던전_귀환)."""
+        try:
+            gameflow.던전_귀환(App.get_running_app().게임상태)
+        except ValueError as 오류:
+            self.메시지라벨.text = str(오류)
+            return
+        self.manager.get_screen("마을").갱신()
+        self.manager.current = "마을"
 
     def _스킬_클릭(self, *args):
         """[스킬] - 파티원의 던전스킬(던전 캠핑 등)과 전환스킬(프렌지 켜고 끄기) 목록 팝업. 줄을 누르면 쓴다."""
