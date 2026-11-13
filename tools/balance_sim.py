@@ -7,6 +7,7 @@
     python tools/balance_sim.py 전체 --지표 --판 200  # 딜지분·승률(버퍼를 끈 판까지, #617). --전체지표면 다섯 가지
     python tools/balance_sim.py 크루세이더 --기대      # 전투 없이 수치만 본 기대값(일반공격·피격·버프별)
     python tools/balance_sim.py 전체 --분석 --묶음 10 --판 30  # 분석용 전투(#690, tools/balance_analysis.py)
+    python tools/balance_sim.py 전체 --승률 --묶음 1 --판 20   # 승률용 전투(#691, tools/balance_winrate.py)
 
 패턴 = 시험 직업의 차례 1~슬롯수마다 고를 행동(일반공격 또는 보유 스킬). 차례마다 슬롯의 스킬을 먼저
 쓰고, 그 스킬이 일반행동을 쓰지 않았으면(보조행동·소모 없음) 같은 차례에 다음 슬롯도 쓴다(최대 3칸 -
@@ -33,6 +34,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 기록경로 = os.path.join(ROOT, "docs", "balance", "patterns.json")
 분석보고서경로 = os.path.join(ROOT, "docs", "balance", "분석.md")
+승률보고서경로 = os.path.join(ROOT, "docs", "balance", "승률.md")
 
 슬롯수 = 10
 판당_최대턴 = 400
@@ -247,6 +249,38 @@ def 파티_상태(구성):
     return 상태
 
 
+def 패턴_차례(gf, scenario, 상태, p, 패턴, 실제, 의도):
+    """패턴대로 한 차례 - 지금까지 고른 행동 수(len(의도))번째 슬롯의 스킬을 먼저 쓰고, 그 스킬이 일반행동을 쓰지
+    않았으면 다음 슬롯도(최대 3칸). 못 쓰면 "일반공격"으로 기록하고, 남은 행동은 HP가 가장 낮은 적에게 일반공격.
+    실제(Counter)에 실제로 나간 행동을, 의도(list)에 슬롯마다 한 것을 더한다."""
+    적 = scenario._살아있는_적
+    전투상태 = 상태["전투상태"]
+
+    def 계속():
+        return 전투상태["종료"] is None and p["생존"] and 적(상태)
+
+    for _ in range(3):
+        if not 계속():
+            break
+        k = len(의도)
+        행동 = 패턴[k] if k < len(패턴) else "일반공격"
+        한것 = "일반공격"
+        if 행동 != "일반공격" and gf.스킬_사용_가능여부(상태, p, 행동)[0]:
+            인수 = scenario._스킬_인수(상태, p, 행동)
+            if 인수 is not None:
+                gf.아군_스킬사용(상태, 행동, **인수)
+                실제[행동] += 1
+                한것 = 행동
+        의도.append(한것)
+        if 한것 == "일반공격" or p["행동자원"].get("일반행동", 0) <= 0:
+            break
+    while 계속() and gf.일반공격_가능여부(상태, p):
+        gf.아군_일반공격(상태, 적(상태)[0])
+        실제["일반공격"] += 1
+    if 전투상태["종료"] is None:
+        gf.턴_넘기기(상태)
+
+
 class 측정:
     """시험 직업 하나의 전투 환경. 파티 구성마다 캐릭터를 한 번 키워 두고 판마다 쉬고 싸운다."""
 
@@ -359,32 +393,7 @@ class 측정:
         }
 
     def _시험자_차례(self, 상태, p, 패턴, 실제, 의도):
-        gf, 적 = self.gf, self.scenario._살아있는_적
-        전투상태 = 상태["전투상태"]
-
-        def 계속():
-            return 전투상태["종료"] is None and p["생존"] and 적(상태)
-
-        for _ in range(3):
-            if not 계속():
-                break
-            k = len(의도)
-            행동 = 패턴[k] if k < len(패턴) else "일반공격"
-            한것 = "일반공격"
-            if 행동 != "일반공격" and gf.스킬_사용_가능여부(상태, p, 행동)[0]:
-                인수 = self.scenario._스킬_인수(상태, p, 행동)
-                if 인수 is not None:
-                    gf.아군_스킬사용(상태, 행동, **인수)
-                    실제[행동] += 1
-                    한것 = 행동
-            의도.append(한것)
-            if 한것 == "일반공격" or p["행동자원"].get("일반행동", 0) <= 0:
-                break
-        while 계속() and gf.일반공격_가능여부(상태, p):
-            gf.아군_일반공격(상태, 적(상태)[0])
-            실제["일반공격"] += 1
-        if 전투상태["종료"] is None:
-            gf.턴_넘기기(상태)
+        패턴_차례(self.gf, self.scenario, 상태, p, 패턴, 실제, 의도)
 
 
 # ------------------------------------------------------------------ 실행 방식
@@ -689,7 +698,7 @@ def _분석_명령(a):
     from tools import balance_analysis as ba
 
     판 = a.판 or 30
-    파티들 = ba.고른_파티들(측정_전직표(), a.묶음, random.Random(a.분석시드))
+    파티들 = _고른_파티들(ba, a, 10)
     print(f"분석 전투: 파티 {len(파티들)}개 x {판}판, 일꾼 {a.일꾼}", flush=True)
     판들 = ba.분석_실행(파티들, 판, a.섞기, a.일꾼, 시작시드=a.분석시드 * 100000)
     요약 = ba.집계(판들)
@@ -700,9 +709,57 @@ def _분석_명령(a):
         "규칙지문": 규칙지문(),
         "커밋": _커밋(),
     }
-    with open(a.보고서, "w", encoding="utf-8", newline="\n") as f:
+    경로 = a.보고서 or 분석보고서경로
+    with open(경로, "w", encoding="utf-8", newline="\n") as f:
         f.write(ba.보고서(요약, 정보))
-    print(f"판 {요약['판']}, 승률 {요약['승률'] * 100:.1f}% - 보고서: {a.보고서}")
+    print(f"판 {요약['판']}, 승률 {요약['승률'] * 100:.1f}% - 보고서: {경로}")
+    return 0
+
+
+def _고른_파티들(ba, a, 기본묶음):
+    파티들 = ba.고른_파티들(
+        측정_전직표(), a.묶음 or 기본묶음, random.Random(a.분석시드)
+    )
+    return 파티들[: a.파티수] if a.파티수 else 파티들
+
+
+def _승률_명령(a):
+    """--승률: 고른 무작위 파티마다 파티원 패턴을 다듬어 최고 승률을 찾고 보고서를 쓴다(#691)."""
+    if a.직업 != "전체":
+        print("--승률은 전직을 고르게 섞으므로 직업 자리에 '전체'를 쓴다")
+        return 2
+    if ROOT not in sys.path:
+        sys.path.insert(0, ROOT)
+    from tools import balance_analysis as ba
+    from tools import balance_winrate as bw
+
+    판 = a.판 or 20
+    파티들 = _고른_파티들(ba, a, 1)
+    print(
+        f"승률 전투: 파티 {len(파티들)}개, 학습·검증 {판}판씩, 일꾼 {a.일꾼}",
+        flush=True,
+    )
+    결과 = bw.승률_실행(
+        파티들, 판, a.반복, a.변형수, a.후보스킬, a.일꾼, 시작시드=a.분석시드 * 1000
+    )
+    요약 = bw.집계(결과)
+    정보 = {
+        "판": 판,
+        "반복": a.반복,
+        "변형수": a.변형수,
+        "후보스킬": a.후보스킬,
+        "파티": len(파티들),
+        "규칙지문": 규칙지문(),
+        "커밋": _커밋(),
+    }
+    경로 = a.보고서 or 승률보고서경로
+    with open(경로, "w", encoding="utf-8", newline="\n") as f:
+        f.write(bw.보고서(요약, 정보))
+    평균 = 요약["평균"]
+    print(
+        f"평균 승률 분석 {평균['분석'] * 100:.1f}% / 전력전투 {평균['전력'] * 100:.1f}% / "
+        f"최고 {평균['최고'] * 100:.1f}% - 보고서: {경로}"
+    )
     return 0
 
 
@@ -749,7 +806,25 @@ def main(argv=None):
         help="분석용 전투(#690): 고른 무작위 4인 파티가 무작위 행동으로 싸운다. 직업 자리는 '전체'",
     )
     p.add_argument(
-        "--묶음", type=int, default=10, help="--분석: 묶음 수(묶음마다 파티 6개)"
+        "--승률",
+        action="store_true",
+        help="승률용 전투(#691): 고른 무작위 파티마다 파티원 패턴을 다듬어 최고 승률. 직업 자리는 '전체'",
+    )
+    p.add_argument(
+        "--묶음",
+        type=int,
+        default=None,
+        help="--분석/--승률: 묶음 수(묶음마다 파티 6개, 기본 분석 10 승률 1)",
+    )
+    p.add_argument(
+        "--파티수", type=int, default=None, help="--분석/--승률: 앞에서 이만큼만"
+    )
+    p.add_argument("--반복", type=int, default=2, help="--승률: 파티원을 도는 바퀴 수")
+    p.add_argument(
+        "--변형수", type=int, default=5, help="--승률: 차례마다 변형 후보 수"
+    )
+    p.add_argument(
+        "--후보스킬", type=int, default=4, help="--승률: 첫 슬롯에 넣어 볼 스킬 수"
     )
     p.add_argument(
         "--섞기", type=float, default=0.3, help="--분석: 아군 차례가 전력전투일 확률"
@@ -762,12 +837,14 @@ def main(argv=None):
     )
     p.add_argument(
         "--보고서",
-        default=분석보고서경로,
-        help="--분석: 보고서(기본 docs/balance/분석.md)",
+        default=None,
+        help="--분석/--승률: 보고서(기본 docs/balance/분석.md, 승률.md)",
     )
     a = p.parse_args(argv)
     if a.분석:
         return _분석_명령(a)
+    if a.승률:
+        return _승률_명령(a)
     if a.판 is None:
         a.판 = 200
     직업들 = (
