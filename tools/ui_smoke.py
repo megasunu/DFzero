@@ -856,8 +856,8 @@ class 스모크앱(main.DnfMobileApp):
         줄_버튼(무기, "선택").dispatch("on_release")
         yield 0.3
         _찍기("profession_enchant_choices")
-        부여버튼 = 버튼들(화면._목록틀, "부여")
-        assert len(부여버튼) == 1 and not 부여버튼[0].disabled
+        부여버튼 = 버튼들(화면._목록틀, "부여")  # 비노슈/케라하/지크프리트(#698)
+        assert len(부여버튼) == 3 and not any(b.disabled for b in 부여버튼)
         부여버튼[0].dispatch("on_release")
         yield 0.3
         새이름 = f"{무기} [비노슈]"
@@ -865,8 +865,22 @@ class 스모크앱(main.DnfMobileApp):
         assert 소지품["골드"] == 900, 소지품["골드"]
         assert 새이름 in 화면.안내라벨.text, 화면.안내라벨.text
         무기데이터 = 상태["장비데이터모음"][귀검사["캐릭터명"]]["무기"]
-        assert 무기데이터["속성"] == "화속성", 무기데이터
+        assert 무기데이터["마법부여"]["속성"] == "화속성", 무기데이터
         _찍기("profession_enchant_done")
+        # 상세보기 맨 아래에 마법부여 효과를 따로 적는다(#698)
+        screens_party._아이템_상세_팝업(무기데이터)
+        yield 0.5
+        글 = " ".join(
+            w.text
+            for w in Window.children[0].walk(restrict=True)
+            if isinstance(w, Label)
+        )
+        글 = 글.replace("&bl;", "[").replace("&br;", "]")
+        assert "[b][마법부여] 비노슈[/b]\n무기에 화속성을 부여한다." in 글, 글
+        assert 글.index("무기 공격력") < 글.index("[마법부여]"), 글  # 원래 효과 아래
+        _찍기("profession_enchant_detail")
+        _팝업_닫기()
+        yield 0.3
         # 같은 것은 다시 못 건다(라벨 글은 대괄호가 마크업 회피 글자라 이름 앞부분으로 찾는다)
         줄_버튼("강철 소검", "선택").dispatch("on_release")
         yield 0.3
@@ -877,17 +891,23 @@ class 스모크앱(main.DnfMobileApp):
         )
         버튼들(화면.내용틀, "◀ 뒤로")[0].dispatch("on_release")
         yield 0.3
-        # 무기가 아닌 부위는 걸 수 있는 것이 없다
+        # 특수장비(귀걸이)는 걸 수 있는 것이 없다
+        소지품["장비"]["망가진 귀걸이"] = 1
+        버튼들(화면.내용틀, "귀걸이")[0].dispatch("on_release")
+        yield 0.3
+        선택들 = 버튼들(화면._목록틀, "선택")
+        assert 선택들 and all(b.disabled for b in 선택들)
+        # 상의는 타우 가드를 걸 수 있다(#698)
         버튼들(화면.내용틀, "상의")[0].dispatch("on_release")
         yield 0.3
-        assert all(b.disabled for b in 버튼들(화면._목록틀, "선택"))
+        assert any(not b.disabled for b in 버튼들(화면._목록틀, "선택"))
         # 뒤 단계(공격 연출 등)는 무속성 무기를 기대한다 - 부여 전 무기로 돌려 끼운다
         소지품["장비"][무기] = 소지품["장비"].get(무기, 0) + 1
         gf.장비_교체(상태, 귀검사, "무기", 무기)
         화면._나가기()
         yield 0.3
         결과["단계"].append(
-            "마법부여(부위 탭 12개, 착용 중인 +1강 무기 선택 -> 비노슈 100G 화속성, 이미 부여됨, 상의는 선택 꺼짐)"
+            "마법부여(부위 탭 12개, 착용 중인 +1강 무기 선택 -> 비노슈 100G 화속성, 상세보기 맨 아래 마법부여, 이미 부여됨, 귀걸이는 선택 꺼짐, 상의는 켜짐)"
         )
 
     def _단계_인형사(self, 상태, 매니저):
