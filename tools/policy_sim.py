@@ -272,9 +272,12 @@ class 탐색정책(_정책):
 
     이름 = "승률용"
 
-    def __init__(self, 시드, 후보수=8, 횟수=3, 라운드=2):
+    def __init__(self, 시드, 후보수=8, 횟수=3, 라운드=2, 굴림방식="전력전투"):
         super().__init__(시드)
         self.후보수, self.횟수, self.라운드 = 후보수, 횟수, 라운드
+        self.굴림방식 = (
+            굴림방식  # 굴려 볼 때 아군 자동전투 방식(전력전투는 정확하지만 느리다)
+        )
 
     def _줄이기(self, 후보):
         if len(후보) <= self.후보수:
@@ -293,6 +296,8 @@ class 탐색정책(_정책):
             return 남김[0]
         시드들 = [self.R.getrandbits(32) for _ in range(self.횟수)]
         저장 = rng.상태()
+        방식 = gf.자동전투_방식()
+        gf.자동전투_방식_설정(self.굴림방식)
         try:
             점수 = {
                 i: sum(self._굴려보기(상태, 참가자, 후보[i], s) for s in 시드들)
@@ -300,6 +305,7 @@ class 탐색정책(_정책):
             }
         finally:
             rng.상태_복원(저장)
+            gf.자동전투_방식_설정(방식)
         최고 = max(점수.values())
         return self.R.choice([i for i in 남김 if 점수[i] == 최고])
 
