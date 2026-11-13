@@ -16,6 +16,7 @@ from game.system import character_creation_system as 캐릭터생성
 from game.system import character_data_system as 캐릭터데이터
 from game.system import character_levelup_system as 캐릭터레벨업
 from game.controller.ctl_party import 스킬데이터모음_생성
+from game.controller.ctl_session import 자동_저장
 from game.controller.ctl_registry import (
     전직_레지스트리,
     전직_시작레벨,
@@ -24,6 +25,7 @@ from game.controller.ctl_registry import (
 )
 
 __all__ = [
+    "캐릭터_레벨업_확정",
     "_이름들",
     "약점스탯_투자가능",
     "성장불가_스탯",
@@ -322,6 +324,14 @@ def 캐릭터_레벨업_적용(캐릭터, **선택):
     _캐릭터_레벨업_적용(작업본, dict(선택))
     캐릭터.clear()
     캐릭터.update(작업본)
+    return 캐릭터
+
+
+def 캐릭터_레벨업_확정(게임상태, 캐릭터, **선택):
+    """화면의 [레벨업] 확정 - 캐릭터_레벨업_적용 뒤 자동 저장 칸에 덮어쓴다(#677). 던전 안이어도
+    자동 저장은 마을 상태로 쓴다(주인 결정 - 불러오면 마을에서 시작)."""
+    캐릭터_레벨업_적용(캐릭터, **선택)
+    자동_저장(게임상태)
     return 캐릭터
 
 

@@ -44,7 +44,7 @@ class 메인메뉴화면(Screen):
 
         레이아웃.add_widget(
             Label(
-                text="던전앤파이터 모바일 프로토타입",
+                text="던파Zero",  # 주인 지정(#677) - 긴 제목은 화면 폭을 넘어 잘렸다
                 font_size="28sp",
                 size_hint=(1, 0.3),
             )
