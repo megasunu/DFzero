@@ -33,6 +33,7 @@ tools/balance_sim.py  직업 밸런스 모의전투(승률·랜덤·변형 패�
 tools/balance_analysis.py  밸런스 체크 분석용 전투(무작위 파티·무작위 행동, 회귀 기여) - balance_sim --분석이 부른다
 tools/npc_sheet.py   움직이는 NPC 그림 -> 장면 이어 붙인 정지 웹피 + 장면 정보(필로 필요, 게이트 밖에서 직접)
 tools/dungeon_sim.py  던전 밸런스 모의전투(인카운트·보스·원정 승률, 조정안 임시 적용) - 결과는 docs/balance/, 게이트 밖에서 직접
+tools/policy_sim.py  측정용 전투 정책 - 분석용(무작위)·승률용(몬테카를로 탐색)·전력전투 비교(균등 4인 파티) - 게이트 밖에서 직접
 .githooks/         pre-commit (줄끝 통일)
 docs/              빌드 노트, 구조 점검 보고서, 리뷰 보고서, 시나리오 장부, 게임 규칙(game-rules.md)
 README.md          입구(실행/개발/구조/빌드 요약)
