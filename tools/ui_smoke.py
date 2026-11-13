@@ -5378,12 +5378,39 @@ class 스모크앱(main.DnfMobileApp):
         yield 0.3
         버튼(팝업(), "타이틀로 돌아가기").trigger_action(duration=0)
         yield 0.3
+        문구 = [w.text for w in 팝업().walk(restrict=True) if isinstance(w, Label)]
+        assert (
+            "저장되지 않은 데이터는 삭제됩니다.\n타이틀로 돌아가시겠습니까?" in 문구
+        ), 문구  # 주인 지정 문구(#677)
+        _찍기("menu_title_confirm")
+        버튼(팝업(), "예").trigger_action(duration=0)
+        yield 0.3
+        assert 매니저.current == "메인메뉴", 매니저.current
+        # 메인 화면 제목은 "던파Zero"(#677) - 화면 폭 안에 들어간다
+        제목 = next(
+            w
+            for w in 매니저.current_screen.walk(restrict=True)
+            if isinstance(w, Label) and w.text == "던파Zero"
+        )
+        assert 제목.texture_size[0] <= 매니저.current_screen.width, 제목.texture_size
+        _찍기("main_menu_title")
+        # 마을 화면 아래 [타이틀로 돌아가기]도 확인 창 - [아니요]면 마을 그대로, [예]면 메인메뉴
+        매니저.get_screen("마을").갱신()
+        매니저.current = "마을"
+        yield 0.3
+        버튼(매니저.get_screen("마을"), "타이틀로 돌아가기").trigger_action(duration=0)
+        yield 0.3
+        버튼(팝업(), "아니요").trigger_action(duration=0)
+        yield 0.3
+        assert 매니저.current == "마을", "확인 창 없이 타이틀로 갔다"
+        버튼(매니저.get_screen("마을"), "타이틀로 돌아가기").trigger_action(duration=0)
+        yield 0.3
         버튼(팝업(), "예").trigger_action(duration=0)
         yield 0.3
         assert 매니저.current == "메인메뉴", 매니저.current
         결과["단계"].append(
             "메뉴 팝업(마을/던전 같음) - 저장/설정 갔다 돌아오기, 던전 안 저장 -> 불러오기(확인 창) "
-            "-> 같은 위치, 타이틀로(아니요/예)"
+            "-> 같은 위치, 타이틀로(아니요/예, 주인 지정 문구), 마을 아래 타이틀 버튼도 확인 창, 제목 던파Zero"
         )
 
 
