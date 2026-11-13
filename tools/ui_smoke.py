@@ -3619,6 +3619,14 @@ class 스모크앱(main.DnfMobileApp):
         한 번 더 누르면 꺼진다. 전환스킬이 없으면 팝업 없이 안내 문구."""
         귀검사 = next(c for c in 상태["파티"]["파티원"] if c["직업"] == "귀검사")
         원래 = list(귀검사["보유스킬"])
+        # 레벨 3 이상 마법사는 전환스킬 오라 실드(#412)가 있다 - "전환스킬이 없으면" 확인 동안 잠깐 뺀다
+        다른 = {
+            id(c): (c, list(c["보유스킬"]))
+            for c in 상태["파티"]["파티원"]
+            if c is not 귀검사 and "오라 실드" in c["보유스킬"]
+        }
+        for c, _ in 다른.values():
+            c["보유스킬"].remove("오라 실드")
         try:
             마을 = 매니저.get_screen("마을")
             매니저.current = "마을"
@@ -3656,14 +3664,30 @@ class 스모크앱(main.DnfMobileApp):
             yield 0.4
             assert 귀검사.get("켜진특성") == [], 귀검사.get("켜진특성")
             assert "껐다" in 마을.메시지라벨.text, 마을.메시지라벨.text
+            # 오라 실드(마법사 레벨 3, #412): 특성이 기본 켜짐이라 처음부터 (켜짐) -> 누르면 꺼짐
+            귀검사["보유스킬"].append("오라 실드")
+            귀검사["켜진특성"] = ["오라 실드"]
+            스킬버튼.trigger_action(duration=0)
+            yield 0.3
+            줄 = [b for b in _대상버튼들() if " - 오라 실드" in b.text]
+            assert len(줄) == 1 and "(켜짐)" in 줄[0].text, [
+                b.text for b in _대상버튼들()
+            ]
+            _찍기("town_toggle_aura_shield")
+            줄[0].trigger_action(duration=0)
+            yield 0.4
+            assert 귀검사.get("켜진특성") == [], 귀검사.get("켜진특성")
+            assert "껐다" in 마을.메시지라벨.text, 마을.메시지라벨.text
             결과["단계"].append(
                 "마을 [스킬]: 전환스킬이 없으면 안내 문구. 나선의 넨 (꺼짐) -> MP 없이 켜짐, "
-                "다시 열면 (켜짐) -> 누르면 꺼짐"
+                "다시 열면 (켜짐) -> 누르면 꺼짐. 오라 실드는 처음부터 (켜짐) -> 누르면 꺼짐"
             )
         finally:
             _팝업_닫기()
             귀검사["보유스킬"][:] = 원래
             귀검사.pop("켜진특성", None)
+            for c, 스킬 in 다른.values():
+                c["보유스킬"][:] = 스킬
             마을.메시지라벨.text = ""
 
     def _단계_마을_NPC(self, 상태, 매니저):
