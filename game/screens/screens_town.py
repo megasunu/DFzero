@@ -38,6 +38,7 @@ from game.screens.screens_common import (
     스크롤_목록,
     스탯고르기판,
     확인_팝업,
+    타이틀_경고,
     닫기_버튼,
     탭_줄,
     글자_높이,
@@ -185,7 +186,11 @@ class 마을화면(Screen):
 
         타이틀버튼 = Button(text="타이틀로 돌아가기", size_hint=(1, 0.2))
         타이틀버튼.bind(
-            on_release=lambda *_: setattr(self.manager, "current", "메인메뉴")
+            on_release=lambda *_: 확인_팝업(
+                "타이틀로 돌아가기",
+                타이틀_경고,
+                lambda: setattr(self.manager, "current", "메인메뉴"),
+            )
         )
         나머지.add_widget(타이틀버튼)
 
