@@ -550,7 +550,53 @@ class 스모크앱(main.DnfMobileApp):
             == 2
         )
         _찍기("shop_sell")
-        결과["단계"].append("상점 구매/판매 목록")
+        # 체크박스 판매(#684): 줄 높이 1.5배, 줄마다 [판매] 대신 체크박스, 아래 [일괄해제][일괄선택][판매]
+        from kivy.uix.checkbox import CheckBox
+
+        상의 = [
+            n
+            for n, a in 상태["상점카탈로그"]["장비"]["상의"].items()
+            if a.get("레어도") == "커먼"
+        ][:2]
+        for n in 상의:
+            상태["소지품"]["장비"][n] = 상태["소지품"]["장비"].get(n, 0) + 1
+        _상점_탭(상점, "상의").trigger_action(duration=0)
+        yield 0.4
+        체크들 = [
+            w for w in 상점._목록틀.walk(restrict=True) if isinstance(w, CheckBox)
+        ]
+        assert len(체크들) == len(gf.상점_판매목록(상태, "장비", "상의")) >= 2, len(
+            체크들
+        )
+        assert all(abs(c.parent.height - 84) < 1 for c in 체크들), [
+            c.parent.height for c in 체크들
+        ]
+        assert not any(
+            isinstance(w, Button) and w.text == "판매"
+            for w in 상점._목록틀.walk(restrict=True)
+        ), "줄마다 [판매]가 남았다"
+        아래 = {
+            w.text: w
+            for w in 상점.내용틀.walk(restrict=True)
+            if isinstance(w, Button) and w.text in ("일괄해제", "일괄선택", "판매")
+        }
+        assert set(아래) == {"일괄해제", "일괄선택", "판매"}, set(아래)
+        assert 아래["판매"].x >= 아래["일괄선택"].right - 1, "판매는 오른쪽"
+        아래["일괄선택"].trigger_action(duration=0)
+        assert all(c.active for c in 체크들)
+        아래["일괄해제"].trigger_action(duration=0)
+        assert not any(c.active for c in 체크들)
+        체크들[0].active = True
+        _찍기("shop_sell_check")
+        골드 = 상태["소지품"]["골드"]
+        판매전 = len(gf.상점_판매목록(상태, "장비", "상의"))
+        아래["판매"].trigger_action(duration=0)
+        yield 0.3
+        assert 상태["소지품"]["골드"] > 골드, "체크한 것을 팔지 않았다"
+        assert len(gf.상점_판매목록(상태, "장비", "상의")) == 판매전 - 1
+        결과["단계"].append(
+            "상점 구매/판매 목록, 판매는 체크박스(1.5배 줄, 일괄해제/일괄선택/판매 -> 체크한 것만 팔림)"
+        )
 
     def _단계_상점_해체(self, 상태, 매니저):
         """[전문직업] 장비해체(상점에서 옮김) - 장비 -> 소울/큐브 조각, [전체] 탭, 일괄해체 확인 팝업"""
@@ -1196,9 +1242,41 @@ class 스모크앱(main.DnfMobileApp):
         assert 글들.get("삼중극점 (3차수부터)") is True, 글들
         assert 글들.get("능력치향상") is False, 글들
         assert not any(t.startswith("약점제거") for t in 글들), 글들  # 이미 배움 - 숨김
+        # 퍽마다 [상세보기](#683) - 설명 줄이 다음 버튼과 겹치지 않는다(줄 사이 겹침 없음)
+        퍽팝업 = list(Window.children)[0]
+        퍽버튼 = next(
+            w
+            for w in 퍽팝업.walk(restrict=True)
+            if isinstance(w, Button) and w.text == "능력치향상"
+        )
+        행들 = sorted(
+            {
+                id(b.parent): b.parent
+                for b in 퍽팝업.walk(restrict=True)
+                if isinstance(b, Button) and b.text == "상세보기"
+            }.values(),
+            key=lambda w: -w.y,
+        )
+        assert len(행들) >= 2 and all(
+            a.y >= b.top - 1 for a, b in zip(행들, 행들[1:])
+        ), "퍽 줄이 겹친다"
+        상세 = next(
+            w
+            for w in 퍽버튼.parent.children
+            if isinstance(w, Button) and w.text == "상세보기"
+        )
+        상세.trigger_action(duration=0)
+        yield 0.5
+        상세팝업 = list(Window.children)[0]
+        assert 상세팝업.title == "퍽 상세보기", 상세팝업.title
+        _찍기("perk_detail")
+        상세팝업.dismiss()
+        yield 0.3
         list(Window.children)[0].dismiss()
         yield 0.6
-        결과["단계"].append("퍽 선택: 차수 미달 퍽은 회색(이유), 배운 퍽은 숨김")
+        결과["단계"].append(
+            "퍽 선택: 차수 미달 퍽은 회색(이유), 배운 퍽은 숨김, 퍽마다 [상세보기]"
+        )
 
     def _단계_약점증가_배분(self, 매니저):
         """약점증가 - 배분 팝업에서 약점 4개"""
@@ -1330,6 +1408,13 @@ class 스모크앱(main.DnfMobileApp):
         글들 = [_글(getattr(w, "text", "")) for w in 화면.walk(restrict=True)]
         assert any("건가드" in 글 for 글 in 글들), 글들
         assert any("반응스킬 · 반응행동" in 글 for 글 in 글들), 글들
+        # 항목마다 테두리 상자(#683) - 상자끼리 겹치지 않는다
+        상자들 = [w for w in 화면.walk(restrict=True) if getattr(w, "항목상자", False)]
+        assert len(상자들) == len(gf.캐릭터_스킬목록(상태, 거너)), len(상자들)
+        상자들.sort(key=lambda w: -w.y)
+        assert all(a.y >= b.top - 1 for a, b in zip(상자들, 상자들[1:])), (
+            "상자가 겹친다"
+        )
         _찍기("party_member_reaction_skill")
         화면._하위탭_선택("특성")
         yield 0.3
@@ -2617,7 +2702,9 @@ class 스모크앱(main.DnfMobileApp):
         assert _팝업수() == 0
         # 적 이름 칸 - 고블린(아무것도 안 걸었으면 "없음")
         고블린 = next(p for p in gf.적_목록(상태) if p["원본"]["몬스터명"] == "고블린")
-        이름칸 = list(reversed(전투.적상태틀.children))[gf.적_목록(상태).index(고블린)]
+        이름칸 = list(reversed(전투.적상태틀.children))[
+            gf.적_칸_목록(상태).index(고블린)
+        ]
         글 = yield from 열린_글(이름칸)
         assert (글 == "적용 중인 효과 없음") == (not gf.상태_목록(상태, 고블린)), 글
         # 아군 그림 칸 - 아이콘 없는 도발도 나온다
@@ -4620,7 +4707,7 @@ class 스모크앱(main.DnfMobileApp):
             매니저.current = "마을"
 
     def _단계_공격연출(self, 상태, 매니저):
-        """공격하면 대상 그림 칸 위에 공격 종류 그림이 떴다가 0.5초 뒤 사라진다(아군/적 모두)"""
+        """공격하면 대상 그림 칸 위에 공격 종류 그림(칸에 맞춘 크기의 3배)이 떴다가 1초 뒤 사라진다(아군/적 모두, #680)"""
         gf.전투_시작(상태, ["타우 아미", "타우 아미"], 레벨=6, 차수=2)
         support.반응_처리(상태)
         전투상태 = 상태["전투상태"]
@@ -4636,22 +4723,22 @@ class 스모크앱(main.DnfMobileApp):
         전투 = 매니저.get_screen("전투")
         전투.갱신(신규=True)
         매니저.current = "전투"
-        yield 0.8  # 앞 단계에서 남은 연출이 있었다면 사라질 때까지
+        yield 1.3  # 앞 단계에서 남은 연출이 있었다면 사라질 때까지
 
         def 연출들():
             return [w for w in 전투.children if hasattr(w, "공격연출")]
 
         def 칸_위인가(그림, 참가자):
-            """칸 가로 가운데, 대상 크기 그림의 세로 가운데(칸 바닥 아래로는 안 감 - 사용자 지정 10-14)."""
+            """칸 가로 가운데, 대상 크기 그림의 세로 가운데(칸 바닥 아래로는 안 감 - 사용자 지정 10-14).
+            3배 크기(#680)라 칸 위로는 넘친다 - 세로는 바닥 위치만 본다."""
             칸 = 전투._그림칸[참가자["id"]]
-            cx, cy = 그림.to_window(*그림.center)
+            cx, _ = 그림.to_window(*그림.center)
             gy = 그림.to_window(*그림.pos)[1]
             x, y = 칸.to_window(*칸.pos)
             배율 = gf.공격연출_크기배율(상태, 참가자["id"])
             기대 = y + gf.공격연출_바닥(칸.height, 그림.height, 배율)
             return (
                 x <= cx <= x + 칸.width
-                and y <= cy <= y + 칸.height
                 and abs(gy - 기대) < 1
                 and abs(cx - (x + 칸.width / 2)) < 1
             )
@@ -4700,8 +4787,11 @@ class 스모크앱(main.DnfMobileApp):
             기록
         )
         _찍기("battle_attack_effect_enemy")
-        yield 0.5
-        assert 연출들() == [], "0.5초 뒤 사라진다"
+        그림 = 연출들()[0] if 연출들() else None
+        if 그림 is not None:  # 3배 크기(#680) - 칸 폭의 0.9배에 맞춘 것보다 크다
+            assert 그림.width > 전투._그림칸[적["id"]].width, 그림.size
+        yield 1.3
+        assert 연출들() == [], "1초 뒤 사라진다"
 
         # 적이 아군을 공격한 연출(속성 공격 다음 빗나감)은 아군 그림 칸 위에 차례로 뜨고,
         # 같은 대상의 다음 연출이 뜨면 앞의 것을 바꾼다(겹치지 않는다)
@@ -4725,9 +4815,10 @@ class 스모크앱(main.DnfMobileApp):
             assert 칸_위인가(그림, 귀검사), 크기
             높이[크기] = 그림.y
         귀검사["원본"] = 원본
-        assert 높이["소형"] <= 높이["중형"] < 높이["대형"], 높이
-        yield 0.8
-        assert 연출들() == [], "0.5초 뒤 사라진다"
+        # 3배 크기(#680)라 중형·대형도 칸 바닥에 붙을 수 있다 - 큰 대상일수록 낮아지지는 않는다
+        assert 높이["소형"] <= 높이["중형"] <= 높이["대형"], 높이
+        yield 1.3
+        assert 연출들() == [], "1초 뒤 사라진다"
         # [설정] 전투로그 "자세하게": 명중/AC/피해 계산 줄이 판정 줄 앞뒤에 붙는다
         gf.전투로그_방식_설정("자세하게")
         try:
@@ -4758,7 +4849,7 @@ class 스모크앱(main.DnfMobileApp):
         finally:
             gf.전투로그_방식_설정("간략하게")
         결과["단계"].append(
-            "공격 연출(적/아군 그림 칸 위에 종류 그림, 0.5초 뒤 사라짐), 자세하게 계산 줄"
+            "공격 연출(적/아군 그림 칸 위에 종류 그림 3배, 1초 뒤 사라짐), 자세하게 계산 줄"
         )
         상태["전투상태"] = None
         매니저.current = "마을"
