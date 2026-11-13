@@ -983,6 +983,12 @@ def _아이템_상세_팝업(아이템, 사유=None):
             + f"\n세트 효과: {escape_markup(', '.join(세트['효과']))}"
             + f"\n[size=13sp]{escape_markup(세트['조건'])}[/size]"
         )
+    부여 = gameflow.아이템_마법부여정보(아이템)
+    if 부여:  # 마법부여 효과는 맨 아래에 따로(#698)
+        글 += (
+            f"\n\n[b]{escape_markup('[마법부여] ' + 부여['이름'])}[/b]\n"
+            + escape_markup(부여["설명"])
+        )
     본문 = BoxLayout(orientation="vertical", spacing=dp(6), padding=dp(10))
     스크롤 = ScrollView(size_hint=(1, 1))
     스크롤.add_widget(_줄바꿈_라벨(글, font_size="15sp"))

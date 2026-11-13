@@ -950,7 +950,8 @@ def _기본_공격_속성(참가자, 데미지식, 스킬속성, 속성변환):
         for _, 원소 in equipment_system.마봉효과_목록(장비):
             if 원소.get("변동대상") == "무기속성" and 원소.get("속성"):
                 return 원소["속성"]
-        return 무기.get("속성") or "무속성"
+        부여 = (무기.get("마법부여") or {}).get("속성")  # 마법부여(#178) - 마봉 다음
+        return 부여 or 무기.get("속성") or "무속성"
     return 스킬속성 or "무속성"
 
 
