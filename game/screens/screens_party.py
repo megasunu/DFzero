@@ -670,15 +670,21 @@ class 파티관리화면(Screen):
             )
 
         for 퍽이름, 퍽정의, 이유 in 목록:
+            # 퍽 버튼 + [상세보기](#683) - 예전에는 버튼 아래 설명 한 줄이 다음 버튼과 겹쳐 잘렸다
             행 = BoxLayout(
-                orientation="vertical", size_hint=(1, None), height=dp(64), spacing=2
+                orientation="horizontal", size_hint=(1, None), height=dp(52), spacing=6
             )
             # 못 고르는 퍽은 회색(누를 수 없음)으로 이유와 함께 보인다(사용자 결정 2026-10-20)
             버튼 = Button(
                 text=f"{퍽이름} ({이유})" if 이유 else 퍽이름,
-                size_hint=(1, None),
-                height=dp(40),
+                size_hint=(0.72, 1),
                 disabled=bool(이유),
+                halign="center",
+            )
+            버튼.bind(
+                size=lambda inst, size: setattr(
+                    inst, "text_size", (size[0] - dp(8), None)
+                )
             )
             버튼.bind(
                 on_release=(
@@ -688,15 +694,20 @@ class 파티관리화면(Screen):
                 )
             )
             행.add_widget(버튼)
-            설명라벨 = Label(
-                text=퍽정의.get("설명", ""),
-                font_size="15sp",
-                size_hint=(1, None),
-                height=dp(24),
-                halign="left",
+            상세 = Button(text="상세보기", font_size="14sp", size_hint=(0.28, 1))
+            상세.bind(
+                on_release=lambda inst, n=퍽이름, d=퍽정의: _스킬_상세_팝업(
+                    n,
+                    "\n\n".join(
+                        f"[{제목}]\n{설명}" if 번호 else 설명
+                        for 번호, (제목, 설명) in enumerate(
+                            gameflow.퍽_상세(캐릭터, n, d)
+                        )
+                    ),
+                    제목="퍽 상세보기",
+                )
             )
-            설명라벨.bind(size=lambda inst, size: setattr(inst, "text_size", size))
-            행.add_widget(설명라벨)
+            행.add_widget(상세)
             목록틀.add_widget(행)
 
         닫기버튼 = Button(text="취소", size_hint=(1, 0.1))
@@ -1392,9 +1403,15 @@ class 파티원화면(Screen):
             머리글 = f"[b]{escape_markup(이름)}[/b]"
             if 요약:
                 머리글 += f"   [size=13sp]{escape_markup(요약)}[/size]"
-            목록틀.add_widget(
-                _줄바꿈_라벨(머리글 + (f"\n{escape_markup(설명)}" if 설명 else ""))
+            # 항목마다 테두리 상자(#683) - 줄글이 이어져 어디서 끝나는지 읽기 어려웠다
+            라벨 = _줄바꿈_라벨(머리글 + (f"\n{escape_markup(설명)}" if 설명 else ""))
+            상자 = _테두리상자(
+                orientation="vertical", size_hint=(1, None), padding=dp(6)
             )
+            상자.항목상자 = True  # 화면 스모크가 찾는다
+            라벨.bind(height=lambda inst, h, b=상자: setattr(b, "height", h + dp(12)))
+            상자.add_widget(라벨)
+            목록틀.add_widget(상자)
         스크롤 = ScrollView(size_hint=(1, 0.91))
         스크롤.add_widget(목록틀)
         self.본문.add_widget(스크롤)
