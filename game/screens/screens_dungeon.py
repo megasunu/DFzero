@@ -21,6 +21,7 @@ from kivy.graphics import Color, Rectangle, Ellipse, ScissorPush, ScissorPop
 import gameflow
 from game.screens.screens_common import (
     게임메뉴_열기,
+    확인_팝업,
     닫기_버튼,
     스크롤_목록,
     _캐릭터이미지_경로,
@@ -363,8 +364,12 @@ class 던전맵위젯(Widget):
                 오브젝트타일 = self._오브젝트_타일(맵x, 맵y) if 문자 == "@" else None
                 if 오브젝트타일 is not None and 발판 is not None:
                     바닥 = 발판
-                if 오브젝트타일 is not None and self._오브젝트_타일크기(맵x, 맵y) > 1:
-                    오브젝트타일 = None  # 큰 그림은 3단계에서
+                if 오브젝트타일 is not None and (
+                    self._오브젝트_타일크기(맵x, 맵y) > 1
+                    or self._보스그림인가(맵x, 맵y)
+                ):
+                    # 큰 그림과 보스 그림은 3단계에서 - 보스 그림은 아래 칸 나무의 위 절반보다 위(#678)
+                    오브젝트타일 = None
                 위치 = self._칸위치(화면x, 화면y)
                 if 바닥 is None:
                     Color(
@@ -376,13 +381,7 @@ class 던전맵위젯(Widget):
                 for 겹 in 바닥:
                     Rectangle(texture=겹, pos=위치, size=칸크기)
                 if 오브젝트타일 is not None:
-                    if self._보스그림인가(맵x, 맵y):
-                        Rectangle(
-                            texture=오브젝트타일,
-                            **_비율맞춤(오브젝트타일, *위치, *칸크기),
-                        )
-                    else:
-                        Rectangle(texture=오브젝트타일, pos=위치, size=칸크기)
+                    Rectangle(texture=오브젝트타일, pos=위치, size=칸크기)
 
     def _높은타일_그리기(self):
         """2단계 - 나무(세로 2칸). 윗줄부터 차례로 그려서 아래쪽
@@ -408,29 +407,33 @@ class 던전맵위젯(Widget):
                     )
 
     def _큰오브젝트_그리기(self):
-        """3단계 - "타일크기" 2 이상인 오브젝트(감옥 등). 그 칸 중심에 맞춰 크기 x 크기 칸으로
-        그린다 - 바닥/나무보다 위, 플레이어보다 아래. 뷰포트 바로 밖의 오브젝트도 삐져나온
-        부분이 보이도록 한 칸 더 돌고, 위젯 밖으로 나간 부분은 잘라 낸다."""
+        """3단계 - "타일크기" 2 이상인 오브젝트(감옥 등)와 보스 그림. 감옥은 그 칸 중심에서 한 칸 아래에
+        맞춰 크기 x 크기 칸으로, 보스 그림은 그 칸에 비율을 지켜 그린다 - 바닥/나무보다 위(아래 칸 나무의
+        위 절반에 가리지 않게, #678), 플레이어보다 아래. 뷰포트 밖의 오브젝트도 삐져나온 부분이
+        보이도록 두 칸 더 돌고, 위젯 밖으로 나간 부분은 잘라 낸다."""
         칸폭, 칸높이 = self._칸_크기()
         Color(1, 1, 1, 1)
-        for 화면y in range(-1, self._행수 + 1):
+        for 화면y in range(-2, self._행수 + 2):
             for 화면x in range(-1, self._열수 + 1):
                 맵x, 맵y = self._맵_좌표(화면x, 화면y)
                 if self._칸_문자(맵x, 맵y) != "@":
                     continue
                 크기 = self._오브젝트_타일크기(맵x, 맵y)
                 텍스처 = self._오브젝트_타일(맵x, 맵y)
-                if 크기 <= 1 or 텍스처 is None:
+                보스그림 = self._보스그림인가(맵x, 맵y)
+                if (크기 <= 1 and not 보스그림) or 텍스처 is None:
                     continue
                 x, y = self._칸위치(화면x, 화면y)
                 중심x, 중심y = x + 칸폭 / 2, y + 칸높이 / 2
+                if not 보스그림:
+                    중심y -= 칸높이  # 감옥은 한 칸 아래로(#678, 주인 지정) - 길 위 칸에 떠 보였다
                 영역 = (
                     중심x - 칸폭 * 크기 / 2,
                     중심y - 칸높이 * 크기 / 2,
                     칸폭 * 크기,
                     칸높이 * 크기,
                 )
-                if self._보스그림인가(맵x, 맵y):
+                if 보스그림:
                     # 몬스터 그림은 정사각형이 아니라 비율을 지켜 영역 바닥 가운데에
                     맞춤 = _비율맞춤(텍스처, *영역)
                     영역 = (*맞춤["pos"], *맞춤["size"])
@@ -657,7 +660,8 @@ class 던전화면(Screen):
         던전상태 = 게임상태["던전상태"]
 
         파티원_정사각형_채우기(self.파티줄, 게임상태)
-        self.상태라벨.text = f"위치 {던전상태['위치']}  걸음수 {던전상태['걸음수']}"
+        # 위치·걸음수 대신 던전 이름(#678, 주인 지정)
+        self.상태라벨.text = 던전상태["맵정보"].get("지도명") or ""
         if 던전상태.get("봉절걸음", 0) > 0:
             self.상태라벨.text += f"  봉절 {던전상태['봉절걸음']}"
         스프레이 = gameflow.스프레이_남은걸음(게임상태)
@@ -673,8 +677,20 @@ class 던전화면(Screen):
             gameflow.이어진_맵_목록(게임상태),
         )
         self.메시지라벨.text = ""
-        self.상호작용버튼.disabled = True
         self._대기중오브젝트 = None
+        self._상호작용버튼_맞추기()
+
+    def _상호작용버튼_맞추기(self):
+        """오브젝트 앞이면 [상호작용], 아니고 이 맵의 보스를 이겼으면 [귀환](#679), 둘 다 아니면 꺼진 [상호작용]."""
+        if self._대기중오브젝트 is not None:
+            self.상호작용버튼.text = "상호작용"
+            self.상호작용버튼.disabled = False
+        elif gameflow.귀환_가능(App.get_running_app().게임상태):
+            self.상호작용버튼.text = "귀환"
+            self.상호작용버튼.disabled = False
+        else:
+            self.상호작용버튼.text = "상호작용"
+            self.상호작용버튼.disabled = True
 
     def _이동(self, 방향):
         앱 = App.get_running_app()
@@ -685,7 +701,7 @@ class 던전화면(Screen):
 
         elif 결과["결과"] == "오브젝트":
             self._대기중오브젝트 = (결과["위치"], 결과["오브젝트"])
-            self.상호작용버튼.disabled = False
+            self._상호작용버튼_맞추기()
             self.메시지라벨.text = "무언가 있습니다. '말 걸기'를 눌러보세요."
 
         elif 결과["결과"] == "전투시작":
@@ -720,6 +736,8 @@ class 던전화면(Screen):
 
     def _상호작용(self, *args):
         if self._대기중오브젝트 is None:
+            if gameflow.귀환_가능(App.get_running_app().게임상태):
+                확인_팝업("귀환", "귀환하시겠습니까?", self._귀환)
             return
         위치, 오브젝트 = self._대기중오브젝트
         앱 = App.get_running_app()
@@ -736,8 +754,18 @@ class 던전화면(Screen):
         else:
             self.메시지라벨.text = "몬스터 데이터가 없어 전투를 시작할 수 없습니다."
 
-        self.상호작용버튼.disabled = True
         self._대기중오브젝트 = None
+        self._상호작용버튼_맞추기()
+
+    def _귀환(self):
+        """[귀환] 확인 창의 [예] - 마을로(자동 저장 포함, gameflow.던전_귀환)."""
+        try:
+            gameflow.던전_귀환(App.get_running_app().게임상태)
+        except ValueError as 오류:
+            self.메시지라벨.text = str(오류)
+            return
+        self.manager.get_screen("마을").갱신()
+        self.manager.current = "마을"
 
     def _스킬_클릭(self, *args):
         """[스킬] - 파티원의 던전스킬(던전 캠핑 등)과 전환스킬(프렌지 켜고 끄기) 목록 팝업. 줄을 누르면 쓴다."""
