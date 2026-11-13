@@ -6,7 +6,9 @@
 # 슬롯 이름만 바꾸고 원래 장비는 그대로 소지품에 남는다. 바꾼 뒤에는
 # 전투용 장비데이터모음을 다시 만들고, 줄어든 최대HP/MP에 맞춰 현재값을 깎는다.
 
+from game.data import common_names
 from game.data.equipment.eq_02_armor_set import 방어구세트목록
+from game.data.equipment.eq_03_accessory_set import 장비세트목록
 from game.system import equipment_system
 from game.controller.ctl_party import (
     장비데이터모음_생성,
@@ -22,6 +24,9 @@ __all__ = [
     "장비_슬롯목록",
     "캐릭터_장착아이템",
     "장비_교체_탭목록",
+    "장비_교체_처음탭",
+    "아이템_세트정보",
+    "_세트효과_표시",
     "장비_교체_후보",
     "장비변경_후처리",
     "장비_교체",
@@ -44,6 +49,59 @@ def 장비_교체_탭목록(게임상태, 캐릭터, 슬롯):
     return equipment_system.분류탭_목록(
         슬롯, list(슬롯아이템들.values()), 캐릭터["직업"]
     )
+
+
+def 장비_교체_처음탭(게임상태, 캐릭터, 슬롯):
+    """교체 팝업을 처음 열 때 고를 탭(#682) - 방어구는 캐릭터가 가진 "OO숙련" 재질의 탭(여러 개면 탭 순서로
+    처음 것), 없으면 [전체]. 무기는 [전체], 탭 없는 부위는 None."""
+    탭목록 = 장비_교체_탭목록(게임상태, 캐릭터, 슬롯)
+    if not 탭목록:
+        return None
+    if 슬롯 in common_names.방어구_부위:
+        for 탭 in 탭목록:
+            if f"{탭}숙련" in 캐릭터.get("보유특성", []):
+                return 탭
+    return 탭목록[0]
+
+
+# 세트 효과 표시 이름(상세보기) - 없는 키는 키 이름 그대로
+_세트효과_표시 = {"AC보너스": "AC", "명중률보너스": "명중", "데미지보너스": "데미지"}
+
+
+def 아이템_세트정보(게임상태, 아이템):
+    """상세보기 아래에 적을 세트 설명(#682) - 세트 장비가 아니면 None. {"세트명", "구성": [장비 이름],
+    "효과": ["AC +1", ...], "조건": 문자열}. "구성품"이 있는 세트(악세서리·레어 방어구)는 구성품 전부를 끼면
+    발동한다. 커먼 방어구 세트는 이름 머리가 같은 장비들(브론델의 흉갑·각반·신발 - 주인 결정)을 구성으로
+    적지만, 실제 발동은 그 재질 5부위를 모두 입을 때다(equipment_system._세트_충족) - 조건에 그렇게 적는다."""
+    이름 = 아이템.get("강화원본", 아이템.get("이름"))
+    장비 = 게임상태["상점카탈로그"]["장비"]
+    for 세트 in 장비세트목록.values():
+        if 이름 in (세트.get("구성품") or []):
+            구성 = list(세트["구성품"])
+            조건 = "구성 장비를 모두 착용하면 발동"
+            break
+        머리 = 세트["세트명"].removesuffix(" 세트")
+        if (
+            "구성품" not in 세트
+            and 아이템.get("분류") in common_names.방어구_부위
+            and 이름.startswith(머리 + " ")
+        ):
+            구성 = [
+                n
+                for 부위 in common_names.방어구_부위
+                for n in 장비.get(부위, {})
+                if n.startswith(머리 + " ")
+            ]
+            부위들 = "·".join(common_names.방어구_부위)
+            조건 = f"{세트['타입']} 방어구 5부위({부위들})를 모두 착용하면 발동"
+            break
+    else:
+        return None
+    효과 = [
+        f"{_세트효과_표시.get(키, 키)} {값:+d}" if isinstance(값, int) else f"{키} {값}"
+        for 키, 값 in (세트.get("효과") or {}).items()
+    ]
+    return {"세트명": 세트["세트명"], "구성": 구성, "효과": 효과, "조건": 조건}
 
 
 def 장비_교체_후보(게임상태, 캐릭터, 슬롯, 탭=equipment_system.전체_탭):
