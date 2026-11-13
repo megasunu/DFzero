@@ -6,6 +6,7 @@
     python tools/balance_sim.py 전체 --딜 --판 200  # 24종 전원 자동전투 판당 딜(인형은 따로, 기록하지 않음)
     python tools/balance_sim.py 전체 --지표 --판 200  # 딜지분·승률(버퍼를 끈 판까지, #617). --전체지표면 다섯 가지
     python tools/balance_sim.py 크루세이더 --기대      # 전투 없이 수치만 본 기대값(일반공격·피격·버프별)
+    python tools/balance_sim.py 전체 --분석 --묶음 10 --판 30  # 분석용 전투(#690, tools/balance_analysis.py)
 
 패턴 = 시험 직업의 차례 1~슬롯수마다 고를 행동(일반공격 또는 보유 스킬). 차례마다 슬롯의 스킬을 먼저
 쓰고, 그 스킬이 일반행동을 쓰지 않았으면(보조행동·소모 없음) 같은 차례에 다음 슬롯도 쓴다(최대 3칸 -
@@ -31,6 +32,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 기록경로 = os.path.join(ROOT, "docs", "balance", "patterns.json")
+분석보고서경로 = os.path.join(ROOT, "docs", "balance", "분석.md")
 
 슬롯수 = 10
 판당_최대턴 = 400
@@ -677,6 +679,33 @@ def 기대_표(직업):
     return 표
 
 
+def _분석_명령(a):
+    """--분석: 고른 무작위 파티를 뽑아 분석 전투를 돌리고 보고서를 쓴다(#690)."""
+    if a.직업 != "전체":
+        print("--분석은 전직을 고르게 섞으므로 직업 자리에 '전체'를 쓴다")
+        return 2
+    if ROOT not in sys.path:
+        sys.path.insert(0, ROOT)
+    from tools import balance_analysis as ba
+
+    판 = a.판 or 30
+    파티들 = ba.고른_파티들(측정_전직표(), a.묶음, random.Random(a.분석시드))
+    print(f"분석 전투: 파티 {len(파티들)}개 x {판}판, 일꾼 {a.일꾼}", flush=True)
+    판들 = ba.분석_실행(파티들, 판, a.섞기, a.일꾼, 시작시드=a.분석시드 * 100000)
+    요약 = ba.집계(판들)
+    정보 = {
+        "판": 판,
+        "섞기": a.섞기,
+        "파티": len(파티들),
+        "규칙지문": 규칙지문(),
+        "커밋": _커밋(),
+    }
+    with open(a.보고서, "w", encoding="utf-8", newline="\n") as f:
+        f.write(ba.보고서(요약, 정보))
+    print(f"판 {요약['판']}, 승률 {요약['승률'] * 100:.1f}% - 보고서: {a.보고서}")
+    return 0
+
+
 def main(argv=None):
     for stream in (sys.stdout, sys.stderr):  # cp1252 콘솔에서도 한글(#200)
         if hasattr(stream, "reconfigure"):
@@ -684,7 +713,12 @@ def main(argv=None):
     p = argparse.ArgumentParser(description="직업 밸런스 모의전투(승률패턴)")
     p.add_argument("직업", help="시험할 전직 이름(예: 검귀)")
     p.add_argument("--처음부터", action="store_true", help="다섯 단계를 새로 돌린다")
-    p.add_argument("--판", type=int, default=200, help="단계(또는 이어서)마다 판 수")
+    p.add_argument(
+        "--판",
+        type=int,
+        default=None,
+        help="단계(또는 이어서)마다 판 수(기본 200), --분석이면 파티마다 판 수(기본 30)",
+    )
     p.add_argument("--비교", action="store_true", help="같은 판으로 스킬 하나씩 맞대기")
     p.add_argument(
         "--기록", default=기록경로, help="기록 파일(기본 docs/balance/patterns.json)"
@@ -709,7 +743,33 @@ def main(argv=None):
         action="store_true",
         help="전투 없이 수치만으로 일반공격·피격·버프별 기대값(#617)",
     )
+    p.add_argument(
+        "--분석",
+        action="store_true",
+        help="분석용 전투(#690): 고른 무작위 4인 파티가 무작위 행동으로 싸운다. 직업 자리는 '전체'",
+    )
+    p.add_argument(
+        "--묶음", type=int, default=10, help="--분석: 묶음 수(묶음마다 파티 6개)"
+    )
+    p.add_argument(
+        "--섞기", type=float, default=0.3, help="--분석: 아군 차례가 전력전투일 확률"
+    )
+    p.add_argument(
+        "--분석시드", type=int, default=0, help="--분석: 파티 뽑기와 판 시드"
+    )
+    p.add_argument(
+        "--일꾼", type=int, default=os.cpu_count() or 1, help="--분석: 프로세스 수"
+    )
+    p.add_argument(
+        "--보고서",
+        default=분석보고서경로,
+        help="--분석: 보고서(기본 docs/balance/분석.md)",
+    )
     a = p.parse_args(argv)
+    if a.분석:
+        return _분석_명령(a)
+    if a.판 is None:
+        a.판 = 200
     직업들 = (
         [j for 전직들 in 측정_전직표().values() for j in 전직들]
         if a.직업 == "전체"
