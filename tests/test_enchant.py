@@ -377,3 +377,58 @@ def test_상세보기_마법부여_정보는_이름과_효과_글이다():
         "설명": "데미지보너스 +1",
     }
     assert gf.아이템_마법부여정보(카탈로그["실키얀 어깨"]) is None
+
+
+# ------------------------------------------------------------------ 세트 효과 (#699)
+
+_헨돈 = "헨돈마이어 귀족 의상"
+
+
+def _헨돈_장착(카탈로그):
+    from game.data.equipment.eq_02_armor_set import 방어구세트목록
+
+    이름들 = 방어구세트목록[_헨돈]["구성품"]
+    return {
+        슬롯: 카탈로그[슬롯][이름]
+        for 슬롯 in 카탈로그
+        for 이름 in 이름들
+        if 이름 in 카탈로그[슬롯]
+    }
+
+
+def _바꾸기(원본, 순서):
+    """순서: "부여"/"강화"를 차례로 적용한 장비 데이터."""
+    from game.system import enchant_system
+
+    아이템 = 원본
+    for 단계 in 순서:
+        if 단계 == "부여":
+            아이템 = enchant_system.장비_생성(아이템, "타우 가드")
+        else:
+            아이템 = enhance_system.장비_생성(아이템, "상의", {"강화": 1})
+    return 아이템
+
+
+@pytest.mark.parametrize("순서", [("부여",), ("강화", "부여"), ("부여", "강화")])
+def test_마법부여한_세트_장비를_껴도_세트_효과가_그대로다(순서):
+    from game.data.equipment.eq_02_armor_set import 방어구세트목록
+    from game.system import equipment_system
+
+    카탈로그 = gf._상점_카탈로그_생성()["장비"]
+    장착 = _헨돈_장착(카탈로그)
+    assert len(장착) == 5
+    전 = equipment_system.세트효과_목록(장착, 방어구세트목록)
+    assert _헨돈 in {s["세트명"] for s in 전}
+    장착["상의"] = _바꾸기(장착["상의"], 순서)
+    assert "[타우 가드]" in 장착["상의"]["이름"]
+    assert equipment_system.세트효과_목록(장착, 방어구세트목록) == 전
+
+
+@pytest.mark.parametrize("순서", [("부여",), ("강화", "부여"), ("부여", "강화")])
+def test_마법부여한_세트_장비_상세에도_세트가_나온다(순서):
+    상태 = _준비()
+    장비 = 상태["상점카탈로그"]["장비"]
+    for 원본 in (장비["상의"]["헨돈마이어 귀족 로브"], 장비["신발"]["브론델의 신발"]):
+        전 = gf.아이템_세트정보(상태, 원본)
+        assert 전 is not None
+        assert gf.아이템_세트정보(상태, _바꾸기(원본, 순서)) == 전

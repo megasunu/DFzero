@@ -19,7 +19,7 @@ import re
 
 from game.data.ability.job_ability_0000 import 특성목록 as _공용특성
 from game.system import character_data_system as 캐릭터데이터
-from game.system import enhance_system
+from game.system import enchant_system, enhance_system
 from game.system.combat import formula
 
 
@@ -216,8 +216,8 @@ def 세트효과_목록(장착아이템데이터, 세트목록):
       "재질 5부위를 전부 갖추면 발동" 규칙."""
     if not 세트목록:
         return []
-    장착이름들 = {  # 강화한 장비는 원래 이름으로(장비강화 #636)
-        아이템데이터.get("강화원본", 아이템데이터.get("이름"))
+    장착이름들 = {  # 강화·마법부여한 장비는 원래 이름으로(장비강화 #636, 마법부여 #699)
+        enchant_system.원래_이름(아이템데이터)
         for 아이템데이터 in 장착아이템데이터.values()
         if 아이템데이터 is not None
     }

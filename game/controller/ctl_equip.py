@@ -9,7 +9,7 @@
 from game.data import common_names
 from game.data.equipment.eq_02_armor_set import 방어구세트목록
 from game.data.equipment.eq_03_accessory_set import 장비세트목록
-from game.system import equipment_system
+from game.system import enchant_system, equipment_system
 from game.controller.ctl_party import (
     장비데이터모음_생성,
     캐릭터_장비데이터,
@@ -74,7 +74,7 @@ def 아이템_세트정보(게임상태, 아이템):
     "효과": ["AC +1", ...], "조건": 문자열}. "구성품"이 있는 세트(악세서리·레어 방어구)는 구성품 전부를 끼면
     발동한다. 커먼 방어구 세트는 이름 머리가 같은 장비들(브론델의 흉갑·각반·신발 - 주인 결정)을 구성으로
     적지만, 실제 발동은 그 재질 5부위를 모두 입을 때다(equipment_system._세트_충족) - 조건에 그렇게 적는다."""
-    이름 = 아이템.get("강화원본", 아이템.get("이름"))
+    이름 = enchant_system.원래_이름(아이템)
     장비 = 게임상태["상점카탈로그"]["장비"]
     for 세트 in 장비세트목록.values():
         if 이름 in (세트.get("구성품") or []):
