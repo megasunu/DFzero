@@ -1242,9 +1242,41 @@ class 스모크앱(main.DnfMobileApp):
         assert 글들.get("삼중극점 (3차수부터)") is True, 글들
         assert 글들.get("능력치향상") is False, 글들
         assert not any(t.startswith("약점제거") for t in 글들), 글들  # 이미 배움 - 숨김
+        # 퍽마다 [상세보기](#683) - 설명 줄이 다음 버튼과 겹치지 않는다(줄 사이 겹침 없음)
+        퍽팝업 = list(Window.children)[0]
+        퍽버튼 = next(
+            w
+            for w in 퍽팝업.walk(restrict=True)
+            if isinstance(w, Button) and w.text == "능력치향상"
+        )
+        행들 = sorted(
+            {
+                id(b.parent): b.parent
+                for b in 퍽팝업.walk(restrict=True)
+                if isinstance(b, Button) and b.text == "상세보기"
+            }.values(),
+            key=lambda w: -w.y,
+        )
+        assert len(행들) >= 2 and all(
+            a.y >= b.top - 1 for a, b in zip(행들, 행들[1:])
+        ), "퍽 줄이 겹친다"
+        상세 = next(
+            w
+            for w in 퍽버튼.parent.children
+            if isinstance(w, Button) and w.text == "상세보기"
+        )
+        상세.trigger_action(duration=0)
+        yield 0.5
+        상세팝업 = list(Window.children)[0]
+        assert 상세팝업.title == "퍽 상세보기", 상세팝업.title
+        _찍기("perk_detail")
+        상세팝업.dismiss()
+        yield 0.3
         list(Window.children)[0].dismiss()
         yield 0.6
-        결과["단계"].append("퍽 선택: 차수 미달 퍽은 회색(이유), 배운 퍽은 숨김")
+        결과["단계"].append(
+            "퍽 선택: 차수 미달 퍽은 회색(이유), 배운 퍽은 숨김, 퍽마다 [상세보기]"
+        )
 
     def _단계_약점증가_배분(self, 매니저):
         """약점증가 - 배분 팝업에서 약점 4개"""
@@ -1376,6 +1408,13 @@ class 스모크앱(main.DnfMobileApp):
         글들 = [_글(getattr(w, "text", "")) for w in 화면.walk(restrict=True)]
         assert any("건가드" in 글 for 글 in 글들), 글들
         assert any("반응스킬 · 반응행동" in 글 for 글 in 글들), 글들
+        # 항목마다 테두리 상자(#683) - 상자끼리 겹치지 않는다
+        상자들 = [w for w in 화면.walk(restrict=True) if getattr(w, "항목상자", False)]
+        assert len(상자들) == len(gf.캐릭터_스킬목록(상태, 거너)), len(상자들)
+        상자들.sort(key=lambda w: -w.y)
+        assert all(a.y >= b.top - 1 for a, b in zip(상자들, 상자들[1:])), (
+            "상자가 겹친다"
+        )
         _찍기("party_member_reaction_skill")
         화면._하위탭_선택("특성")
         yield 0.3
