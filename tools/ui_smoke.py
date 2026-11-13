@@ -550,7 +550,53 @@ class 스모크앱(main.DnfMobileApp):
             == 2
         )
         _찍기("shop_sell")
-        결과["단계"].append("상점 구매/판매 목록")
+        # 체크박스 판매(#684): 줄 높이 1.5배, 줄마다 [판매] 대신 체크박스, 아래 [일괄해제][일괄선택][판매]
+        from kivy.uix.checkbox import CheckBox
+
+        상의 = [
+            n
+            for n, a in 상태["상점카탈로그"]["장비"]["상의"].items()
+            if a.get("레어도") == "커먼"
+        ][:2]
+        for n in 상의:
+            상태["소지품"]["장비"][n] = 상태["소지품"]["장비"].get(n, 0) + 1
+        _상점_탭(상점, "상의").trigger_action(duration=0)
+        yield 0.4
+        체크들 = [
+            w for w in 상점._목록틀.walk(restrict=True) if isinstance(w, CheckBox)
+        ]
+        assert len(체크들) == len(gf.상점_판매목록(상태, "장비", "상의")) >= 2, len(
+            체크들
+        )
+        assert all(abs(c.parent.height - 84) < 1 for c in 체크들), [
+            c.parent.height for c in 체크들
+        ]
+        assert not any(
+            isinstance(w, Button) and w.text == "판매"
+            for w in 상점._목록틀.walk(restrict=True)
+        ), "줄마다 [판매]가 남았다"
+        아래 = {
+            w.text: w
+            for w in 상점.내용틀.walk(restrict=True)
+            if isinstance(w, Button) and w.text in ("일괄해제", "일괄선택", "판매")
+        }
+        assert set(아래) == {"일괄해제", "일괄선택", "판매"}, set(아래)
+        assert 아래["판매"].x >= 아래["일괄선택"].right - 1, "판매는 오른쪽"
+        아래["일괄선택"].trigger_action(duration=0)
+        assert all(c.active for c in 체크들)
+        아래["일괄해제"].trigger_action(duration=0)
+        assert not any(c.active for c in 체크들)
+        체크들[0].active = True
+        _찍기("shop_sell_check")
+        골드 = 상태["소지품"]["골드"]
+        판매전 = len(gf.상점_판매목록(상태, "장비", "상의"))
+        아래["판매"].trigger_action(duration=0)
+        yield 0.3
+        assert 상태["소지품"]["골드"] > 골드, "체크한 것을 팔지 않았다"
+        assert len(gf.상점_판매목록(상태, "장비", "상의")) == 판매전 - 1
+        결과["단계"].append(
+            "상점 구매/판매 목록, 판매는 체크박스(1.5배 줄, 일괄해제/일괄선택/판매 -> 체크한 것만 팔림)"
+        )
 
     def _단계_상점_해체(self, 상태, 매니저):
         """[전문직업] 장비해체(상점에서 옮김) - 장비 -> 소울/큐브 조각, [전체] 탭, 일괄해체 확인 팝업"""
