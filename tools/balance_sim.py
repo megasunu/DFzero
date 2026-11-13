@@ -207,20 +207,50 @@ def _오늘():
 # ------------------------------------------------------------------ 전투
 
 
+def 게임():
+    """(gameflow, scenario, support, rng) - tests/의 결정적 성장 도우미와 스킬 대상 고르기를 쓴다
+    (tests/support.py, tests/scenario.py). game을 부르기 전에 sys.path를 맞춘다."""
+    for 경로 in (ROOT, os.path.join(ROOT, "tests")):
+        if 경로 not in sys.path:
+            sys.path.insert(0, 경로)
+    import gameflow as gf
+    import scenario
+    import support
+    from game.system import rng
+
+    return gf, scenario, support, rng
+
+
+def 파티_상태(구성):
+    """[(1차 직업, 전직), ...] -> 측정 조건(파티레벨, 전직 추천 무기, 무기 마스터리)으로 키운 새 게임 상태.
+    구성 순서가 파티원 순서다. 시작 전에 난수를 1로 맞춰 같은 구성이면 언제나 같은 상태다."""
+    gf, scenario, support, rng = 게임()
+    rng.시드(1)
+    상태 = support.새게임([("", 직업) for 직업, _ in 구성])
+    for c, (_, 전직) in zip(상태["파티"]["파티원"], 구성):
+        종류 = scenario.전직_추천무기[전직]
+        시작종류 = gf.캐릭터_장착아이템(상태, c, "무기")["타입"]
+        support.성장(
+            상태,
+            c,
+            조건["파티레벨"],
+            전직=전직,
+            스킬습득=True,
+            무기숙련=[f"{종류} 마스터리", f"{시작종류} 마스터리"],
+        )
+        무기 = scenario.측정_무기(상태, 종류)
+        # 같은 종류를 드는 파티원이 있어도(레인저·패러메딕 리볼버) 한 자루씩
+        상태["소지품"]["장비"][무기] = 상태["소지품"]["장비"].get(무기, 0) + 1
+        gf.장비_교체(상태, c, "무기", 무기)
+    return 상태
+
+
 class 측정:
     """시험 직업 하나의 전투 환경. 파티 구성마다 캐릭터를 한 번 키워 두고 판마다 쉬고 싸운다."""
 
     def __init__(self, 직업):
-        # tests/의 결정적 성장 도우미와 스킬 대상 고르기를 쓴다(tests/support.py, tests/scenario.py)
-        for 경로 in (ROOT, os.path.join(ROOT, "tests")):
-            if 경로 not in sys.path:
-                sys.path.insert(0, 경로)
-        import gameflow as gf
-        import scenario
-        import support
-        from game.system import rng
-
-        self.gf, self.scenario, self.support, self.rng = gf, scenario, support, rng
+        gf, self.scenario, self.support, self.rng = 게임()
+        self.gf = gf
         self.직업 = 직업
         # 시험자는 전직의 1차 직업으로 만든다(배틀메이지면 마법사)
         self.기본직업 = next(
@@ -246,28 +276,7 @@ class 측정:
     def _상태(self, 나머지):
         키 = tuple(나머지)
         if 키 not in self.상태모음:
-            gf, support = self.gf, self.support
-            self.rng.시드(1)
-            상태 = support.새게임(
-                [("", self.기본직업)] + [("", 직업) for 직업, _ in 나머지]
-            )
-            구성 = [(self.기본직업, self.직업)] + list(나머지)
-            for c, (_, 전직) in zip(상태["파티"]["파티원"], 구성):
-                종류 = self.scenario.전직_추천무기[전직]
-                시작종류 = gf.캐릭터_장착아이템(상태, c, "무기")["타입"]
-                support.성장(
-                    상태,
-                    c,
-                    조건["파티레벨"],
-                    전직=전직,
-                    스킬습득=True,
-                    무기숙련=[f"{종류} 마스터리", f"{시작종류} 마스터리"],
-                )
-                무기 = self.scenario.측정_무기(상태, 종류)
-                # 같은 종류를 드는 파티원이 있어도(레인저·패러메딕 리볼버) 한 자루씩
-                상태["소지품"]["장비"][무기] = 상태["소지품"]["장비"].get(무기, 0) + 1
-                gf.장비_교체(상태, c, "무기", 무기)
-            self.상태모음[키] = 상태
+            self.상태모음[키] = 파티_상태([(self.기본직업, self.직업)] + list(나머지))
         return self.상태모음[키]
 
     def 전투(self, 나머지, 패턴, 시드):
