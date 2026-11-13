@@ -1410,8 +1410,19 @@ class 스모크앱(main.DnfMobileApp):
 
             탭들 = [w for w in 팝업.walk(restrict=True) if isinstance(w, ToggleButton)]
             assert [t.text for t in 탭들] == gf.장비_교체_탭목록(상태, 귀검사, 슬롯)
-            assert 탭들[0].state == "down" and 탭들[0].text == "전체"
+            # 처음 탭: 무기는 [전체], 방어구는 숙련 재질(없으면 [전체], #682)
+            처음 = gf.장비_교체_처음탭(상태, 귀검사, 슬롯)
+            assert [t.text for t in 탭들 if t.state == "down"] == [처음], 처음
             assert all(t.right <= 탭들[0].parent.right + 1 for t in 탭들)
+            # 장비 칸은 글 줄 수만큼 낮다(#682 - 예전 104dp 고정)
+            칸들 = [
+                w
+                for w in 팝업.walk(restrict=True)
+                if isinstance(w, screens_party._테두리상자)
+            ]
+            assert 칸들 and max(w.height for w in 칸들) <= dp(84) + 1, [
+                w.height for w in 칸들
+            ]
             # 다른 직업군 무기는 [전체]에도 없다
             if 슬롯 == "무기":
                 assert not any("너클" in 글 or "빗자루" in 글 for 글 in 글들), 글들
@@ -1432,8 +1443,48 @@ class 스모크앱(main.DnfMobileApp):
             _찍기(f"equip_swap_{슬롯}_tab")
             _팝업_닫기()
             yield 0.3
+        # 숙련이 있으면 방어구 교체 창은 그 재질 탭으로 연다(#682)
+        원래특성 = list(귀검사["보유특성"])
+        귀검사["보유특성"] = [t for t in 원래특성 if not t.endswith("숙련")] + [
+            "판금숙련"
+        ]
+        screens_party._장비교체_팝업(귀검사, "상의", lambda: None)
+        yield 0.5
+        탭들 = [
+            w
+            for w in Window.children[0].walk(restrict=True)
+            if isinstance(w, ToggleButton)
+        ]
+        assert [t.text for t in 탭들 if t.state == "down"] == ["판금"], [
+            t.text for t in 탭들 if t.state == "down"
+        ]
+        _찍기("equip_swap_mastery_tab")
+        _팝업_닫기()
+        yield 0.3
+        귀검사["보유특성"] = 원래특성
+        # 세트 장비 상세보기: 세트 이름·구성·효과(#682)
+        screens_party._아이템_상세_팝업(
+            상태["상점카탈로그"]["장비"]["신발"]["브론델의 신발"]
+        )
+        yield 0.5
+        글 = " ".join(
+            w.text
+            for w in Window.children[0].walk(restrict=True)
+            if isinstance(w, Label)
+        )
+        for 조각 in (
+            "브론델의 세트",
+            "브론델의 흉갑",
+            "브론델의 각반",
+            "세트 효과: AC +1",
+        ):
+            assert 조각 in 글, (조각, 글)
+        _찍기("equip_detail_set")
+        _팝업_닫기()
+        yield 0.3
         결과["단계"].append(
-            "장비 교체 팝업 분류 탭(무기 종류/방어구 재질, 다른 직업군 무기 숨김)"
+            "장비 교체 팝업 분류 탭(무기 종류/방어구 재질, 다른 직업군 무기 숨김), 줄 높이, "
+            "숙련 재질 탭으로 열기, 세트 상세(구성·효과)"
         )
         무기 = next(iter(상태["상점카탈로그"]["장비"]["무기"].values()))
         screens_party._아이템_상세_팝업(무기)

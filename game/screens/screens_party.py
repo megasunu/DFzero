@@ -975,6 +975,14 @@ def _아이템_상세_팝업(아이템, 사유=None):
     글 = f"[b]{아이템_이름_글(아이템)}[/b]\n\n{escape_markup(효과)}"
     if 사유:
         글 += f"\n\n[color=e05555]{escape_markup(사유)}[/color]"
+    세트 = gameflow.아이템_세트정보(App.get_running_app().게임상태, 아이템)
+    if 세트:  # 세트 구성과 효과(#682)
+        글 += (
+            f"\n\n[b]{escape_markup(세트['세트명'])}[/b]\n"
+            + "\n".join(escape_markup(n) for n in 세트["구성"])
+            + f"\n세트 효과: {escape_markup(', '.join(세트['효과']))}"
+            + f"\n[size=13sp]{escape_markup(세트['조건'])}[/size]"
+        )
     본문 = BoxLayout(orientation="vertical", spacing=dp(6), padding=dp(10))
     스크롤 = ScrollView(size_hint=(1, 1))
     스크롤.add_widget(_줄바꿈_라벨(글, font_size="15sp"))
@@ -990,15 +998,17 @@ def _아이템_상세_팝업(아이템, 사유=None):
 def _장비_칸(아이템, 슬롯, 글머리="", 수량=None, 사유=None, 선택=None):
     """테두리 칸 하나: 왼쪽은 이름+간단요약(선택이 있으면 누르면 교체),
     오른쪽은 [상세보기]. 사유(착용 불가)가 있으면 칸을 누를 수 없다."""
+    이름 = 아이템_이름_글(아이템) + (f" x{수량}" if 수량 is not None else "")
+    요약 = _아이템_간단요약(아이템, 슬롯)
+    # 높이는 글 줄 수만큼(#682 - 예전 104dp 고정이라 한 화면에 3개 정도만 보였다)
+    줄수 = 1 + bool(요약) + bool(사유)
     칸 = _테두리상자(
         orientation="horizontal",
         size_hint=(1, None),
-        height=dp(104),
+        height=max(dp(52), dp(20) * 줄수 + dp(24)),
         padding=dp(6),
         spacing=dp(6),
     )
-    이름 = 아이템_이름_글(아이템) + (f" x{수량}" if 수량 is not None else "")
-    요약 = _아이템_간단요약(아이템, 슬롯)
     글 = f"{글머리}[b]{이름}[/b]" + (f"\n{요약}" if 요약 else "")
     if 사유:
         글 += "\n[size=12sp][color=e05555]착용 불가[/color][/size]"
@@ -1048,8 +1058,10 @@ def _장비교체_팝업(캐릭터, 슬롯, 완료콜백):
     else:
         본문.add_widget(Label(text="현재: (없음)", size_hint=(1, None), height=dp(48)))
     # 분류 탭(무기 종류 / 방어구 재질) - 악세서리·특수장비는 탭 없음
+    # 처음 탭은 방어구면 그 캐릭터의 숙련 재질(#682)
+    처음탭 = gameflow.장비_교체_처음탭(게임상태, 캐릭터, 슬롯)
     if 탭목록:
-        본문.add_widget(탭_줄(탭목록, lambda 탭: 목록_채우기(탭), 탭목록[0]))
+        본문.add_widget(탭_줄(탭목록, lambda 탭: 목록_채우기(탭), 처음탭))
     안내 = Label(text="", size_hint=(1, 0.08))
     스크롤, 목록틀 = 스크롤_목록(0.64, 간격=dp(6))
     본문.add_widget(스크롤)
@@ -1102,7 +1114,7 @@ def _장비교체_팝업(캐릭터, 슬롯, 완료콜백):
                 )
             )
 
-    목록_채우기(탭목록[0] if 탭목록 else None)
+    목록_채우기(처음탭)
 
     아래 = BoxLayout(orientation="horizontal", size_hint=(1, 0.12), spacing=6)
     해제버튼 = Button(text="해제", disabled=(현재 is None or 슬롯 == "무기"))
