@@ -6,6 +6,8 @@
 # 맞춰 대신 호출해주는 얇은 어댑터일 뿐이다 - screens_town.py의 상점화면은
 # shop_system.py를 직접 부르지 않고 이 함수들만 쓴다.
 
+import copy
+
 from game.data import common_names
 from game.system import (
     collection_system,
@@ -29,6 +31,7 @@ __all__ = [
     "상점_일괄해체_대상",
     "상점_일괄해체",
     "상점_판매",
+    "상점_일괄판매",
     "상점_대분류목록",
     "상점_최대구매수량",
     "상점_판매가",
@@ -126,6 +129,32 @@ def 상점_판매(게임상태, 대분류, 탭, 이름, 수량):
         이름,
         수량,
     )
+
+
+def 상점_일괄판매(게임상태, 대분류, 항목들):
+    """상점 판매 화면 [판매](#684) - 항목들 [(탭, 이름, 수량)]을 한 번에 판다. 받은 총 골드를 반환한다.
+    한 줄이라도 팔 수 없으면(수량 초과 등) 소지품을 판매 전으로 되돌리고 그 ValueError를 그대로 낸다."""
+    전 = copy.deepcopy(게임상태["소지품"])
+    try:
+        return sum(
+            상점_판매(게임상태, 대분류, 탭, 이름, 수량) for 탭, 이름, 수량 in 항목들
+        )
+    except ValueError:
+        소지품 = 게임상태["소지품"]
+        for 키 in set(소지품) - set(전):
+            del 소지품[키]
+        for (
+            키,
+            값,
+        ) in (
+            전.items()
+        ):  # 칸 dict는 제자리에서 되돌린다 - 다른 곳이 같은 dict를 쥐고 있다
+            if isinstance(값, dict) and isinstance(소지품.get(키), dict):
+                소지품[키].clear()
+                소지품[키].update(값)
+            else:
+                소지품[키] = 값
+        raise
 
 
 상점_대분류목록 = shop_system.대분류_목록

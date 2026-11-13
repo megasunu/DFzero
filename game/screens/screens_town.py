@@ -10,6 +10,7 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.button import Button
+from kivy.uix.checkbox import CheckBox
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
 from kivy.uix.scrollview import ScrollView
@@ -894,6 +895,9 @@ class 상점화면(Screen):
         if 모드 == "해체":
             # 일괄해체 줄은 목록 아래(화면 하단)
             self.내용틀.add_widget(self._일괄해체_줄(목록틀))
+        elif 모드 == "판매":
+            # 체크박스 판매(#684) - [일괄해제] [일괄선택] [판매]는 목록 아래(판매는 오른쪽 아래)
+            self.내용틀.add_widget(self._일괄판매_줄(대분류, 목록틀))
 
         if 처음탭:
             self._부위_고르기(모드, 대분류, 처음탭)
@@ -944,6 +948,8 @@ class 상점화면(Screen):
 
     def _아이템목록_그리기(self, 모드, 대분류, 탭, 목록틀):
         목록틀.clear_widgets()
+        self._판매체크 = []  # 판매 줄마다 (부위 탭, 이름, 수량상태, 체크박스) - #684
+        self._판매_표시탭 = 탭
         앱 = App.get_running_app()
         게임상태 = 앱.게임상태
 
@@ -1003,9 +1009,11 @@ class 상점화면(Screen):
             단가글 = f"{gameflow.상점_판매가(아이템)}G"
 
         행높이 = 56
+        # 판매 줄은 1.5배 높이(#684 - 잘못 누르기 쉬웠다)
+        줄높이 = 행높이 * 3 // 2 if 모드 == "판매" else 행높이
         글자 = _행_글자크기  # 이 줄의 글자/버튼은 모두 같은 크기, 세로 가운데
         행 = BoxLayout(
-            orientation="horizontal", size_hint=(1, None), height=행높이, spacing=4
+            orientation="horizontal", size_hint=(1, None), height=줄높이, spacing=4
         )
 
         이름라벨 = Label(
@@ -1051,6 +1059,13 @@ class 상점화면(Screen):
         행.add_widget(수량라벨)
         행.add_widget(증가버튼)
 
+        if (
+            모드 == "판매"
+        ):  # 줄마다 [판매] 대신 체크박스 - 체크한 줄을 그 수량만큼 판다(#684)
+            체크 = CheckBox(size_hint=(0.12, 1))
+            self._판매체크.append((탭, 아이템["이름"], 수량상태, 체크))
+            행.add_widget(체크)
+            return 행
         거래버튼 = Button(text=모드, size_hint=(0.12, 1), font_size=글자)
         거래버튼.bind(
             on_release=lambda *_, a=아이템: self._거래_클릭(
@@ -1108,6 +1123,45 @@ class 상점화면(Screen):
     # -------------------------------------------------
     # 일괄해체 - [일괄해체] + 등급/부위 범위(기본 커먼 / 전체)
     # -------------------------------------------------
+
+    def _일괄판매_줄(self, 대분류, 목록틀):
+        """[일괄해제](체크 모두 풀기) [일괄선택](지금 목록 모두 체크) [판매](체크한 것, 오른쪽 아래) - #684."""
+        줄 = BoxLayout(
+            orientation="horizontal", size_hint=(1, None), height=글자_높이(), spacing=4
+        )
+        해제 = Button(text="일괄해제")
+        해제.bind(on_release=lambda *_: self._판매체크_모두(False))
+        선택 = Button(text="일괄선택")
+        선택.bind(on_release=lambda *_: self._판매체크_모두(True))
+        판매 = Button(text="판매")
+        판매.bind(on_release=lambda *_: self._체크_판매(대분류, 목록틀))
+        for 버튼 in (해제, 선택, 판매):
+            줄.add_widget(버튼)
+        return 줄
+
+    def _판매체크_모두(self, 켜기):
+        for *_, 체크 in getattr(self, "_판매체크", []):
+            체크.active = 켜기
+
+    def _체크_판매(self, 대분류, 목록틀):
+        항목들 = [
+            (탭, 이름, 수량상태["값"])
+            for 탭, 이름, 수량상태, 체크 in getattr(self, "_판매체크", [])
+            if 체크.active
+        ]
+        if not 항목들:
+            self.안내라벨.text = "판매할 물건을 체크하세요."
+            return
+        try:
+            금액 = gameflow.상점_일괄판매(
+                App.get_running_app().게임상태, 대분류, 항목들
+            )
+        except ValueError as 오류:
+            self.안내라벨.text = str(오류)
+            return
+        self.안내라벨.text = f"{len(항목들)}종을 {금액}G에 팔았습니다."
+        self._골드_갱신()
+        self._아이템목록_그리기("판매", 대분류, self._판매_표시탭, 목록틀)
 
     def _일괄해체_줄(self, 목록틀):
         줄 = BoxLayout(
