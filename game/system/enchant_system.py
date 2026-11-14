@@ -2,7 +2,7 @@
 # 마법부여
 # =====================
 # 마을 [전문직업] > [마법부여](#178, 2026-11-11 사용자 결정). 규칙은 docs/game-rules.md "마법부여",
-# 데이터는 game/data/equipment/eq_00_enchant.py.
+# 데이터는 game/data/enchant/(부위 구역별 enchant_01~04, 양식은 enchant_00_format.py) - 아래 _표_합치기가 합친다.
 #
 # - 부위 탭마다 소지품과 장착 장비 목록(장비강화와 같은 모양) -> 장비를 고르면 그 장비에 걸 수 있는
 #   마법부여 목록 -> [부여]. 비용(골드)을 내고 항상 성공한다.
@@ -19,8 +19,35 @@ import copy
 import re
 
 from game.data import common_names
-from game.data.equipment.eq_00_enchant import 마법부여
+from game.data.enchant.enchant_01_weapon import 무기마법부여
+from game.data.enchant.enchant_02_armor import 방어구마법부여
+from game.data.enchant.enchant_03_accessory import 악세서리마법부여
+from game.data.enchant.enchant_04_special import 특수장비마법부여
 from game.system import enhance_system
+
+
+def _속성강화(속성):
+    """데이터의 {"속성강화": 속성} 표시를 채운 항목(enchant_00_format.py "속성강화 표시")."""
+    return {
+        "부위": list(common_names.악세서리_부위),
+        "비용": {"골드": 100},
+        "설명": f"{속성} 강화 +1",
+        "효과": [{"변동대상": "속성강화", "속성": 속성, "변동값": 1}],
+    }
+
+
+def _표_합치기(*구역들):
+    """부위 구역별 데이터 딕셔너리를 하나의 마법부여 표로 합친다. 이름이 겹치면 실패한다."""
+    표 = {}
+    for 구역 in 구역들:
+        for 이름, 정의 in 구역.items():
+            if 이름 in 표:
+                raise ValueError(f"마법부여 이름이 겹침: {이름}")
+            표[이름] = _속성강화(정의["속성강화"]) if "속성강화" in 정의 else 정의
+    return 표
+
+
+마법부여 = _표_합치기(무기마법부여, 방어구마법부여, 악세서리마법부여, 특수장비마법부여)
 
 부위들 = [
     "무기",

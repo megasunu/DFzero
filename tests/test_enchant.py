@@ -432,3 +432,86 @@ def test_마법부여한_세트_장비_상세에도_세트가_나온다(순서):
         전 = gf.아이템_세트정보(상태, 원본)
         assert 전 is not None
         assert gf.아이템_세트정보(상태, _바꾸기(원본, 순서)) == 전
+
+
+# ---------------------------------------------------------------------------
+# 데이터 배치: game/data/enchant/ 부위 구역별 4개 파일(양식 파일 별도), 함수는 enchant_system
+# ---------------------------------------------------------------------------
+
+_구역파일 = {  # 파일 -> (딕셔너리 이름, common_names의 부위 목록 이름 - None은 무기)
+    "enchant_01_weapon": ("무기마법부여", None),
+    "enchant_02_armor": ("방어구마법부여", "방어구_부위"),
+    "enchant_03_accessory": ("악세서리마법부여", "악세서리_부위"),
+    "enchant_04_special": ("특수장비마법부여", "특수장비_부위"),
+}
+
+
+def _구역_데이터():
+    import importlib
+
+    from game.data import common_names
+
+    for 파일, (변수, 부위이름) in _구역파일.items():
+        모듈 = importlib.import_module(f"game.data.enchant.{파일}")
+        부위 = list(getattr(common_names, 부위이름)) if 부위이름 else ["무기"]
+        yield 파일, getattr(모듈, 변수), 부위
+
+
+def test_마법부여_구역_파일은_자기_구역_부위에만_건다():
+    from game.system import enchant_system
+
+    for 파일, 데이터, 부위 in _구역_데이터():
+        for 이름 in 데이터:
+            걸부위 = enchant_system.마법부여[이름][
+                "부위"
+            ]  # 표시(속성강화)는 시스템이 채운 뒤에 본다
+            assert 걸부위, (파일, 이름)
+            assert set(걸부위) <= set(부위), (파일, 이름, 걸부위)
+
+
+def test_마법부여_구역_파일끼리_이름이_겹치지_않고_합친_표가_전부다():
+    from game.system import enchant_system
+
+    이름들 = [이름 for _, 데이터, _ in _구역_데이터() for 이름 in 데이터]
+    assert len(이름들) == len(set(이름들))
+    assert set(enchant_system.마법부여) == set(이름들)
+    assert (
+        len(enchant_system.마법부여) == 13
+    )  # 무기 3 + 방어구 6 + 악세서리 4 + 특수장비 0
+
+
+@pytest.mark.parametrize(
+    "이름, 속성",
+    [
+        ("시가브", "수속성"),
+        ("힐가브", "화속성"),
+        ("쿠로가루", "암속성"),
+        ("시로가루", "명속성"),
+    ],
+)
+def test_속성강화_표시는_시스템이_악세서리_속성강화_1로_채운다(이름, 속성):
+    from game.system import enchant_system
+
+    assert enchant_system.마법부여[이름] == {
+        "부위": ["목걸이", "반지", "팔찌"],
+        "비용": {"골드": 100},
+        "설명": f"{속성} 강화 +1",
+        "효과": [{"변동대상": "속성강화", "속성": 속성, "변동값": 1}],
+    }
+
+
+def test_마법부여_데이터_폴더에는_함수가_없다():
+    import ast
+    from pathlib import Path
+
+    폴더 = Path(__file__).resolve().parent.parent / "game" / "data" / "enchant"
+    파일들 = sorted(폴더.glob("*.py"))
+    assert {p.stem for p in 파일들} >= {"enchant_00_format", *_구역파일}
+    for 경로 in 파일들:
+        트리 = ast.parse(경로.read_text(encoding="utf-8"))
+        함수 = [
+            n.name
+            for n in ast.walk(트리)
+            if isinstance(n, (ast.FunctionDef, ast.Lambda))
+        ]
+        assert not 함수, (경로.name, 함수)
