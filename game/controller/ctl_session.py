@@ -7,6 +7,7 @@ from game.system import (
     character_data_system as 캐릭터데이터,
     collection_system,
     dungeon_system,
+    effect_engine,
     enchant_system,
     enhance_system,
     equipment_system,
@@ -132,6 +133,7 @@ def 게임_저장(게임상태, 슬롯번호):
             "걸음수": 던전.get("걸음수", 0),
             "봉절걸음": 던전.get("봉절걸음", 0),
             "스프레이": list(던전.get("스프레이") or []),
+            "열린칸": dungeon_system.열린칸_목록(던전),
         }
         if 던전
         else None
@@ -228,6 +230,9 @@ def 게임_불러오기(슬롯번호):
         _최대HP_재계산(캐릭터)
         _직업스타일_성장_재계산(캐릭터)
         _주문시전능력치_재계산(캐릭터)
+        # 어그로 고정 증감이 실수(5.0)로 남던 때의 캐릭터(미스트리스 등)를 정수로 맞춘다
+        if "어그로" in 캐릭터:
+            캐릭터["어그로"] = effect_engine.어그로_정수(캐릭터["어그로"])
         # 레벨 1 스킬이 나중에 추가되면(2026-10-13 공중에뜸 스킬 5종) 옛 캐릭터에게도 준다.
         character_creation_system.레벨1_스킬_습득(
             캐릭터, 직업_레지스트리[캐릭터["직업"]]["스킬목록"]
@@ -269,6 +274,7 @@ def _던전위치_복원(게임상태, 던전위치):
     던전["걸음수"] = 던전위치.get("걸음수", 0)
     던전["봉절걸음"] = 던전위치.get("봉절걸음", 0)
     던전["스프레이"] = list(던전위치.get("스프레이") or [])
+    dungeon_system.열린칸_복원(던전, 던전위치.get("열린칸"))
     게임상태["던전상태"] = 던전
 
 
