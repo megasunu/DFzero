@@ -1,7 +1,7 @@
-# 데이터 칸이 문자열 하나 또는 목록 두 형태로 오는 곳 - 둘 다 같은 뜻으로 읽는지(#653 #654 #662).
+# 데이터 칸이 문자열 하나 또는 목록 두 형태로 오는 곳 - 둘 다 같은 뜻으로 읽는지(#653 #654 #657 #662).
 
 import gameflow as gf
-from game.controller import ctl_skills
+from game.controller import ctl_autobattle, ctl_skills
 from game.system import character_levelup_system as 캐릭터레벨업
 from game.system import effect_engine, rng
 from tests import support
@@ -84,3 +84,28 @@ def test_문자열_획득스킬을_배운_퍽은_그대로_숨긴다():
     c = _캐릭터()
     c["보유스킬"] += ["가스킬"]
     assert gf.퍽_선택상태(c, {"타입": ["스킬획득"], "획득스킬": "가스킬"}) is None
+
+
+# ------------------------------------------------------------------ #657 자동전투 - 행동이 목록인 공격스킬
+
+
+def _공격스킬_쓸만한가(monkeypatch, 행동, 기대):
+    monkeypatch.setattr(ctl_autobattle, "공격_평가", lambda 상태, 참가자, 이름: 기대)
+    monkeypatch.setattr(ctl_autobattle, "일반공격_기대피해", lambda 상태, 참가자: 10)
+    return ctl_autobattle._전력전투_쓸만한가(
+        {}, {}, "시험스킬", {"분류": "공격스킬", "행동": 행동}
+    )
+
+
+def test_행동이_목록이어도_일반행동이면_일반공격보다_약할_때_쓰지_않는다(monkeypatch):
+    assert not _공격스킬_쓸만한가(monkeypatch, ["일반행동", "보조행동"], 5)
+    assert _공격스킬_쓸만한가(monkeypatch, ["일반행동", "보조행동"], 15)
+
+
+def test_행동이_문자열_일반행동이면_같은_기준이다(monkeypatch):
+    assert not _공격스킬_쓸만한가(monkeypatch, "일반행동", 5)
+    assert _공격스킬_쓸만한가(monkeypatch, "일반행동", 15)
+
+
+def test_보조행동_공격스킬은_일반공격과_비교하지_않는다(monkeypatch):
+    assert _공격스킬_쓸만한가(monkeypatch, "보조행동", 5)
