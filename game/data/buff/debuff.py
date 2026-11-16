@@ -5,6 +5,10 @@
 # 일반디버프/스탯디버프/행동디버프) "변동값"은 같은 "변동대상"에 부호만 반대로 쓴다.
 # "효과"가 빈 리스트면 수치 효과 없음.
 
+import importlib
+import pkgutil
+
+from game.data import job_skill
 from game.data.buff.job_buff import 직업디버프목록
 
 
@@ -285,4 +289,21 @@ from game.data.buff.job_buff import 직업디버프목록
 # =====================
 # 통합 목록
 # =====================
-디버프목록 = {**일반디버프목록, **직업디버프목록}
+
+
+def 스킬_안의_디버프():
+    """스킬 데이터 안에 풀어 쓴 디버프 정의 - 연계스킬 "장판별"의 "디버프"가 딕셔너리면
+    {"이름": ..., 나머지는 디버프 정의}다(귀참드라이브의 브레멘). 이름 -> 정의."""
+    결과 = {}
+    for 정보 in pkgutil.iter_modules(job_skill.__path__, "game.data.job_skill."):
+        스킬목록 = getattr(importlib.import_module(정보.name), "스킬목록", {})
+        for 스킬 in 스킬목록.values():
+            for 효과 in (스킬.get("장판별") or {}).values():
+                정의 = 효과.get("디버프")
+                if isinstance(정의, dict):
+                    결과[정의["이름"]] = {k: v for k, v in 정의.items() if k != "이름"}
+    return 결과
+
+
+# 스킬 안의 정의를 직업디버프 앞에 둔다 - 옮기기 전 순서(귀참 : 브레멘이 직업디버프의 처음)와 같게
+디버프목록 = {**일반디버프목록, **스킬_안의_디버프(), **직업디버프목록}
