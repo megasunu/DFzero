@@ -5,7 +5,7 @@ import pytest
 from game.system import rng
 import gameflow as gf
 from game.system import skill_system as ss
-from game.system.combat import core, damage, traits
+from game.system.combat import core, hit_effects, traits
 from tests import support
 
 중급마법 = ["플레임 스트라이크", "보이드", "칠링팬스", "썬버스트"]
@@ -16,7 +16,7 @@ from tests import support
 def 엘마전장(monkeypatch):
     """마법사 -> 엘리멘탈마스터 레벨 8(스킬 전부 습득)과 귀검사, 고블린 셋(모두 HP 999). 맞아서 생기는
     경직(이니셔티브 -1)은 꺼서 캐스팅이 내린 몫만 보이게 한다."""
-    monkeypatch.setattr(damage, "경직_적용", lambda *a, **k: None)
+    monkeypatch.setattr(hit_effects, "경직_적용", lambda *a, **k: None)
     rng.시드(5)
     상태 = support.새게임([("", "마법사"), ("", "귀검사")])
     엘, 귀 = 상태["파티"]["파티원"]

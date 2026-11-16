@@ -8,7 +8,7 @@
 import random
 
 import gameflow
-from game.system.combat import attacks, core, damage
+from game.system.combat import attacks, core, damage, hit_effects
 from game.system.skill import skill_grant
 from support import 시험_전투, 주사위고정
 from tools import balance_sim as bs
@@ -112,7 +112,7 @@ def test_피격시_추가피해도_건_사람에게(monkeypatch):
     """감전 - 맞을 때마다 들어가는 피해는 감전을 건 사람 몫이다(친 사람이 아니라)."""
     전투상태, 적, 아군 = 시험_전투(["고블린"])
     skill_grant.상태이상_부여(전투상태, 적[0], "감전", 3, 부여자=아군[3])
-    damage.피격_처리(전투상태, 아군[0], 적[0], {"성공": True})
+    hit_effects.피격_처리(전투상태, 아군[0], 적[0], {"성공": True})
     항목 = 전투상태["로그"][-1]
     assert 항목["귀속"] == 아군[3]["이름"] and 항목["피해"] > 0
     assert core.피해_집계(전투상태)[아군[3]["이름"]] == 항목["피해"]

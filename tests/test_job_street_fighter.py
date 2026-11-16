@@ -10,7 +10,16 @@ import gameflow as gf
 from game.system import rng
 from game.system import skill_system as ss
 from game.system.skill import skill_run
-from game.system.combat import attacks, core, damage, flow, stats, status, traits
+from game.system.combat import (
+    attacks,
+    core,
+    damage,
+    flow,
+    hit_effects,
+    stats,
+    status,
+    traits,
+)
 from tests import support
 
 
@@ -316,14 +325,14 @@ def test_경직증가는_경직을_2배_경직감소는_반으로_1이하면_0(�
     전투상태["현재턴"] = 0
     ss.이름있는효과_부여(전투상태, 적[0], "경직증가", 지속턴오버라이드=5)
     전 = 적[0]["이니셔티브"]
-    damage.경직_적용(전투상태, 적[0])
+    hit_effects.경직_적용(전투상태, 적[0])
     assert 적[0]["이니셔티브"] == 전 - 2
     우선도 = 적[0].get("우선도", 0)
-    damage.경직_적용(전투상태, 적[0], ("잡기",))
+    hit_effects.경직_적용(전투상태, 적[0], ("잡기",))
     assert 적[0]["우선도"] == 우선도 - 2
     ss.이름있는효과_부여(전투상태, 적[1], "경직감소", 지속턴오버라이드=5)
     전 = 적[1]["이니셔티브"]
-    damage.경직_적용(전투상태, 적[1])
+    hit_effects.경직_적용(전투상태, 적[1])
     assert 적[1]["이니셔티브"] == 전  # 1/2 = 0.5 -> 0
 
 
@@ -433,7 +442,7 @@ def test_마운트는_잡기_홀딩으로_차수1회이고_피해_전까지_시�
     hp = s["현재HP"]
     assert damage.피해_적용(전투상태, s, 5, 공격자=적[1]) == 0
     assert s["현재HP"] == hp
-    damage.홀딩_발동(전투상태, 적[0])
+    hit_effects.홀딩_발동(전투상태, 적[0])
     assert 적[0]["현재HP"] < 999
     assert damage.피해_적용(전투상태, s, 5, 공격자=적[1]) > 0
 
@@ -494,7 +503,7 @@ def test_상태이상이_걸린_적에게는_크레이지_발칸이_나가고_�
     assert len([i for i in 적[1]["상태이상"] if i["이름"] == "홀딩"]) == 횟수
     for p in 적:
         p["현재HP"] = 999
-    damage.홀딩_발동(전투상태, 적[1])
+    hit_effects.홀딩_발동(전투상태, 적[1])
     충격파 = [x for x in 전투상태["로그"] if "충격파" in str(x.get("비고", ""))]
     assert len(충격파) == 횟수 * 3  # 대상과 양옆
     assert all(p["현재HP"] < 999 for p in 적)

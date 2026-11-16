@@ -4,7 +4,7 @@ import pytest
 
 import gameflow as gf
 from game.system import dungeon_system
-from game.system.combat import attacks, damage
+from game.system.combat import attacks, element
 from game.system.skill import skill_attack
 from tests import support
 from tests.support import 새게임
@@ -244,8 +244,8 @@ def test_플라스크마다_속성이_정해져_있다(이름, 속성):
 
 
 def _속성후보_잡기(monkeypatch):
-    """damage.주속성이 고른 결과 대신 후보 목록을 돌려주게 한다."""
-    monkeypatch.setattr(damage, "주속성", lambda 전투상태, 공격, 대상, 속성: 속성)
+    """element.주속성이 고른 결과 대신 후보 목록을 돌려주게 한다."""
+    monkeypatch.setattr(element, "주속성", lambda 전투상태, 공격, 대상, 속성: 속성)
 
 
 def test_부여된_속성은_일반공격과_무기_주사위_스킬에_더해진다(monkeypatch):

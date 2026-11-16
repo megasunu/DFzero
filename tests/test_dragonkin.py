@@ -14,7 +14,15 @@
 import gameflow as gf
 from game.controller import ctl_rewards
 from game.system import skill_system as ss
-from game.system.combat import damage, flow, formula, monster_actions, stats
+from game.system.combat import (
+    damage,
+    flow,
+    formula,
+    hit,
+    hit_effects,
+    monster_actions,
+    stats,
+)
 from tests import support
 
 
@@ -162,7 +170,7 @@ def test_전기_방벽은_때린_상대에게_1d4_명속성_역장_피해를_준
     귀검사 = 아군[0]
     전 = 귀검사["현재HP"]
     판정 = {"성공": True, "자연눈": 20, "치명타": False, "자동실패": False}
-    damage.피격_처리(전투상태, 귀검사, 라키, 판정)
+    hit_effects.피격_처리(전투상태, 귀검사, 라키, 판정)
     반격 = [x for x in 전투상태["로그"] if "전기 방벽" in str(x.get("비고"))]
     assert 반격 and 반격[-1]["대상"] == 귀검사["이름"]
     assert 귀검사["현재HP"] < 전
@@ -203,7 +211,7 @@ def test_감옥은_명중_굴림이_AC와_속도보너스를_넘지_못하면_�
         p["장비보너스"] = dict(p.get("장비보너스") or {}, 속도보너스=0)
     # d20 10 + 민첩보정치 2 + 명중보너스 = 대상 AC면 맞는다 - 속도보너스 1이 더해지면 피한다
     support.주사위고정(monkeypatch, 10)
-    명중값 = damage.명중_판정_계산(전투상태, 라키, 아군[0], "민첩판정")["명중결과"]
+    명중값 = hit.명중_판정_계산(전투상태, 라키, 아군[0], "민첩판정")["명중결과"]
     for p in 아군:
         p["AC보정_시험"] = 명중값
     monkeypatch.setattr(
@@ -278,13 +286,13 @@ def test_분신은_명중_이점을_주고_받는_피해가_2배이며_보상이
     assert 분신피해 == 본체피해 * 2
     굴림 = iter([3, 17])
     monkeypatch.setattr(
-        damage.dice_utils,
+        hit.dice_utils,
         "d20_굴림",
         lambda 이점=False, 불리=False: (
             max(next(굴림), next(굴림)) if 이점 and not 불리 else 3
         ),
     )
-    assert damage.명중_판정_계산(전투상태, 아군[0], 분신, "근력판정")["자연눈"] == 17
+    assert hit.명중_판정_계산(전투상태, 아군[0], 분신, "근력판정")["자연눈"] == 17
     상태 = {"전투상태": 전투상태, "던전상태": None}
     분신["현재HP"], 분신["생존"] = 0, False
     이름들 = [m["몬스터명"] for m in ctl_rewards._전리품_대상(상태, 전투상태)]
@@ -338,14 +346,14 @@ def test_시우스는_오라를_가진_적을_칠_때_명중_이점을_받는다
     _오라_무기(아군[0])
     굴림 = iter([3, 17] * 2)
     monkeypatch.setattr(
-        damage.dice_utils,
+        hit.dice_utils,
         "d20_굴림",
         lambda 이점=False, 불리=False: (
             max(next(굴림), next(굴림)) if 이점 and not 불리 else 3
         ),
     )
-    assert damage.명중_판정_계산(전투상태, 시우스, 아군[0], "근력판정")["자연눈"] == 17
-    assert damage.명중_판정_계산(전투상태, 시우스, 아군[1], "근력판정")["자연눈"] == 3
+    assert hit.명중_판정_계산(전투상태, 시우스, 아군[0], "근력판정")["자연눈"] == 17
+    assert hit.명중_판정_계산(전투상태, 시우스, 아군[1], "근력판정")["자연눈"] == 3
 
 
 def test_시우스는_명중하면_버프_하나를_빼앗는다(monkeypatch):

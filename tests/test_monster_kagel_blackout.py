@@ -6,7 +6,7 @@
 
 import gameflow as gf
 from game.system import dice_utils
-from game.system.combat import damage
+from game.system.combat import damage, hit, hit_effects
 from tests import support
 
 
@@ -23,7 +23,7 @@ def _판정(전투상태, 공격자, 대상, monkeypatch):
         return 10
 
     monkeypatch.setattr(dice_utils, "d20_굴림", 굴림)
-    판정 = damage.명중_판정_계산(전투상태, 공격자, 대상, "근력판정")
+    판정 = hit.명중_판정_계산(전투상태, 공격자, 대상, "근력판정")
     return 판정["명중결과"], 받은["불리"]
 
 
@@ -63,15 +63,15 @@ def test_자세한_명중_내역에_암전_마이너스2가_보인다(monkeypatc
     전투상태, [카겔], 아군 = support.시험_전투(["야시경 카겔"])
     전투상태["상세로그"] = True
     monkeypatch.setattr(dice_utils, "d20_굴림", lambda 이점=False, 불리=False: 10)
-    판정 = damage.명중_판정_계산(전투상태, 카겔, 아군[0], "근력판정")
+    판정 = hit.명중_판정_계산(전투상태, 카겔, 아군[0], "근력판정")
     assert ("암전", -2) in 판정["명중내역"]
 
 
 def test_암전은_공격에_맞으면_풀리고_빗나가면_남는다():
     전투상태, [카겔], 아군 = support.시험_전투(["야시경 카겔"])
-    damage.피격_처리(전투상태, 아군[0], 카겔, {"성공": False})
+    hit_effects.피격_처리(전투상태, 아군[0], 카겔, {"성공": False})
     assert _암전(카겔)
-    damage.피격_처리(전투상태, 아군[0], 카겔, {"성공": True})
+    hit_effects.피격_처리(전투상태, 아군[0], 카겔, {"성공": True})
     assert not _암전(카겔)
 
 
