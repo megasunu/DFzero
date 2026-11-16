@@ -292,14 +292,17 @@ from game.data.buff.job_buff import 직업디버프목록
 
 
 def 스킬_안의_디버프():
-    """스킬 데이터 안에 풀어 쓴 디버프 정의 - 연계스킬 "장판별"의 "디버프"가 딕셔너리면
-    {"이름": ..., 나머지는 디버프 정의}다(귀참드라이브의 브레멘). 이름 -> 정의."""
+    """스킬 데이터 안에 풀어 쓴 디버프 정의 {"이름": ..., 나머지는 디버프 정의} - 연계스킬 "장판별"의
+    "디버프"가 딕셔너리일 때(귀참드라이브의 브레멘)와 "지속공격"의 "장판디버프"(역병의 라사). 이름 -> 정의."""
     결과 = {}
     for 정보 in pkgutil.iter_modules(job_skill.__path__, "game.data.job_skill."):
         스킬목록 = getattr(importlib.import_module(정보.name), "스킬목록", {})
         for 스킬 in 스킬목록.values():
-            for 효과 in (스킬.get("장판별") or {}).values():
-                정의 = 효과.get("디버프")
+            정의들 = [
+                효과.get("디버프") for 효과 in (스킬.get("장판별") or {}).values()
+            ]
+            정의들.append((스킬.get("지속공격") or {}).get("장판디버프"))
+            for 정의 in 정의들:
                 if isinstance(정의, dict):
                     결과[정의["이름"]] = {k: v for k, v in 정의.items() if k != "이름"}
     return 결과
