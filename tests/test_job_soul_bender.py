@@ -8,7 +8,7 @@ from game.data.ability import job_ability_010m
 from game.system import rng
 import gameflow as gf
 from game.system import skill_system as ss
-from game.system.combat import attacks, damage, flow, stats
+from game.system.combat import attacks, element, flow, hit, stats
 from tests import support
 
 
@@ -106,8 +106,8 @@ def test_어둠의_친화는_암속성_저항_명속성_취약_암속성_강화2
     _, 전투상태, 적, sb = 소울브링어전장
     assert "어둠의 친화" in sb["원본"]["보유특성"]
     assert "암속성" in sb["원본"]["저항"] and "명속성" in sb["원본"]["취약"]
-    assert damage.속성_최종배율(전투상태, sb, 적[0], "암속성") == pytest.approx(1.2)
-    assert damage.속성_최종배율(전투상태, sb, 적[0], "화속성") == 1.0
+    assert element.속성_최종배율(전투상태, sb, 적[0], "암속성") == pytest.approx(1.2)
+    assert element.속성_최종배율(전투상태, sb, 적[0], "화속성") == 1.0
 
 
 def test_어둠의_친화는_무기_주사위가_없는_스킬에만_암속성을_더한다(
@@ -167,7 +167,7 @@ def test_케이가는_일반공격에_암속성을_더한다(소울브링어전�
     e = 적[0]
     e["원본"] = dict(e["원본"], 취약=["암속성"], 저항=[])
     _주사위고정(monkeypatch, 15)
-    monkeypatch.setattr(damage, "명중_판정", lambda *a, **k: _명중())
+    monkeypatch.setattr(hit, "명중_판정", lambda *a, **k: _명중())
 
     def 피해():
         e["현재HP"] = 999
@@ -189,7 +189,7 @@ def test_케이가_추가_피해는_지능_명중굴림을_따로_하고_본_공
         본굴림.append(명중률종류)
         return dict(_명중(), 성공=명중률종류 == "지능판정")
 
-    monkeypatch.setattr(damage, "명중_판정", 판정)
+    monkeypatch.setattr(hit, "명중_판정", 판정)
     _주사위고정(monkeypatch, 5)  # 장비 데미지보너스 -1이 붙어도 0이 되지 않게
     attacks.일반공격_실행(전투상태, sb, 적[0])
     assert 본굴림 == ["보정명중률", "지능판정"]
@@ -203,7 +203,7 @@ def test_케이가는_무기_주사위_스킬의_타격마다_붙고_귀참과_�
 ):
     _, 전투상태, 적, sb = 소울브링어전장
     _케이가_걸기(전투상태, sb)
-    monkeypatch.setattr(damage, "명중_판정", lambda *a, **k: _명중())
+    monkeypatch.setattr(hit, "명중_판정", lambda *a, **k: _명중())
 
     def 추가타격수(이름):
         결과 = ss.공격스킬_실행(전투상태, sb, _스킬(이름), 적[0])
@@ -224,7 +224,7 @@ def test_케이가는_무기_주사위_스킬의_타격마다_붙고_귀참과_�
 
 def test_케이가_버프가_없으면_추가_피해도_없다(소울브링어전장, monkeypatch):
     _, 전투상태, 적, sb = 소울브링어전장
-    monkeypatch.setattr(damage, "명중_판정", lambda *a, **k: _명중())
+    monkeypatch.setattr(hit, "명중_판정", lambda *a, **k: _명중())
     attacks.일반공격_실행(전투상태, sb, 적[0])
     결과 = ss.공격스킬_실행(전투상태, sb, _스킬("달빛베기"), 적[0])
     assert _케이가_로그(전투상태) == []
@@ -281,7 +281,7 @@ def test_사슬_해제_달빛베기는_추가공격을_써서_암속성_양손�
         굴림.append(명중률종류)
         return dict(_명중(), 성공=명중률종류 == "주문시전명중률")
 
-    monkeypatch.setattr(damage, "명중_판정", 판정)
+    monkeypatch.setattr(hit, "명중_판정", 판정)
     _주사위고정(monkeypatch, 1)  # 내성굴림 실패
     _달빛베기_쓰기(전투상태, sb, 적[0], 추가공격=1)
     # 1타/2타가 빗나가도 3타는 나간다
@@ -295,7 +295,7 @@ def test_사슬_해제_달빛베기는_추가공격을_써서_암속성_양손�
 def test_양손올려베기는_암속성이다(소울브링어전장, monkeypatch):
     _, 전투상태, 적, sb = 소울브링어전장
     e = 적[0]
-    monkeypatch.setattr(damage, "명중_판정", lambda *a, **k: _명중())
+    monkeypatch.setattr(hit, "명중_판정", lambda *a, **k: _명중())
     _주사위고정(monkeypatch, 20)  # 내성 성공 - 공중에뜸 없이 피해만
 
     def 셋째타_피해(취약):
@@ -309,7 +309,7 @@ def test_양손올려베기는_암속성이다(소울브링어전장, monkeypatc
 
 def test_추가공격이_없으면_양손올려베기는_나가지_않는다(소울브링어전장, monkeypatch):
     _, 전투상태, 적, sb = 소울브링어전장
-    monkeypatch.setattr(damage, "명중_판정", lambda *a, **k: _명중())
+    monkeypatch.setattr(hit, "명중_판정", lambda *a, **k: _명중())
     _달빛베기_쓰기(전투상태, sb, 적[0], 추가공격=0)
     assert _로그(전투상태, "달빛베기 - 양손올려베기") == []
 
@@ -350,7 +350,7 @@ def test_케이가_추가_피해에는_장비와_버프의_데미지보너스가
     _, 전투상태, 적, sb = 소울브링어전장
     _케이가_걸기(전투상태, sb)
     _특성_빼기(sb, "어둠의 친화")  # 암속성 강화 배율 없이 더한 값만 본다
-    monkeypatch.setattr(damage, "명중_판정", lambda *a, **k: _명중())
+    monkeypatch.setattr(hit, "명중_판정", lambda *a, **k: _명중())
     _주사위고정(monkeypatch, 3)
     대상 = 적[0]
 
@@ -466,7 +466,7 @@ def _사야_내성(monkeypatch, 성공):
         raise AssertionError("장판스킬 지속공격은 명중 굴림을 하지 않는다")
 
     monkeypatch.setattr(stats, "대상_내성굴림", 내성)
-    monkeypatch.setattr(damage, "명중_판정", 명중)
+    monkeypatch.setattr(hit, "명중_판정", 명중)
     monkeypatch.setattr(
         stats, "장비_데미지보너스", lambda 참가자, 대상=None, 전투상태=None: 0
     )
@@ -594,7 +594,7 @@ def test_툼스톤은_6번_무작위_적을_주문시전명중으로_차수d4_�
         판정들.append((명중률종류, 명중보너스))
         return _명중()
 
-    monkeypatch.setattr(damage, "명중_판정", 판정)
+    monkeypatch.setattr(hit, "명중_판정", 판정)
     monkeypatch.setattr(
         stats, "장비_데미지보너스", lambda 참가자, 대상=None, 전투상태=None: 0
     )
@@ -656,7 +656,7 @@ def test_귀영보는_소울브링어만_고르는_2차수_퍽이고_반응스�
 def test_귀영보는_첫_피격에_반응행동과_MP10으로_불리점을_준다(귀영보전장, monkeypatch):
     _, 전투상태, 적, sb = 귀영보전장
     _눈들(monkeypatch, 19, 2)  # 원래 19(명중) -> 불리점 굴림 2
-    판정 = damage.명중_판정(전투상태, 적[0], sb, "근력판정")
+    판정 = hit.명중_판정(전투상태, 적[0], sb, "근력판정")
     assert not 판정["성공"] and 판정["자연눈"] == 2
     assert (sb["행동자원"]["반응행동"], sb["현재MP"]) == (0, 20)
     assert any(
@@ -668,12 +668,12 @@ def test_귀영보는_첫_피격에_반응행동과_MP10으로_불리점을_준�
 def test_귀영보는_자기_턴부터_첫_공격에만_쓴다(귀영보전장, monkeypatch):
     _, 전투상태, 적, sb = 귀영보전장
     _눈들(monkeypatch, 1, 19, 19, 2)
-    damage.명중_판정(전투상태, 적[0], sb, "근력판정")  # 첫 공격은 대실패 - 쓸 일이 없다
+    hit.명중_판정(전투상태, 적[0], sb, "근력판정")  # 첫 공격은 대실패 - 쓸 일이 없다
     sb["행동자원"]["반응행동"] = 1
-    판정 = damage.명중_판정(전투상태, 적[1], sb, "근력판정")  # 두 번째는 안 쓴다
+    판정 = hit.명중_판정(전투상태, 적[1], sb, "근력판정")  # 두 번째는 안 쓴다
     assert 판정["성공"] and sb["현재MP"] == 30
     flow.턴_시작_처리(전투상태, sb)  # 자기 턴이 오면 다시
-    판정 = damage.명중_판정(전투상태, 적[0], sb, "근력판정")
+    판정 = hit.명중_판정(전투상태, 적[0], sb, "근력판정")
     assert not 판정["성공"] and sb["현재MP"] == 20
 
 
@@ -681,7 +681,7 @@ def test_귀영보는_MP가_10보다_적으면_쓰지_않는다(귀영보전장,
     _, 전투상태, 적, sb = 귀영보전장
     sb["현재MP"] = 9
     _눈들(monkeypatch, 19, 2)
-    assert damage.명중_판정(전투상태, 적[0], sb, "근력판정")["성공"]
+    assert hit.명중_판정(전투상태, 적[0], sb, "근력판정")["성공"]
     assert sb["행동자원"]["반응행동"] == 1
 
 
@@ -729,7 +729,7 @@ def _명중보너스_기록(monkeypatch):
         기록.append((명중률종류, 명중보너스))
         return _명중()
 
-    monkeypatch.setattr(damage, "명중_판정", 판정)
+    monkeypatch.setattr(hit, "명중_판정", 판정)
     return 기록
 
 
@@ -814,7 +814,7 @@ def test_귀참드라이브는_귀참이_빗나가도_나가고_1d8더하기_주
     _특성_빼기(sb, "어둠의 친화")  # 암속성 강화 배율 없이 더한 값만 본다
     _장비_보너스(monkeypatch, 0)
     monkeypatch.setattr(
-        damage,
+        hit,
         "명중_판정",
         lambda 전투상태, 공격자, 대상, 명중률종류, *a, **k: dict(
             _명중(), 성공=명중률종류 == "주문시전명중률"
@@ -834,7 +834,7 @@ def test_귀참드라이브에는_장비와_버프의_데미지보너스가_붙�
 ):
     _, 전투상태, 적, sb = 소울브링어전장
     _특성_빼기(sb, "어둠의 친화")
-    monkeypatch.setattr(damage, "명중_판정", lambda *a, **k: _명중())
+    monkeypatch.setattr(hit, "명중_판정", lambda *a, **k: _명중())
     _주사위고정(monkeypatch, 3)
 
     def 드라이브피해():
@@ -898,7 +898,7 @@ def test_사야_장판이면_수속성이_더해지고_건강_내성을_따로_�
         ("빙결", "건강", "10+주문시전보정치", 1),
     ]
     monkeypatch.setattr(
-        damage,
+        hit,
         "명중_판정",
         lambda 전투상태, 공격자, 대상, 명중률종류, *a, **k: dict(
             _명중(), 성공=명중률종류 == "주문시전명중률"
@@ -919,7 +919,7 @@ def test_브레멘_장판이면_귀참드라이브가_맞힌_적에_귀참_브�
     """귀참 : 브레멘은 브레멘 장판이 있을 때 귀참드라이브의 추가 효과이고 중첩되지 않는다(사용자 2026-11-12)."""
     _, 전투상태, 적, sb = 소울브링어전장
     _브레멘_깔기(전투상태, sb)
-    monkeypatch.setattr(damage, "명중_판정", lambda *a, **k: _명중())
+    monkeypatch.setattr(hit, "명중_판정", lambda *a, **k: _명중())
     e = 적[0]
     방어력 = stats.유효_방어력(전투상태, e)
     for _ in range(7):

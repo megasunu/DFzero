@@ -8,7 +8,7 @@
 """
 
 import gameflow as gf
-from game.system.combat import damage, stats, traits
+from game.system.combat import damage, element, stats, traits
 from tests import support
 
 
@@ -97,7 +97,7 @@ def test_빛의_성주는_명속성_공격과_명속강2와_명속성_저항():
     damage.피해_적용(전투상태, 지그, 10, 속성="명속성")
     assert 지그["현재HP"] == 999 - 5
     # 명속강 2 - 명속성 피해 1.2배
-    assert damage.속성_최종배율(전투상태, 지그, 아군[0], "명속성", False) == 1.2
+    assert element.속성_최종배율(전투상태, 지그, 아군[0], "명속성", False) == 1.2
     # 모든 공격은 명속성이 된다
     assert traits.특성_문자열_변동값_목록(전투상태, 지그, "공격속성변경") == ["명속성"]
 

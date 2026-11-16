@@ -14,8 +14,9 @@ from game.data.monster.monster_title import 챔피언_돌연변이, 칭호목록
 from game.system import dice_utils, settings_system, skill_system
 from game.system.combat import (
     attacks,
+    channeling,
+    control,
     core,
-    damage,
     flow,
     formula,
     monster_actions,
@@ -317,7 +318,7 @@ def 채널링_확인대기(게임상태):
         return []
     return [
         b["이름"]
-        for b in damage.채널링_목록(참가자)
+        for b in channeling.채널링_목록(참가자)
         if not b.get("채널링시전턴") and not b.get("채널링확인")
     ]
 
@@ -326,10 +327,10 @@ def 채널링_선택(게임상태, 유지):
     """채널링 유지 여부 - 유지하면 이번 턴이 끝날 때까지 남고(다른 행동을 하면 풀린다), 아니면 바로 푼다."""
     전투상태 = 게임상태["전투상태"]
     참가자 = 현재_턴_참가자(게임상태)
-    for 항목 in damage.채널링_목록(참가자):
+    for 항목 in channeling.채널링_목록(참가자):
         항목["채널링확인"] = True
     if not 유지:
-        damage.채널링_행동해제(전투상태, 참가자, 까닭="해제")
+        channeling.채널링_행동해제(전투상태, 참가자, 까닭="해제")
 
 
 def 적_목록(게임상태):
@@ -432,11 +433,11 @@ def 상태_아이콘(게임상태, 참가자):
 
 
 def _홀딩무적(게임상태, 참가자):
-    """damage.홀딩무적인가와 같은 조건이지만 화면 조회라 홀딩을 정리하지 않는다."""
+    """control.홀딩무적인가와 같은 조건이지만 화면 조회라 홀딩을 정리하지 않는다."""
     return any(
         항목.get("시전자무적") and 항목.get("시전자id") == 참가자.get("id")
         for p in 게임상태["전투상태"]["참가자"]
-        for 항목 in damage.홀딩_목록(p)
+        for 항목 in control.홀딩_목록(p)
     )
 
 
@@ -496,7 +497,7 @@ def 새_로그_가져오기(게임상태):
     return 새로그
 
 
-# 공격 연출 종류(combat.damage.공격연출_종류, "모양:색") -> game/assets/attack/ 안의 그림 파일
+# 공격 연출 종류(combat.element.공격연출_종류, "모양:색") -> game/assets/attack/ 안의 그림 파일
 _연출_모양_파일 = common_names.연출모양_그림
 _연출_색_파일 = common_names.속성_그림
 

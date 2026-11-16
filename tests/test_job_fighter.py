@@ -5,7 +5,7 @@ import pytest
 from game.system import rng
 import gameflow as gf
 from game.system import skill_system as ss
-from game.system.combat import damage, monster_actions, stats
+from game.system.combat import damage, hit, monster_actions, stats
 from tests import support
 
 
@@ -50,7 +50,7 @@ def _분신수(격):
 def _빗나감(전투상태, 적, 격, monkeypatch):
     """적의 공격이 격투가에게 빗나간다(자연 1)."""
     support.주사위고정(monkeypatch, 1)
-    판정 = damage.명중_판정(전투상태, 적, 격, "근력판정")
+    판정 = hit.명중_판정(전투상태, 적, 격, "근력판정")
     monkeypatch.undo()
     assert not 판정["성공"]
     return 판정

@@ -6,7 +6,7 @@ import pytest
 import gameflow as gf
 from game.data.equipment.eq_03_accessory_set import 장비세트목록
 from game.system import dice_utils, equipment_system as 장비, rng
-from game.system.combat import damage, flow, stats
+from game.system.combat import flow, hit_effects, stats
 from tests import support
 
 스톰패스 = {
@@ -197,7 +197,7 @@ def test_상태이상을_거는_굴림에_상태이상_내성이_실린다(전�
             ],
         }
     }
-    damage.마봉_명중시효과(전투상태, 적[0], p, {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, 적[0], p, {"성공": True})
     assert 보정치들 == [기본 + 1]
 
 
@@ -223,10 +223,10 @@ def test_심장을_뽑는_약지는_명중_시_20퍼센트로_출혈(전장, 장
 
     monkeypatch.setattr(dice_utils, "내성_굴림", 내성)
     monkeypatch.setattr(rng.확률, "random", lambda: 0.2)
-    damage.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
     assert 적[0]["상태이상"] == []
     monkeypatch.setattr(rng.확률, "random", lambda: 0.19)
-    damage.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
     근력 = stats.유효_능력치_보정치(전투상태, p, "근력")
     assert 난이도들 == [10 + 근력]
     출혈 = [s for s in 적[0]["상태이상"] if s["이름"] == "출혈"]

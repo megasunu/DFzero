@@ -7,7 +7,7 @@ import pytest
 
 import gameflow as gf
 from game.system import dice_utils, equipment_system, rng, skill_system as ss
-from game.system.combat import damage, flow, reactions, stats
+from game.system.combat import flow, hit, hit_effects, reactions, stats
 from tests import support
 
 
@@ -41,9 +41,9 @@ def _상태들(참가자, 이름):
 
 def test_고유효과의_상시_원소는_마봉효과처럼_더해진다(전장):
     전투상태, _, 아군 = 전장
-    전 = damage.유효_치명타범위(전투상태, 아군[0])
+    전 = hit.유효_치명타범위(전투상태, 아군[0])
     _무기(아군[0], 고유효과=[{"변동대상": "치명타범위", "변동값": 1}])
-    assert damage.유효_치명타범위(전투상태, 아군[0]) == 전 - 1
+    assert hit.유효_치명타범위(전투상태, 아군[0]) == 전 - 1
 
 
 def test_상태이상_저항은_그_내성굴림에_이점_취약은_불리점(전장):
@@ -92,7 +92,7 @@ def test_명중시_상태이상의_DC는_수식이다(전장, monkeypatch):
         return False, 1
 
     monkeypatch.setattr(dice_utils, "내성_굴림", 내성)
-    damage.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
     assert 난이도들 == [10 + stats.주문시전_보정치(전투상태, p)]
     assert [s["이름"] for s in 적[0]["상태이상"]] == ["혼란"]
 
@@ -102,18 +102,18 @@ def test_명중시_확률로_자신에게_버프_같은_기원은_지속턴만_�
     p = 아군[0]
     _무기(p, 고유효과=[{"발동": "명중", "확률": 0.5, "버프": "민첩증가", "지속턴": 2}])
     _확률(monkeypatch, 0.6)
-    damage.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
     assert not _버프들(p, "민첩증가")
     _확률(monkeypatch, 0.4)
-    damage.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
     _버프들(p, "민첩증가")[0]["지속턴"] = 1
-    damage.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
     assert [b["지속턴"] for b in _버프들(p, "민첩증가")] == [2]
     assert "'시험 무기' - '민첩증가' 버프 획득" in 전투상태["로그"][-1]["비고"]
     # 쓰러뜨린 공격에도 자신에게 거는 버프는 걸린다
     p["버프"].clear()
     적[0]["생존"] = False
-    damage.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
     assert len(_버프들(p, "민첩증가")) == 1
 
 
@@ -123,17 +123,17 @@ def test_축복은_모든_능력치_1_기원이_다르면_겹친다(전장, monk
     능력치들 = ("근력", "민첩", "건강", "지능", "지혜", "매력")
     전 = {k: stats.유효_능력치값(전투상태, p, k) for k in 능력치들}
     _무기(p, 고유효과=[{"발동": "명중", "자신상태변화": "축복", "지속턴": 2}])
-    damage.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
     assert {k: stats.유효_능력치값(전투상태, p, k) for k in 능력치들} == {
         k: v + 1 for k, v in 전.items()
     }
     assert not _버프들(p, "축복")  # 버프가 아니라 상태변화(#462)
     assert "'시험 무기' - '축복' 상태 획득" in 전투상태["로그"][-1]["비고"]
     _상태들(p, "축복")[0]["지속턴"] = 1  # 같은 기원은 지속턴만 갱신
-    damage.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
     assert [b["지속턴"] for b in _상태들(p, "축복")] == [2]
     p["상태이상"].append({"이름": "축복", "중첩": 1, "지속턴": 3, "기원": "다른 것"})
-    damage.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
     assert len(_상태들(p, "축복")) == 2
     assert stats.유효_능력치값(전투상태, p, "근력") == 전["근력"] + 2
 
@@ -147,11 +147,11 @@ def test_대상상태이상_조건은_그_상태인_적에게_명중할_때만(�
             {"발동": "명중", "대상상태이상": "출혈", "버프": "민첩증가", "지속턴": 2}
         ],
     )
-    damage.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
     assert not _버프들(p, "민첩증가")
     적[0]["상태이상"].append({"이름": "출혈", "지속턴": 3})
-    damage.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
-    damage.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
     assert len(_버프들(p, "민첩증가")) == 1  # 같은 기원은 겹치지 않는다
 
 
@@ -185,12 +185,12 @@ def test_피격시_확률로_장착자에게_상태이상(전장, monkeypatch):
         dice_utils, "내성_굴림", lambda 보정치, 난이도, **kw: (False, 1)
     )
     _확률(monkeypatch, 0.5)
-    damage.피격_처리(전투상태, 적[0], p, {"성공": True})
+    hit_effects.피격_처리(전투상태, 적[0], p, {"성공": True})
     assert not any(s["이름"] == "저주" for s in p["상태이상"])
     _확률(monkeypatch, 0.1)
-    damage.피격_처리(전투상태, 적[0], p, {"성공": False})  # 빗나가면 없다
+    hit_effects.피격_처리(전투상태, 적[0], p, {"성공": False})  # 빗나가면 없다
     assert not any(s["이름"] == "저주" for s in p["상태이상"])
-    damage.피격_처리(전투상태, 적[0], p, {"성공": True})
+    hit_effects.피격_처리(전투상태, 적[0], p, {"성공": True})
     assert {"이름": "저주", "지속턴": 2} in p["상태이상"]
 
 
@@ -589,10 +589,10 @@ def test_키놀의_손뼈는_명중하면_30퍼센트로_건강_내성_3턴_감�
 
     monkeypatch.setattr(dice_utils, "내성_굴림", 내성)
     _확률(monkeypatch, 0.3)
-    damage.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
     assert 굴림 == [] and _상태들(적[0], "감전") == []
     _확률(monkeypatch, 0.29)
-    damage.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, p, 적[0], {"성공": True})
     # 무기스탯보정치 = 무기능력치(근력/민첩) 중 높은 쪽 - 일반공격 보정치
     assert 굴림 == [10 + stats.평타_능력치_보정치(전투상태, p)]
     assert [s["지속턴"] for s in _상태들(적[0], "감전")] == [3]

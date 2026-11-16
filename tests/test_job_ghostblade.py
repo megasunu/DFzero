@@ -9,7 +9,7 @@ import pytest
 import gameflow as gf
 from game.system import rng
 from game.system import skill_system as ss
-from game.system.combat import attacks, damage, flow, stats, traits
+from game.system.combat import attacks, damage, flow, hit, stats, traits
 from tests import support
 
 마스터리5종 = [
@@ -100,7 +100,7 @@ def test_검귀는_퍽으로_무기_마스터리를_다시_고를_수_없다():
 
 def test_청혈투귀는_치명타_범위를_1_늘리고_치명타_주사위는_그대로다(검귀전장):
     _, 전투상태, _, 검귀 = 검귀전장
-    assert damage.유효_치명타범위(전투상태, 검귀) == 19
+    assert hit.유효_치명타범위(전투상태, 검귀) == 19
     assert stats.치명타_주사위수(전투상태, 검귀) == 1
 
 
@@ -148,7 +148,7 @@ def test_일반공격도_도_마스터리를_받는다(검귀전장, monkeypatch
 
     monkeypatch.setattr(damage, "피해_적용", 피해_기록)
     monkeypatch.setattr(
-        damage,
+        hit,
         "명중_판정",
         lambda *a, **kw: {
             "성공": True,
@@ -232,7 +232,7 @@ def 스킬전장(검귀전장, monkeypatch):
         return {"성공": True, "자연눈": 15, "치명타": False, "자동실패": False}
 
     monkeypatch.setattr(damage, "피해_적용", 피해_기록)
-    monkeypatch.setattr(damage, "명중_판정", 명중)
+    monkeypatch.setattr(hit, "명중_판정", 명중)
     monkeypatch.setattr(
         stats, "장비_데미지보너스", lambda *a: 0
     )  # 원래 장비(방어구)의 보너스
@@ -339,12 +339,12 @@ def test_명중이점은_d20을_이점으로_굴린다(검귀전장, monkeypatch
     _, 전투상태, 적, 검귀 = 검귀전장
     굴림 = []
     monkeypatch.setattr(
-        damage.dice_utils,
+        hit.dice_utils,
         "d20_굴림",
         lambda 이점=False, 불리=False: 굴림.append(이점) or 10,
     )
-    damage.명중_판정(전투상태, 검귀, 적[0], "보정명중률", 명중이점=True)
-    damage.명중_판정(전투상태, 검귀, 적[0], "보정명중률")
+    hit.명중_판정(전투상태, 검귀, 적[0], "보정명중률", 명중이점=True)
+    hit.명중_판정(전투상태, 검귀, 적[0], "보정명중률")
     assert 굴림 == [True, False]
 
 

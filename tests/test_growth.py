@@ -13,7 +13,7 @@ from game.data.perks.perks_class_0000 import 퍽목록 as 공용퍽
 from game.data.job_level.job_level_000x_style import 전투스타일
 from game.system import character_data_system as 캐릭터데이터
 from game.data.job_level import job_level_000x_style as 스타일파일
-from game.system.combat import damage, traits
+from game.system.combat import hit, traits
 from game.system import dice_utils
 from game.system import skill_system as ss
 from game.system import character_levelup_system as 레벨업
@@ -1022,9 +1022,9 @@ def test_레인저_레벨6_리볼버_강화는_리볼버를_들었을_때만_치
     p = next(x for x in gf.아군_목록(상태))
     무기 = p["장비데이터"]["무기"]
     p["장비데이터"]["무기"] = dict(무기, 타입="자동권총")
-    assert damage.유효_치명타범위(상태["전투상태"], p) == 20
+    assert hit.유효_치명타범위(상태["전투상태"], p) == 20
     p["장비데이터"]["무기"] = dict(무기, 타입="리볼버")
-    assert damage.유효_치명타범위(상태["전투상태"], p) == 19
+    assert hit.유효_치명타범위(상태["전투상태"], p) == 19
 
 
 @pytest.mark.parametrize(
