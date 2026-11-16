@@ -13,9 +13,7 @@ import random
 대상 = random.Random()  # 대상·행동·효과 고르기(choice, sample, shuffle, 가중치 고르기)
 던전 = random.Random()  # 인카운트(나올지, 몇 마리, 어떤 몬스터)
 보상 = random.Random()  # 전리품, 골드, 분해 조각, 업적 보상, 마법 봉인 이름
-칭호 = (
-    random.Random()
-)  # 인카운트 몬스터의 챔피언 칭호(붙을지, 돌연변이, 챔피언 버프 - #546)
+칭호 = random.Random()  # 인카운트 몬스터의 챔피언 칭호(붙을지, 돌연변이, 챔피언 버프)
 
 대화 = (
     random.Random()

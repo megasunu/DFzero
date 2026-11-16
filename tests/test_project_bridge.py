@@ -1,6 +1,5 @@
 """tools/project_bridge.py - 이슈와 megasunu 작업 보드(Project)를 잇는 브리지.
 
-stella-rain/.github의 scripts/test_project_bridge.py를 옮겼다(2026-10-16). DFzero에서 바꾼 것:
 칸·옵션·명령 라벨이 한국어다(`명령:상태-지금`). 조직의 기본 자동화(닫힘 -> 완료 등)는 API로 켤 수 없어서
 브리지가 대신한다 - 새 이슈 -> 백로그, 닫힘 -> 완료, 다시 열림 -> 백로그.
 """
@@ -514,7 +513,7 @@ def test_main_snapshot은_보드_번호가_필요하다():
         pb.main(["snapshot"])
 
 
-# ---------------------------------------------------------------- 닫힌 이슈 맞추기 (#189)
+# ---------------------------------------------------------------- 닫힌 이슈 맞추기
 # auto-merge.yml은 GITHUB_TOKEN으로 이슈를 닫아 issues: closed 사건이 project-sync를 깨우지 않는다.
 # 그래서 snapshot --reconcile이 내보내기 전에 닫혔는데 완료가 아닌 이슈를 완료로 맞춘다.
 

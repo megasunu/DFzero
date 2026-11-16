@@ -323,7 +323,7 @@ test("prompt kinds: a person, a background task's notification, hook feedback", 
   assert.deepStrictEqual(line, { t: at(1), ev: "UserPromptSubmit", kind: "알림" }); // no prompt text kept
 });
 
-// The queued notifications of PR activity and other sessions come in the same wrapper, with no task id (#276).
+// The queued notifications of PR activity and other sessions come in the same wrapper, with no task id.
 const REMOTE =
   "<task-notification>\n<task-type>queued-remote-notifications</task-type>\n<status>pending</status>\n" +
   "<summary>1 unread notification</summary>\n</task-notification>";
@@ -446,7 +446,7 @@ test("summarize: a message sent mid-turn splits the turn and carries the tokens 
   assert.match(t.format(s), /\| 1\+ \|/);
 });
 
-// A Stop hook's feedback makes Claude go on without a new prompt: Stop, more work, Stop again (#272).
+// A Stop hook's feedback makes Claude go on without a new prompt: Stop, more work, Stop again.
 // The second Stop's tokens count from the same prompt, so they include the first part's.
 const FEEDBACK = [
   { t: at(0), ev: "UserPromptSubmit", kind: "사람" },
@@ -637,7 +637,7 @@ test("the hook never fails a tool call: bad input prints nothing and exits 0", (
   assert.strictEqual(out, "");
 });
 
-// Expected green: a task's kind gives its usual length, then CI (#287).
+// Expected green: a task's kind gives its usual length, then CI.
 test("eta: the kind's usual length plus CI, none for an investigation", () => {
   assert.deepStrictEqual(t.eta("기능", at(0)), { sec: 720 + 190, green: at(910) });
   assert.deepStrictEqual(t.eta("버그", at(0)), { sec: 240 + 190, green: at(430) });

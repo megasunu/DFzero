@@ -1,5 +1,5 @@
 # megasunu 작업 보드를 `status` 브랜치의 STATUS.md로 내보낸다(tools/project_bridge.py snapshot).
-# 내보내기 전에 닫혔는데 완료가 아닌 이슈를 완료로 맞춘다(--reconcile, #189): auto-merge.yml이 GITHUB_TOKEN으로
+# 내보내기 전에 닫혔는데 완료가 아닌 이슈를 완료로 맞춘다(--reconcile): auto-merge.yml이 GITHUB_TOKEN으로
 # 닫은 이슈는 issues: closed 사건이 project-sync를 깨우지 않아 지금/검토 중에 남는다. 보드에 쓰는 것은 이것뿐이다.
 # 클라우드 세션은 보드 API에 닿지 못해 이 파일을 읽는다:
 #   git fetch origin status && git show origin/status:STATUS.md

@@ -1,4 +1,4 @@
-"""tools/balance_winrate.py - 밸런스 체크 승률용 전투(#691): 파티원 전원의 행동 패턴을 돌아가며 다듬어 최고 승률을 찾는다."""
+"""tools/balance_winrate.py - 밸런스 체크 승률용 전투: 파티원 전원의 행동 패턴을 돌아가며 다듬어 최고 승률을 찾는다."""
 
 import random
 

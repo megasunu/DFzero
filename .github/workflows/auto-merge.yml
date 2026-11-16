@@ -1,6 +1,6 @@
 name: Auto-merge
 
-# Claude가 연 `claude/*` PR을 CI가 초록이면 main-branch로 병합하고 브랜치를 지운다(2026-10-15 사용자 결정).
+# Claude가 연 `claude/*` PR을 CI가 초록이면 main-branch로 병합하고 브랜치를 지운다.
 # 세션이 살아 있지 않아도 병합된다. stella-rain/core의 auto-merge.yml을 옮겼고, 판정은 tools/auto_merge_gate.py다.
 #
 # - Check 워크플로가 끝날 때마다 돈다. check.yml은 push와 pull_request 둘 다에서 돌아 같은 커밋에 실행이 둘이므로

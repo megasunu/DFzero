@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-// time-log: records how long Claude's work takes, to find what to make faster. A temporary system
-// (2026-10-19, #236/#239): it stays until the user orders it removed - the list is in #237.
+// time-log: records how long Claude's work takes, to find what to make faster. A temporary system.
 //
 // One log per session (.claude/time-log/<session>.jsonl, not committed), three sources:
 //   hook   PreToolUse / PostToolUse / PostToolUseFailure time each tool call, in a detailed category
@@ -10,7 +9,7 @@
 //   mark   `node .claude/hooks/time-log.cjs mark 작업 <유형> <이름>` starts a task;
 //          `mark <단계>` starts a phase. tools/check.py adds one GateStep line per gate step.
 //          `mark 작업` also prints when the last CI should turn green (ETA_SEC + CI_SEC); `mark CI 초록|빨강 [시각]`
-//          records when it really did (#287).
+//          records when it really did.
 //   report `node .claude/hooks/time-log.cjs report [file]` - markdown tables of a log (the latest by default).
 //
 // The hook never blocks a tool call or a prompt: on any error it prints nothing and exits 0.
@@ -43,7 +42,7 @@ function latestLog(dir) {
 }
 
 const git = (sub) => new RegExp(`\\bgit\\s+(?:-[cC]\\s+\\S+\\s+)*(?:${sub})\\b`);
-// A repository script run by python - reading or searching the file is not running it (#271).
+// A repository script run by python - reading or searching the file is not running it.
 const pyRun = (script) => new RegExp(`\\bpython[\\d.]*\\s+(?:-\\S+\\s+)*\\S*\\b${script}\\.py\\b`);
 
 // Shell categories, heaviest first: a mixed command is timed under the first that matches.
@@ -182,7 +181,7 @@ function record(input, now) {
 }
 
 // What started a turn: a person's message, a background task's notification, the queued remote
-// notifications (PR activity, other sessions - same wrapper, no task id, #276), or a hook's feedback.
+// notifications (PR activity, other sessions - same wrapper, no task id), or a hook's feedback.
 // Only the kind is kept - the log never holds message text (the repository is public).
 function promptKind(prompt) {
   const p = String(prompt || "").trimStart();
@@ -224,8 +223,7 @@ function backgroundLines(input, now) {
   return stopped ? [{ t: now, ev: "BgEnd", id: String(stopped), status: "stopped" }] : [];
 }
 
-// A task's usual length from start to push, by kind: medians of the #237 records from 2026-10-20 on, when the
-// gate and golden changes had landed. Change them from the report's expected-green table. 조사 opens no PR.
+// A task's usual length from start to push, by kind: medians of the records. Change them from the report's expected-green table. 조사 opens no PR.
 const ETA_SEC = { 버그: 240, 설정: 240, 규칙: 240, 자동검사수정: 240, 문서: 240, 리팩터링: 540, 기능: 720, 기타: 720 };
 const CI_SEC = 190; // check + ui-smoke, the last 11 PR runs took 3:00-3:18
 
@@ -325,7 +323,7 @@ function summarize(events) {
       stopAt = e.t;
       lastStop = e;
     } else if (e.ev === "Stop" && stopAt) {
-      // A Stop hook's feedback: Claude went on from the last Stop with no new prompt (#272). This Stop's
+      // A Stop hook's feedback: Claude went on from the last Stop with no new prompt. This Stop's
       // tokens count from the same prompt as the last one, so the output is the difference.
       open = stopAt;
       openKind = "훅피드백";

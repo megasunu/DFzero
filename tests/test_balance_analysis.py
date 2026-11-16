@@ -1,4 +1,4 @@
-"""tools/balance_analysis.py - 밸런스 체크 분석용 전투(#690): 고른 무작위 파티, 무작위 행동, 판 기록, 집계, 선형 회귀."""
+"""tools/balance_analysis.py - 밸런스 체크 분석용 전투: 고른 무작위 파티, 무작위 행동, 판 기록, 집계, 선형 회귀."""
 
 import collections
 import random

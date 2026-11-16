@@ -1,4 +1,4 @@
-"""tools/golden_diff.py - 바뀐 골든을 큰 diff 대신 짧게 요약한다(#237 작업시간: 골든 diff 읽기)."""
+"""tools/golden_diff.py - 바뀐 골든을 큰 diff 대신 짧게 요약한다(작업시간: 골든 diff 읽기)."""
 
 import json
 

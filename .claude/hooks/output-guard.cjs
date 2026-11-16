@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 // output-guard: warns before a tool call that would pour far more text into the context than the
-// task needs (#388). Measured on the launcher/mechanic session: code search 106k chars, whole-file
-// reads 82k, shell edits 65k - the three biggest tool-result groups, and the skill's "keep output
-// short" rule alone did not hold them back.
+// task needs: code search, whole-file reads and shell edits.
 //
 // PreToolUse, Bash and Read. It warns as additionalContext and never blocks: no permission decision,
 // and on any error it prints nothing and exits 0. Claude goes ahead if the whole output is needed.
@@ -12,7 +10,7 @@
 //   search    recursive grep / rg / git grep with no length or count limit and no pipe
 //   script    a heredoc command over SCRIPT_CHARS chars (git commands aside): the text sent stays in
 //             the context, and a shell edit of a file read before also brings back the changed lines
-// The limits are judgement (2026-10-23), not measured optima.
+// The limits are judgement, not measured optima.
 
 "use strict";
 

@@ -15,7 +15,7 @@
 //                            Each level fires once until usage drops again.
 //   SessionStart (compact)   after a compaction: tells Claude to say so and offer a handoff.
 //
-// Lines (Kade, kade-agent/agent-config, 2026-10-08; number line moved 200k -> 300k 2026-10-10): show the number at 300k
+// Lines: show the number at 300k
 // tokens, recommend a handoff at 400k, but never later than 40% / 60% of the window, so a
 // 200k-window model gets 80k / 120k. Quality drops gradually as
 // context grows (Anthropic: "context rot"); no vendor publishes a switch point, so these are
@@ -29,10 +29,8 @@
 //   CONTEXT_HANDOFF_TOKENS   default 400000     CONTEXT_HANDOFF_PCT   default 60 (cap)
 //
 // The hook never blocks a prompt: on any error it prints nothing and exits 0.
-// Copied 2026-10-15 from github.com/kade-agent/agent-config (hooks/); registered for this repository in
-// .claude/settings.json. The handoff-trigger skill (.claude/skills/) says what to do with its messages.
-// One change from the source (2026-10-16): agent-config now runs the hook from ~/.claude/hooks for every
-// repository, so where that copy exists (Kade's machines and cloud sessions) this one stays silent and
+// Registered for this repository in .claude/settings.json. The handoff-trigger skill (.claude/skills/) says what to do with its messages.
+// Where a copy runs from ~/.claude/hooks for every repository (Kade's machines and cloud sessions) this one stays silent and
 // the same warning is not given twice. Sessions without it (the maintainer's) still get this one.
 
 "use strict";
