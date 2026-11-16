@@ -6,7 +6,6 @@
 """
 
 import pytest
-from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -68,11 +67,11 @@ def _전투(상태, 사용기록):
 
 @pytest.mark.scenario("S8")
 def test_S8_엘레멘탈_번_속성강화_실전(golden):
-    rng.시드(시드_속성강화)
+    scenario.시드(시드_속성강화)
     상태 = support.새게임(파티구성)
     파티 = 상태["파티"]["파티원"]
     for c in 파티:
-        support.성장(상태, c, 8, 전직=구현된_전직[c["직업"]], 스킬습득=True)
+        scenario.성장(상태, c, 8, 전직=구현된_전직[c["직업"]], 스킬습득=True)
     gf.파티_최대치로_회복(상태)
     [엘마원본] = [c for c in 파티 if c["직업"] == "마법사"]
     assert gf.캐릭터_직업표시(엘마원본).startswith("엘리멘탈마스터")
@@ -149,7 +148,7 @@ _하급마법 = "랜턴파이어"
 
 
 def _쇼타임_퍽(캐릭터, 후보):
-    return next(((n, d) for n, d in 후보 if n == "쇼타임"), 후보[0])
+    return next(((n, d) for n, d in 후보 if n == "쇼타임"), scenario.아무거나(후보))
 
 
 def _살아있는_적(상태):
@@ -164,12 +163,12 @@ def _쇼타임(참가자):
 
 @pytest.mark.scenario("S8")
 def test_S8_쇼타임_지불_수단_선택_실전(golden):
-    rng.시드(시드_쇼타임)
+    scenario.시드(시드_쇼타임)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     상태["소지품"]["골드"] += gf.영입_비용
     마법사, _ = gf.파티원_영입(상태, "", "마법사")
-    support.성장(
+    scenario.성장(
         상태, 마법사, 9, 전직="엘리멘탈마스터", 퍽고르기=_쇼타임_퍽, 스킬습득=True
     )
     assert "쇼타임" in 마법사["보유스킬"] and _하급마법 in 마법사["보유스킬"]

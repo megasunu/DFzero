@@ -7,7 +7,6 @@
 """
 
 import pytest
-from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -59,7 +58,7 @@ def _성장_검사(상태, c, 목표, 전직):
     PL = 상태["진행도"]["플레이어레벨"]
     assert 목표 <= PL and gf.캐릭터_레벨업_가능(상태, c)
     전 = _수치(상태, c)
-    support.성장(상태, c, 목표, 전직=전직, 스킬습득=True)
+    scenario.성장(상태, c, 목표, 전직=전직, 스킬습득=True)
     후 = _수치(상태, c)
     assert (
         상태["진행도"]["플레이어레벨"] == PL
@@ -76,7 +75,7 @@ class _패배(Exception):
 
 class _캠페인:
     def __init__(self, 시드):
-        rng.시드(시드)
+        scenario.시드(시드)
         self.상태 = support.새게임()
         self.구간 = {}
         self.성장 = []
@@ -310,8 +309,8 @@ def _키우기(상태):
     PL = 상태["진행도"]["플레이어레벨"]
     for c in 상태["파티"]["파티원"]:
         if c["레벨"] < 5:
-            support.성장(상태, c, 5, 스킬습득=True)
-        support.성장(
+            scenario.성장(상태, c, 5, 스킬습득=True)
+        scenario.성장(
             상태,
             c,
             PL,
@@ -399,7 +398,7 @@ def _하늘성_둘러보기(상태, 파일명):
 
 @pytest.mark.scenario("S2")
 def test_S2_2차수_진입(golden):
-    rng.시드(1)
+    scenario.시드(1)
     상태 = support.새게임()
     _1차수_끝(상태)
     성장 = {5: _키우기(상태)}

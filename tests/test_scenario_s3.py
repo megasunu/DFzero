@@ -5,7 +5,7 @@
 """
 
 import pytest
-from game.system import rng, skill_system
+from game.system import skill_system
 import gameflow as gf
 import scenario
 import support
@@ -38,7 +38,8 @@ def _스킬_검사(상태, 사용):
     assert sum(행동.values()) == 필요, f"행동은 정확히 {필요}개 소비: {사용}"
     분류 = 사용["분류"]
     if 분류 == "공격스킬":
-        assert 사용["적HP변화"] <= 0, 사용
+        # 부활 챔피언이 그 공격에 쓰러졌다 일어나면 HP 합이 늘 수 있다(#725 - 무작위 퍽으로 처음 지나감)
+        assert 사용["적HP변화"] <= 0 or 사용["부활"], 사용
     elif 분류 == "회복스킬":
         assert sum(사용["아군HP변화"].values()) > 0, 사용
         assert 사용["적HP변화"] == 0
@@ -95,13 +96,14 @@ def _만료_전_재사용(사용기록):
 
 
 def _안쓴_스킬(상태, 돌림):
-    """{직업: [이번 실행에서 아직 안 쓴 스킬]} - [스킬]로 내지 않는 반응·전환스킬은 뺀다."""
+    """{직업: [이번 실행에서 아직 안 쓴 스킬]} - 전투 [스킬]로 내지 않는 반응·전환·던전스킬은 뺀다."""
     안씀 = {}
     for 캐릭터 in 상태["파티"]["파티원"]:
         남음 = [
             s
             for s in 캐릭터["보유스킬"]
-            if 상태["스킬데이터모음"][s].get("분류") not in ("반응스킬", "전환스킬")
+            if 상태["스킬데이터모음"][s].get("분류")
+            not in ("반응스킬", "전환스킬", "던전스킬")
             and not 돌림.get((캐릭터["캐릭터명"], s))
         ]
         if 남음:
@@ -157,11 +159,11 @@ def _전투(상태, 라벨, 결과목록, 돌림):
 @pytest.mark.scenario("S3")
 @pytest.mark.parametrize("순번, 직업", list(enumerate(직업들)))
 def test_S3_스킬_실전(순번, 직업, golden):
-    rng.시드(100 + 순번)
+    scenario.시드(100 + 순번)
     파티 = [직업] + [j for j in 직업들 if j != 직업][:3]
     상태 = support.새게임([("", j) for j in 파티])
     for 캐릭터 in 상태["파티"]["파티원"]:
-        support.성장(상태, 캐릭터, 5, 스킬습득=True)
+        scenario.성장(상태, 캐릭터, 5, 스킬습득=True)
         assert len(캐릭터["보유스킬"]) > 1
     gf.파티_최대치로_회복(상태)
     결과 = []

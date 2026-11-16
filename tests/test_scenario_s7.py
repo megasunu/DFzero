@@ -7,7 +7,6 @@
 """
 
 import pytest
-from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -159,13 +158,13 @@ def _전투_런처(상태, 런처, 메카닉, 기록, 누적):
 
 @pytest.mark.scenario("S7")
 def test_S7_런처_메카닉_실전(golden):
-    rng.시드(시드_런처)
+    scenario.시드(시드_런처)
     상태 = support.새게임(파티구성_런처)
     런처, 메카닉, 귀, 프 = 상태["파티"]["파티원"]
-    support.성장(상태, 런처, 9, 전직="런처", 스킬습득=True)
-    support.성장(상태, 메카닉, 9, 전직="메카닉", 스킬습득=True)
+    scenario.성장(상태, 런처, 9, 전직="런처", 스킬습득=True)
+    scenario.성장(상태, 메카닉, 9, 전직="메카닉", 스킬습득=True)
     for c in (귀, 프):
-        support.성장(상태, c, 9, 전직=구현된_전직[c["직업"]], 스킬습득=True)
+        scenario.성장(상태, c, 9, 전직=구현된_전직[c["직업"]], 스킬습득=True)
     gf.파티_최대치로_회복(상태)
     assert gf.캐릭터_직업표시(런처).startswith("런처")
     assert gf.캐릭터_직업표시(메카닉).startswith("메카닉")
@@ -341,14 +340,14 @@ def _전투_스핏(상태, 스핏, 레인저, 기록):
 
 @pytest.mark.scenario("S7")
 def test_S7_스핏파이어_실전(golden):
-    rng.시드(시드_스핏)
+    scenario.시드(시드_스핏)
     누적_스핏.clear()
     상태 = support.새게임(파티구성_스핏)
     스핏, 레인저, 귀, 프 = 상태["파티"]["파티원"]
-    support.성장(상태, 스핏, 9, 전직="스핏파이어", 스킬습득=True)
-    support.성장(상태, 레인저, 9, 전직="레인저", 스킬습득=True)
+    scenario.성장(상태, 스핏, 9, 전직="스핏파이어", 스킬습득=True)
+    scenario.성장(상태, 레인저, 9, 전직="레인저", 스킬습득=True)
     for c in (귀, 프):
-        support.성장(상태, c, 9, 전직=구현된_전직[c["직업"]], 스킬습득=True)
+        scenario.성장(상태, c, 9, 전직=구현된_전직[c["직업"]], 스킬습득=True)
     assert gf.캐릭터_직업표시(스핏).startswith("스핏파이어")
     assert {"강화탄", "매거진 드럼", "유탄 마스터리", "니트로모터", "장탄공급"} <= set(
         스핏["보유특성"]
@@ -519,7 +518,7 @@ def _전투_패러(상태, 메딕, 크루, 기록):
 
 @pytest.mark.scenario("S7")
 def test_S7_패러메딕_실전(golden, monkeypatch):
-    rng.시드(시드_패러)
+    scenario.시드(시드_패러)
     누적_패러.clear()
     흡수 = []
     원래 = damage.버프임시생명력_흡수
@@ -545,10 +544,10 @@ def test_S7_패러메딕_실전(golden, monkeypatch):
     monkeypatch.setattr(damage, "버프임시생명력_흡수", 흡수_기록)
     상태 = support.새게임(파티구성_패러)
     메딕, 크루, 귀, 마 = 상태["파티"]["파티원"]
-    support.성장(상태, 메딕, 9, 전직="패러메딕", 스킬습득=True)
-    support.성장(상태, 크루, 9, 전직="크루세이더", 스킬습득=True)
+    scenario.성장(상태, 메딕, 9, 전직="패러메딕", 스킬습득=True)
+    scenario.성장(상태, 크루, 9, 전직="크루세이더", 스킬습득=True)
     for c in (귀, 마):
-        support.성장(상태, c, 9, 전직=구현된_전직[c["직업"]], 스킬습득=True)
+        scenario.성장(상태, c, 9, 전직=구현된_전직[c["직업"]], 스킬습득=True)
     assert gf.캐릭터_직업표시(메딕).startswith("패러메딕")
     assert {"강습슈트", "전장정보"} <= set(메딕["보유특성"])
 

@@ -9,7 +9,6 @@
 """
 
 import pytest
-from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -96,7 +95,7 @@ def _팔_수_있는_장비(상태):
 
 @pytest.mark.scenario("S1")
 def test_S1_첫_던전_실전(golden):
-    rng.시드(시드_첫던전)
+    scenario.시드(시드_첫던전)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     assert [c["직업"] for c in 파티] == ["귀검사", "격투가", "거너", "프리스트"]
@@ -214,7 +213,7 @@ def _실전_기록(상태, 처치, 들어온):
 
 @pytest.mark.scenario("S1")
 def test_S1_도감_업적_실전(임시_세이브폴더):
-    rng.시드(시드_도감)
+    scenario.시드(시드_도감)
     상태 = support.새게임()
     진행도 = 상태["진행도"]
     assert gf.업적_받을_보상_수(상태) == 1  # 1레벨 달성은 처음부터
@@ -312,7 +311,7 @@ def _퀘스트_상태(상태):
 
 @pytest.mark.scenario("S1")
 def test_S1_라이너스의_세리아_구출_의뢰_실전(임시_세이브폴더):
-    rng.시드(시드_의뢰)
+    scenario.시드(시드_의뢰)
     상태 = support.새게임()
 
     # 1) 엘븐가드 [NPC] - 라이너스만 있고 세리아 구출을 부탁한다
@@ -394,7 +393,7 @@ def _패배_처리(상태, 기록, 시도, 골드전, 진행도전):
 
 @pytest.mark.scenario("S1")
 def test_S1_패배_휴식_재도전(golden):
-    rng.시드(시드_패배)
+    scenario.시드(시드_패배)
     상태 = support.새게임([("", "귀검사"), ("", "격투가")])
     기록 = {"패배": [], "전투": []}
 
@@ -462,7 +461,7 @@ def _도망_성공까지(상태, 기록, 라벨):
 
 @pytest.mark.scenario("S1")
 def test_S1_도망(golden):
-    rng.시드(시드_도망)
+    scenario.시드(시드_도망)
     상태 = support.새게임()
     기록 = {"도망": [], "전투": []}
     gf.던전_진입(상태, 로리엔)
@@ -564,7 +563,7 @@ def _이뮨_챔피언(등장몬스터, 몬스터목록):
 
 @pytest.mark.scenario("S1")
 def test_S1_자동전투_100라운드_패배(monkeypatch, 임시_세이브폴더):
-    rng.시드(시드_한도)
+    scenario.시드(시드_한도)
     상태 = support.새게임([("", "귀검사")])
     scenario.측정_파티_준비(상태, 10, 전직={"귀검사": "웨펀마스터"})
     웨펀마스터 = 상태["파티"]["파티원"][0]

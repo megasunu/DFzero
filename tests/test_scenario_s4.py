@@ -8,7 +8,6 @@
 
 from collections import Counter
 import pytest
-from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -175,11 +174,11 @@ def _전투(상태):
 
 @pytest.mark.scenario("S4")
 def test_S4_카겔_봄카겔_투척_실전(golden):
-    rng.시드(시드_카겔)
+    scenario.시드(시드_카겔)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     for c in 파티:
-        support.성장(상태, c, 3, 스킬습득=True)
+        scenario.성장(상태, c, 3, 스킬습득=True)
     상태["소지품"]["소모품"].update({"표창": 1, "폭탄": 1})
     기록 = []
     본패턴 = set()
@@ -243,7 +242,7 @@ def _세기(로그, 글):
 
 @pytest.mark.scenario("S4")
 def test_S4_용인족_실전():
-    rng.시드(시드_용인족)
+    scenario.시드(시드_용인족)
     상태 = support.새게임(_파티)
     scenario.측정_파티_준비(상태, 5)
     프리스트 = 상태["파티"]["파티원"][2]
@@ -290,7 +289,7 @@ _천해 = "dungeon_02A_D15_middleocean_shallow"
 
 @pytest.mark.scenario("S4")
 def test_S4_공어_연속전투_크로쿠타_실전():
-    rng.시드(시드_공어)
+    scenario.시드(시드_공어)
     상태 = support.새게임()
     scenario.측정_파티_준비(상태, 8)
     gf.휴식(상태)

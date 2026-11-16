@@ -9,7 +9,6 @@
 """
 
 import pytest
-from game.system import rng
 import gameflow as gf
 import support
 from tests.support import 구현된_전직
@@ -42,13 +41,13 @@ from game.system.combat import stats
 
 
 def _무기_종류(직업):
-    """카탈로그에서 직업의 무기 종류 -> 사 올 아이템(이름순 첫 번째, 커먼/언커먼만 - 치트와 봉인 레어 제외)."""
+    """카탈로그에서 직업의 무기 종류 -> 사 올 아이템(종류마다 무작위 하나, 커먼/언커먼만 - 치트와 봉인 레어 제외)."""
     카탈로그 = gf.새_게임_시작([("", 직업)])["상점카탈로그"]["장비"]["무기"]
     종류 = {}
     for 이름, 아이템 in sorted(카탈로그.items()):
         if 아이템["분류"] == f"{직업} 무기" and 아이템["레어도"] in ("커먼", "언커먼"):
-            종류.setdefault(아이템["타입"], 이름)
-    return 종류
+            종류.setdefault(아이템["타입"], []).append(이름)
+    return {타입: scenario.아무거나(이름들) for 타입, 이름들 in 종류.items()}
 
 
 def _판정_검사(항목):
@@ -67,10 +66,10 @@ def _판정_검사(항목):
 
 def _싸움(직업, 무기타입, 무기이름, 몬스터, 종족이름):
     # 옛 번호(S4) 그대로 - 바꾸면 난수가 바뀐다
-    rng.시드(f"S4-{직업}-{무기타입}-{종족이름}")
+    scenario.시드(f"S4-{직업}-{무기타입}-{종족이름}")
     상태 = support.새게임([("", 직업)])
     캐릭터 = 상태["파티"]["파티원"][0]
-    support.성장(상태, 캐릭터, 6, 전직=구현된_전직[직업])
+    scenario.성장(상태, 캐릭터, 6, 전직=구현된_전직[직업])
     gf.파티_최대치로_회복(상태)
 
     # 사서 끼운다 (못 드는 종류는 사지 않는다)
@@ -122,6 +121,7 @@ def _싸움(직업, 무기타입, 무기이름, 몬스터, 종족이름):
 @pytest.mark.scenario("S5")
 @pytest.mark.parametrize("직업", 직업들)
 def test_S5_무기_x_종족(직업, golden):
+    scenario.시드(f"S5-무기-{직업}")  # 무기 고르기 - 싸움마다 다시 시드한다
     무기들 = _무기_종류(직업)
     assert len(무기들) >= 4, 무기들
     결과, 못드는 = {}, []
@@ -194,7 +194,7 @@ def _풀고_바꾸기(상태, 캐릭터, 슬롯, 탭, 맞나):
 
 @pytest.mark.scenario("S5")
 def test_S5_마봉효과_실전(golden):
-    rng.시드(시드_마봉)
+    scenario.시드(시드_마봉)
     상태 = support.새게임()
     귀검사 = next(c for c in 상태["파티"]["파티원"] if c["직업"] == "귀검사")
     소지품 = 상태["소지품"]
@@ -325,7 +325,7 @@ def _전투(상태, 기록):
 
 @pytest.mark.scenario("S5")
 def test_S5_레어_무기_실전():
-    rng.시드(시드_레어무기)
+    scenario.시드(시드_레어무기)
     상태 = support.새게임(_파티)
     for c in 상태["파티"]["파티원"]:
         이름 = _무기_레어무기[c["직업"]]
@@ -380,7 +380,7 @@ def _레어도(상태, 이름):
 
 @pytest.mark.scenario("S5")
 def test_S5_아몬_하층_레어_드랍_실전():
-    rng.시드(시드_레어드랍)
+    scenario.시드(시드_레어드랍)
     상태 = support.새게임()
     scenario.측정_파티_준비(상태, 7)
     착용자 = [
@@ -452,7 +452,7 @@ def _인카운트_실전(상태, 귀검사):
 
 @pytest.mark.scenario("S5")
 def test_S5_장비강화_실전():
-    rng.시드(시드_강화)
+    scenario.시드(시드_강화)
     상태 = support.새게임()
     귀검사 = next(c for c in 상태["파티"]["파티원"] if c["직업"] == "귀검사")
     소지품 = 상태["소지품"]

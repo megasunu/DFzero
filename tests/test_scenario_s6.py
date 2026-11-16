@@ -10,7 +10,6 @@
 """
 
 import pytest
-from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -119,11 +118,11 @@ def _전투_소울(상태, 기록, 번호):
 
 @pytest.mark.scenario("S6")
 def test_S6_소울브링어_실전(golden):
-    rng.시드(시드_소울)
+    scenario.시드(시드_소울)
     상태 = support.새게임(파티구성)
     파티 = 상태["파티"]["파티원"]
     for c in 파티:
-        support.성장(상태, c, 8, 전직=전직표_소울[c["직업"]], 스킬습득=True)
+        scenario.성장(상태, c, 8, 전직=전직표_소울[c["직업"]], 스킬습득=True)
     gf.파티_최대치로_회복(상태)
     [sb] = [c for c in 파티 if c["직업"] == "귀검사"]
     assert gf.캐릭터_직업표시(sb).startswith("소울브링어")
@@ -265,11 +264,11 @@ def _전투_소울골드(상태, 기록, 번호):
 
 @pytest.mark.scenario("S6")
 def test_S6_소울브링어_골드_스킬_실전(golden):
-    rng.시드(시드_소울골드)
+    scenario.시드(시드_소울골드)
     상태 = support.새게임(파티구성)
     파티 = 상태["파티"]["파티원"]
     for c in 파티:
-        support.성장(상태, c, 8, 전직=전직표_소울골드[c["직업"]], 스킬습득=True)
+        scenario.성장(상태, c, 8, 전직=전직표_소울골드[c["직업"]], 스킬습득=True)
     gf.파티_최대치로_회복(상태)
     [sb] = [c for c in 파티 if c["직업"] == "귀검사"]
     assert {"귀신 : 브레멘", "귀신 : 사야", "툼스톤"} <= set(sb["보유스킬"])
@@ -321,7 +320,9 @@ def test_S6_소울브링어_골드_스킬_실전(golden):
 
 def _광기_고르기_버서커(캐릭터, 후보):
     """버서커는 레벨 9에 광기, 그 밖의 퍽은 후보 맨 앞."""
-    return next(((이름, 정의) for 이름, 정의 in 후보 if 이름 == "광기"), 후보[0])
+    return next(
+        ((이름, 정의) for 이름, 정의 in 후보 if 이름 == "광기"), scenario.아무거나(후보)
+    )
 
 
 def _버서커_턴(상태, bs, 기록):
@@ -389,11 +390,11 @@ def _전투_버서커(상태, 기록):
 
 @pytest.mark.scenario("S6")
 def test_S6_버서커_실전(golden):
-    rng.시드(시드_버서커)
+    scenario.시드(시드_버서커)
     상태 = support.새게임(파티구성)
     파티 = 상태["파티"]["파티원"]
     for c in 파티:
-        support.성장(
+        scenario.성장(
             상태,
             c,
             9,
@@ -474,7 +475,9 @@ _축복 = "수호의 축복"
 
 
 def _광기_고르기_효과갱신(캐릭터, 후보):
-    return next(((이름, 정의) for 이름, 정의 in 후보 if 이름 == "광기"), 후보[0])
+    return next(
+        ((이름, 정의) for 이름, 정의 in 후보 if 이름 == "광기"), scenario.아무거나(후보)
+    )
 
 
 def _축복_인스턴스(상태):
@@ -562,11 +565,11 @@ def 자세하게():
 
 @pytest.mark.scenario("S6")
 def test_S6_효과갱신_상세로그_마을전환스킬_실전(자세하게, golden):
-    rng.시드(시드_효과갱신)
+    scenario.시드(시드_효과갱신)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     for c in 파티:
-        support.성장(
+        scenario.성장(
             상태,
             c,
             9,
@@ -698,11 +701,11 @@ def _전투_아수라(상태, 아수라, 기록, 누적):
 
 @pytest.mark.scenario("S6")
 def test_S6_아수라_실전(golden):
-    rng.시드(시드_아수라)
+    scenario.시드(시드_아수라)
     상태 = support.새게임(파티구성)
     파티 = 상태["파티"]["파티원"]
     for c in 파티:
-        support.성장(상태, c, 9, 전직=전직표_아수라[c["직업"]], 스킬습득=True)
+        scenario.성장(상태, c, 9, 전직=전직표_아수라[c["직업"]], 스킬습득=True)
     gf.파티_최대치로_회복(상태)
     [a] = [c for c in 파티 if c["직업"] == "귀검사"]
     assert gf.캐릭터_직업표시(a).startswith("아수라")
@@ -754,7 +757,7 @@ def test_S6_아수라_실전(golden):
 # ======================================================================
 
 
-시드_검귀 = 1
+시드_검귀 = 4  # 무작위 선택(#725) 뒤 1~3은 12전투 안에 볼 것이 다 안 나온다
 전직표_검귀 = dict(구현된_전직, 귀검사="검귀")
 도 = "예리한 카타나"
 끝날조건 = (
@@ -845,12 +848,12 @@ def _전투_검귀(상태, 검귀, 기록, 번호):
 
 @pytest.mark.scenario("S6")
 def test_S6_검귀_실전(golden):
-    rng.시드(시드_검귀)
+    scenario.시드(시드_검귀)
     상태 = support.새게임(파티구성)
     파티 = 상태["파티"]["파티원"]
     [g] = [c for c in 파티 if c["직업"] == "귀검사"]
     for c in 파티:
-        support.성장(
+        scenario.성장(
             상태,
             c,
             5 if c is g else 9,
@@ -858,10 +861,10 @@ def test_S6_검귀_실전(golden):
             스킬습득=c is not g,
         )
     assert any(n in g["보유특성"] for n in 마스터리5종)  # 레벨 2에 고른 무기 마스터리
-    support.성장(상태, g, 8, 전직="검귀")
+    scenario.성장(상태, g, 8, 전직="검귀")
     assert not any(n in g["보유특성"] for n in 마스터리5종)
     assert not any(이름 in 마스터리5종 for 이름, _ in support.퍽_후보(g))  # 9레벨 퍽
-    support.성장(상태, g, 9, 스킬습득=True)
+    scenario.성장(상태, g, 9, 스킬습득=True)
     assert gf.캐릭터_직업표시(g).startswith("검귀")
     assert {"청혈투귀", "검귀의 도 마스터리"} <= set(g["보유특성"])
     assert {"귀혼일체", "원귀", "합격", "귀연참", "귀연참 : 극"} <= set(g["보유스킬"])

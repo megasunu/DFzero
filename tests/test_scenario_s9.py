@@ -13,7 +13,6 @@
 """
 
 import pytest
-from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -45,7 +44,7 @@ from game.system import effect_engine
 
 def _퍽고르기_얀데레(캐릭터, 후보):
     원하는 = 고를퍽_얀데레.get(캐릭터["직업"])
-    return next(((n, d) for n, d in 후보 if n == 원하는), 후보[0])
+    return next(((n, d) for n, d in 후보 if n == 원하는), scenario.아무거나(후보))
 
 
 def _맹타_소검(상태, 귀검사):
@@ -71,11 +70,11 @@ def _맹타_소검(상태, 귀검사):
 
 @pytest.mark.scenario("S9")
 def test_S9_얀데레_흡혈귀_실전(golden):
-    rng.시드(시드_얀데레)
+    scenario.시드(시드_얀데레)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     for 캐릭터 in 파티:
-        support.성장(상태, 캐릭터, 4, 퍽고르기=_퍽고르기_얀데레)
+        scenario.성장(상태, 캐릭터, 4, 퍽고르기=_퍽고르기_얀데레)
     귀검사 = next(c for c in 파티 if c["직업"] == "귀검사")
     격투가 = next(c for c in 파티 if c["직업"] == "격투가")
     assert "얀데레" in 귀검사["보유특성"] and "흡혈귀" in 격투가["보유특성"]
@@ -149,16 +148,16 @@ def test_S9_얀데레_흡혈귀_실전(golden):
 
 def _퍽고르기_원펀맨(캐릭터, 후보):
     원하는 = 고를퍽_원펀맨.get(캐릭터["직업"])
-    return next(((n, d) for n, d in 후보 if n == 원하는), 후보[0])
+    return next(((n, d) for n, d in 후보 if n == 원하는), scenario.아무거나(후보))
 
 
 @pytest.mark.scenario("S9")
 def test_S9_원펀맨_인형사_내아내몬_실전(golden):
-    rng.시드(시드_원펀맨)
+    scenario.시드(시드_원펀맨)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     for 캐릭터 in 파티:
-        support.성장(
+        scenario.성장(
             상태, 캐릭터, 6, 전직=구현된_전직[캐릭터["직업"]], 퍽고르기=_퍽고르기_원펀맨
         )
     귀검사 = next(c for c in 파티 if c["직업"] == "귀검사")
@@ -235,19 +234,19 @@ def _퍽고르기_브레이커(캐릭터, 후보):
         for n, d in 후보:
             if n == 원하는:
                 return n, d
-    return 후보[0]
+    return scenario.아무거나(후보)
 
 
 @pytest.mark.scenario("S9")
 def test_S9_전투_특성_퍽_실전(golden):
-    rng.시드(시드_브레이커)
+    scenario.시드(시드_브레이커)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     귀검사 = next(c for c in 파티 if c["직업"] == "귀검사")
     격투가 = next(c for c in 파티 if c["직업"] == "격투가")
     거너 = next(c for c in 파티 if c["직업"] == "거너")
     for 캐릭터 in 파티:
-        성장 = support.성장(
+        성장 = scenario.성장(
             상태,
             캐릭터,
             9,
@@ -334,7 +333,7 @@ def test_S9_전투_특성_퍽_실전(golden):
 def _퍽고르기_유루캠(캐릭터, 후보):
     if 캐릭터["직업"] == "프리스트":
         return next((n, d) for n, d in 후보 if n == "유루캠")
-    return 후보[0]
+    return scenario.아무거나(후보)
 
 
 def _캠핑줄(상태):
@@ -343,11 +342,11 @@ def _캠핑줄(상태):
 
 @pytest.mark.scenario("S9")
 def test_S9_유루캠_던전_캠핑_실전(golden):
-    rng.시드(시드_유루캠)
+    scenario.시드(시드_유루캠)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     for 캐릭터 in 파티:
-        support.성장(상태, 캐릭터, 4, 퍽고르기=_퍽고르기_유루캠)
+        scenario.성장(상태, 캐릭터, 4, 퍽고르기=_퍽고르기_유루캠)
     프리스트 = next(c for c in 파티 if c["직업"] == "프리스트")
     assert "던전 캠핑" in 프리스트["보유스킬"]
     gf.파티_최대치로_회복(상태)
@@ -404,7 +403,7 @@ _방향 = ("오른쪽", "아래", "왼쪽", "위")
 def _퍽고르기_봉절(캐릭터, 후보):
     if 캐릭터["직업"] == "거너":
         return next((n, d) for n, d in 후보 if n == "봉절")
-    return 후보[0]
+    return scenario.아무거나(후보)
 
 
 def _봉절_걷기(상태):
@@ -433,11 +432,11 @@ def _싸우기(상태):
 
 @pytest.mark.scenario("S9")
 def test_S9_봉절_실전(golden, 임시_세이브폴더):
-    rng.시드(시드_봉절)
+    scenario.시드(시드_봉절)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     for 캐릭터 in 파티:
-        support.성장(상태, 캐릭터, 4, 퍽고르기=_퍽고르기_봉절)
+        scenario.성장(상태, 캐릭터, 4, 퍽고르기=_퍽고르기_봉절)
     거너 = next(c for c in 파티 if c["직업"] == "거너")
     assert "봉절" in 거너["보유스킬"]
     gf.파티_최대치로_회복(상태)
@@ -497,7 +496,7 @@ def test_S9_봉절_실전(golden, 임시_세이브폴더):
 
 
 def _퍽고르기_란마(캐릭터, 후보):
-    return next(((n, d) for n, d in 후보 if n == "란마 1/2"), 후보[0])
+    return next(((n, d) for n, d in 후보 if n == "란마 1/2"), scenario.아무거나(후보))
 
 
 def _형태들(상태):
@@ -506,11 +505,11 @@ def _형태들(상태):
 
 @pytest.mark.scenario("S9")
 def test_S9_란마_실전(golden, 임시_세이브폴더):
-    rng.시드(시드_란마)
+    scenario.시드(시드_란마)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     for 캐릭터 in 파티:
-        support.성장(
+        scenario.성장(
             상태, 캐릭터, 9, 전직=구현된_전직[캐릭터["직업"]], 퍽고르기=_퍽고르기_란마
         )
         assert "야빠빠 야빠빠" in 캐릭터["보유특성"]
@@ -577,11 +576,11 @@ def _약점들(캐릭터):
 
 @pytest.mark.scenario("S9")
 def test_S9_약점증가_실전(golden, 임시_세이브폴더):
-    rng.시드(시드_약점)
+    scenario.시드(시드_약점)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     for 캐릭터 in 파티:
-        support.성장(
+        scenario.성장(
             상태, 캐릭터, 6, 전직=구현된_전직[캐릭터["직업"]], 퍽고르기=_퍽고르기_약점
         )
         assert "약점증가" in 캐릭터["보유특성"]
@@ -633,28 +632,28 @@ def test_S9_약점증가_실전(golden, 임시_세이브폴더):
 
 @pytest.mark.scenario("S9")
 def test_S9_위상력_각성_실전(golden, monkeypatch):
-    rng.시드(시드_위상력)
+    scenario.시드(시드_위상력)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     귀검사 = next(c for c in 파티 if c["직업"] == "귀검사")
     원래 = support.퍽_선택값
 
-    def 퍽_선택값(캐릭터, 이름, 정의):
-        선택 = 원래(캐릭터, 이름, 정의)
+    def 퍽_선택값(캐릭터, 이름, 정의, 난수=None):
+        선택 = 원래(캐릭터, 이름, 정의, 난수)
         if 이름 == "위상력 각성":
             선택["선택특성"] = "위상력 : 스트라이커"
         return 선택
 
     monkeypatch.setattr(support, "퍽_선택값", 퍽_선택값)
     for 캐릭터 in 파티:
-        support.성장(
+        scenario.성장(
             상태,
             캐릭터,
             9,
             전직=구현된_전직[캐릭터["직업"]],
             퍽고르기=lambda c, 후보: next(
                 ((n, d) for n, d in 후보 if n == "위상력 각성" and c is 귀검사),
-                후보[0],
+                scenario.아무거나(후보),
             ),
         )
     assert "위상력 : 스트라이커" in 귀검사["보유특성"]
@@ -704,19 +703,19 @@ def _진행_위상력(상태):
 
 @pytest.mark.scenario("S9")
 def test_S9_프렌드_실드_실전(golden):
-    rng.시드(시드_실드)
+    scenario.시드(시드_실드)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     귀검사 = next(c for c in 파티 if c["직업"] == "귀검사")
     for 캐릭터 in 파티:
-        support.성장(
+        scenario.성장(
             상태,
             캐릭터,
             5,
             전직=구현된_전직[캐릭터["직업"]],
             퍽고르기=lambda c, 후보: next(
                 ((n, d) for n, d in 후보 if n == "프렌드 실드" and c is 귀검사),
-                후보[0],
+                scenario.아무거나(후보),
             ),
         )
     assert "프렌드 실드" in 귀검사["보유스킬"]

@@ -9,7 +9,6 @@
 """
 
 import pytest
-from game.system import rng
 import gameflow as gf
 import scenario
 import support
@@ -74,7 +73,7 @@ def _전투_주류(상태, 술=None):
 
 @pytest.mark.scenario("S11")
 def test_S11_주류_취기_만취_실전(golden):
-    rng.시드(시드_주류)
+    scenario.시드(시드_주류)
     상태 = support.새게임()
     귀검사, _, _, 프리스트 = 상태["파티"]["파티원"]
     상태["소지품"]["소모품"].update({"맥주": 4, "와인": 1, "럼주": 1})
@@ -227,7 +226,7 @@ def _보스인가(상태):
 
 @pytest.mark.scenario("S11")
 def test_S11_전투_중_버프포션과_회복포션_실전(golden):
-    rng.시드(시드_포션)
+    scenario.시드(시드_포션)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     상태["소지품"]["포션"] = {
@@ -342,7 +341,7 @@ def _전투_자동포션(상태):
 
 @pytest.mark.scenario("S11")
 def test_S11_자동전투_포션_실전():
-    rng.시드(시드_자동포션)
+    scenario.시드(시드_자동포션)
     상태 = support.새게임()
     상태["소지품"]["포션"] = {HP포션: 6, MP포션: 2}
     gf.던전_진입(상태, 로리엔)
@@ -426,7 +425,7 @@ def _가장_빈(상태, 키, 최대):
 
 @pytest.mark.scenario("S11")
 def test_S11_전투_밖_소모품_실전(golden):
-    rng.시드(시드_소모품)
+    scenario.시드(시드_소모품)
     상태 = support.새게임()
     기록 = {}
     귀검사 = _직업(상태, "귀검사")
@@ -628,7 +627,7 @@ def _종료_문구_검사(상태, 종료):
 
 @pytest.mark.scenario("S11")
 def test_S11_소모품_경제_빈칸_실전(golden):
-    rng.시드(시드_빈칸)
+    scenario.시드(시드_빈칸)
     상태 = support.새게임()
     기록 = {}
     파티 = 상태["파티"]["파티원"]
@@ -718,8 +717,8 @@ def test_S11_소모품_경제_빈칸_실전(golden):
         assert [
             h[0]["이름"] for h in gf.장비_교체_후보(상태, 귀검사, "상의", 재질)
         ] == [h[0]["이름"] for h in 후보 if h[0]["재질"] == 재질]
-    # 착용 가능한 첫 후보(남는 같은 상의여도 된다 - 후보는 착용분을 뺀 개수만 나온다)
-    새상의 = next(h[0]["이름"] for h in 후보 if h[2] and h[1] > 0)
+    # 착용 가능한 후보 하나(남는 같은 상의여도 된다 - 후보는 착용분을 뺀 개수만 나온다)
+    새상의 = scenario.아무거나([h[0]["이름"] for h in 후보 if h[2] and h[1] > 0])
     gf.장비_교체(상태, 귀검사, "상의", 새상의)
     assert gf.캐릭터_장착아이템(상태, 귀검사, "상의")["이름"] == 새상의
     개수 = _보유(상태, "장비", 새상의)

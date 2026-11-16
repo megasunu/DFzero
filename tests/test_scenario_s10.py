@@ -12,7 +12,6 @@
 
 import pytest
 import gameflow as gf
-from game.system import rng
 from game.system.combat import flow
 import scenario
 import support
@@ -46,18 +45,18 @@ from game.controller import ctl_battle_log
 
 @pytest.mark.scenario("S10")
 def test_S10_3차_행동_퍽_실전(golden):
-    rng.시드(시드_행동퍽)
+    scenario.시드(시드_행동퍽)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     for 캐릭터 in 파티:
         퍽 = 고를퍽[캐릭터["직업"]]
-        support.성장(
+        scenario.성장(
             상태,
             캐릭터,
             15,
             전직=구현된_전직[캐릭터["직업"]],
             퍽고르기=lambda c, 후보, 퍽=퍽: next(
-                ((n, d) for n, d in 후보 if n == 퍽), 후보[0]
+                ((n, d) for n, d in 후보 if n == 퍽), scenario.아무거나(후보)
             ),
         )
         assert 퍽 in 캐릭터["보유특성"]
@@ -122,7 +121,7 @@ def _퍽고르기_우마(캐릭터, 후보):
             for n, d in 후보:
                 if n == 이름:
                     return n, d
-    return 후보[0]
+    return scenario.아무거나(후보)
 
 
 def _주인공_보너스(전투상태, p):
@@ -136,12 +135,12 @@ def _주인공_보너스(전투상태, p):
 
 @pytest.mark.scenario("S10")
 def test_S10_우마무스메_주인공_실전(golden):
-    rng.시드(시드_우마)
+    scenario.시드(시드_우마)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     귀검사 = next(c for c in 파티 if c["직업"] == "귀검사")
     # 귀검사만 레벨 15 - 나머지는 레벨 1이라 실전에서 쓰러지는 아군이 나온다
-    support.성장(상태, 귀검사, 15, 전직=구현된_전직["귀검사"], 퍽고르기=_퍽고르기_우마)
+    scenario.성장(상태, 귀검사, 15, 전직=구현된_전직["귀검사"], 퍽고르기=_퍽고르기_우마)
     assert {"말딸", "주인공"} <= set(귀검사["보유특성"])
     gf.파티_최대치로_회복(상태)
 
@@ -188,26 +187,26 @@ def test_S10_우마무스메_주인공_실전(golden):
 
 @pytest.mark.scenario("S10")
 def test_S10_포켓몬_실전(golden, monkeypatch):
-    rng.시드(시드_포켓몬)
+    scenario.시드(시드_포켓몬)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     원래 = support.퍽_선택값
 
-    def 퍽_선택값(캐릭터, 이름, 정의):
-        선택 = 원래(캐릭터, 이름, 정의)
+    def 퍽_선택값(캐릭터, 이름, 정의, 난수=None):
+        선택 = 원래(캐릭터, 이름, 정의, 난수)
         if 이름 == "포켓몬":
             선택["선택특성"] = 고를특성_포켓몬[캐릭터["직업"]]
         return 선택
 
     monkeypatch.setattr(support, "퍽_선택값", 퍽_선택값)
     for 캐릭터 in 파티:
-        support.성장(
+        scenario.성장(
             상태,
             캐릭터,
             20,
             전직=구현된_전직[캐릭터["직업"]],
             퍽고르기=lambda c, 후보: next(
-                ((n, d) for n, d in 후보 if n == "포켓몬"), 후보[0]
+                ((n, d) for n, d in 후보 if n == "포켓몬"), scenario.아무거나(후보)
             ),
         )
         assert 고를특성_포켓몬[캐릭터["직업"]] in 캐릭터["보유특성"]
@@ -255,26 +254,26 @@ def test_S10_포켓몬_실전(golden, monkeypatch):
 
 @pytest.mark.scenario("S10")
 def test_S10_포켓몬_피격_부자유친_실전(golden, monkeypatch):
-    rng.시드(시드_포켓몬피격)
+    scenario.시드(시드_포켓몬피격)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     원래 = support.퍽_선택값
 
-    def 퍽_선택값(캐릭터, 이름, 정의):
-        선택 = 원래(캐릭터, 이름, 정의)
+    def 퍽_선택값(캐릭터, 이름, 정의, 난수=None):
+        선택 = 원래(캐릭터, 이름, 정의, 난수)
         if 이름 == "포켓몬":
             선택["선택특성"] = 고를특성_포켓몬피격[캐릭터["직업"]]
         return 선택
 
     monkeypatch.setattr(support, "퍽_선택값", 퍽_선택값)
     for 캐릭터 in 파티:
-        support.성장(
+        scenario.성장(
             상태,
             캐릭터,
             20,
             전직=구현된_전직[캐릭터["직업"]],
             퍽고르기=lambda c, 후보: next(
-                ((n, d) for n, d in 후보 if n == "포켓몬"), 후보[0]
+                ((n, d) for n, d in 후보 if n == "포켓몬"), scenario.아무거나(후보)
             ),
         )
         assert 고를특성_포켓몬피격[캐릭터["직업"]] in 캐릭터["보유특성"]
@@ -319,26 +318,26 @@ def test_S10_포켓몬_피격_부자유친_실전(golden, monkeypatch):
 
 @pytest.mark.scenario("S10")
 def test_S10_포켓몬_날씨_실전(golden, monkeypatch):
-    rng.시드(시드_포켓몬날씨)
+    scenario.시드(시드_포켓몬날씨)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     원래 = support.퍽_선택값
 
-    def 퍽_선택값(캐릭터, 이름, 정의):
-        선택 = 원래(캐릭터, 이름, 정의)
+    def 퍽_선택값(캐릭터, 이름, 정의, 난수=None):
+        선택 = 원래(캐릭터, 이름, 정의, 난수)
         if 이름 == "포켓몬":
             선택["선택특성"] = 고를특성_포켓몬날씨.get(캐릭터["직업"], 선택["선택특성"])
         return 선택
 
     monkeypatch.setattr(support, "퍽_선택값", 퍽_선택값)
     for 캐릭터 in 파티:
-        support.성장(
+        scenario.성장(
             상태,
             캐릭터,
             20,
             전직=구현된_전직[캐릭터["직업"]],
             퍽고르기=lambda c, 후보: next(
-                ((n, d) for n, d in 후보 if n == "포켓몬"), 후보[0]
+                ((n, d) for n, d in 후보 if n == "포켓몬"), scenario.아무거나(후보)
             ),
         )
         if 캐릭터["직업"] in 고를특성_포켓몬날씨:
@@ -394,7 +393,7 @@ def _퍽고르기_제아봉침(캐릭터, 후보):
         for n, d in 후보:
             if n == "제아봉침":
                 return n, d
-    return 후보[0]
+    return scenario.아무거나(후보)
 
 
 def _나(상태, 원본):
@@ -443,11 +442,11 @@ def _실전(상태, 원본, 기록):
 
 @pytest.mark.scenario("S10")
 def test_S10_제아봉침_획득_사용_시한부_사망_실전(golden):
-    rng.시드(시드_제아봉침)
+    scenario.시드(시드_제아봉침)
     상태 = support.새게임()
     파티 = 상태["파티"]["파티원"]
     귀검사 = next(c for c in 파티 if c["직업"] == "귀검사")
-    support.성장(
+    scenario.성장(
         상태, 귀검사, 19, 전직=구현된_전직["귀검사"], 퍽고르기=_퍽고르기_제아봉침
     )
     assert 스킬 in 귀검사["보유스킬"]  # 레벨 19 퍽획득(4차수)으로 얻었다
@@ -518,15 +517,15 @@ def _퍽고르기_트리거(캐릭터, 후보):
             for n, d in 후보:
                 if n == 이름:
                     return n, d
-    return 후보[0]
+    return scenario.아무거나(후보)
 
 
 @pytest.mark.scenario("S10")
 def test_S10_트리거형_퍽_특성_획득_실전_발동(golden):
-    rng.시드(시드_트리거)
+    scenario.시드(시드_트리거)
     상태 = support.새게임()
     격투가 = next(c for c in 상태["파티"]["파티원"] if c["직업"] == "격투가")
-    support.성장(
+    scenario.성장(
         상태, 격투가, 19, 전직=구현된_전직["격투가"], 퍽고르기=_퍽고르기_트리거
     )
     assert set(퍽순서) <= set(격투가["보유특성"])  # 퍽획득으로 얻었다
