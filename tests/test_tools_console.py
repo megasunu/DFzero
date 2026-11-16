@@ -1,4 +1,4 @@
-"""tools/*.py CLI가 콘솔 인코딩과 상관없이 한글을 찍는지 (#200).
+"""tools/*.py CLI가 콘솔 인코딩과 상관없이 한글을 찍는지.
 
 Windows에서 출력이 리디렉션되면 stdout이 cp1252가 되어 한글 print가 UnicodeEncodeError로 죽었다
 (pre-commit 훅이 `fix_eol.py`에서 커밋을 막음). stdout/stderr를 cp1252 스트림으로 바꿔 끼우는 것은

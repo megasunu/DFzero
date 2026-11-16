@@ -1,8 +1,7 @@
 """자동 병합 판정 - PR의 head 커밋이 병합해도 될 만큼 초록인지 정한다.
 
-`.github/workflows/auto-merge.yml`이 부른다. stella-rain/.github의 scripts/auto_merge_gate.py를
-옮겼다(2026-10-15, 그쪽 main을 이 저장소의 쓰기 권한으로 돌리지 않으려고). asdf에서 바꾼 것:
-buildozer.spec도 기본 보호 경로다(버전 PR은 사용자가 병합한다 - CLAUDE.md "Git").
+`.github/workflows/auto-merge.yml`이 부른다. stella-rain/.github의 scripts/auto_merge_gate.py에
+buildozer.spec을 기본 보호 경로로 더했다(CLAUDE.md "Git").
 
 커밋의 check run과 combined commit status(GitHub REST API가 주는 그대로)를 읽고 한 단어를 찍는다:
 
@@ -43,8 +42,8 @@ PROTECTED = (
     "CLAUDE.md",
     ".claude/rules/",
 )
-# 보호 경로 안의 예외(파일 하나씩): 기능 PR이 새 테스트 파일·모듈을 적는 곳이라 기능과 같이 병합한다(2026-10-16 Kade,
-# CLAUDE.md "Overrides of global rules").
+# 보호 경로 안의 예외(파일 하나씩): 기능 PR이 새 테스트 파일·모듈을 적는 곳이라 기능과 같이 병합한다
+# (CLAUDE.md "Overrides of global rules").
 UNPROTECTED = (".claude/rules/tests.md", ".claude/rules/layers.md")
 
 

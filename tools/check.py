@@ -1,4 +1,4 @@
-"""완료 기준(DoD) 게이트 - CI가 모든 push/PR에서 전체를 돌려 커버리지 하한까지 판정한다. push 전 로컬 확인은 --빠른 한 번(#285).
+"""완료 기준(DoD) 게이트 - CI가 모든 push/PR에서 전체를 돌려 커버리지 하한까지 판정한다. push 전 로컬 확인은 --빠른 한 번.
 
     python tools/check.py                            # 전체: 커버리지 하한 포함 - CI의 판정
     python tools/check.py --빠른 [테스트 파일 ...]   # 커버리지 없음 - 파일 없이 주면 push 전 로컬 확인
@@ -33,7 +33,7 @@ import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# 2026-11-07 측정 95.66%(분기 포함, 테스트 3,141개 - #579에서 92 -> 94). 떨어뜨리지 말고, 올리면 이 값도 올린다.
+# 떨어뜨리지 말고, 올리면 이 값도 올린다.
 COVERAGE_FLOOR = 94
 
 PYTEST_BASE = [sys.executable, "-m", "pytest"]
@@ -98,7 +98,7 @@ STEPS = [
 # 로컬에서는 출력을 요약하는 단계 - 전체는 게이트_로그_폴더에 남는다. CI(환경변수 CI)는 그대로 찍는다.
 요약_단계 = ("pytest", "pytest(빠른)", "node --test")
 
-# 작업시간 기록(임시, #239 - 지울 때 #237 목록대로): 단계마다 걸린 시간을 .claude/hooks/time-log.cjs의 세션 기록에 남긴다.
+# 작업시간 기록(임시 - 지울 때 목록대로): 단계마다 걸린 시간을 .claude/hooks/time-log.cjs의 세션 기록에 남긴다.
 TIME_LOG = os.path.join(ROOT, ".claude", "time-log")
 
 
@@ -184,7 +184,7 @@ def 골든_갱신():
 
 
 def main(argv=None):
-    # Windows에서 리디렉션된 출력은 cp1252라 한글 print가 죽는다(#200) - 콘솔 인코딩과 상관없이 UTF-8로.
+    # Windows에서 리디렉션된 출력은 cp1252라 한글 print가 죽는다 - 콘솔 인코딩과 상관없이 UTF-8로.
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8", errors="replace")

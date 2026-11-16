@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """이슈와 megasunu 작업 보드(조직 Project)를 잇는 브리지.
 
-stella-rain/.github의 scripts/project_bridge.py를 옮겼다(2026-10-16). 바꾼 것: 칸·옵션·명령 라벨이 한국어,
+칸·옵션·명령 라벨이 한국어,
 조직의 기본 자동화(새 이슈/닫힘/다시 열림)는 API로 켤 수 없어 sync가 대신 상태를 맞춘다.
 설정과 클릭 순서는 docs/setup/project-board.md.
 
@@ -660,7 +660,7 @@ def cmd_snapshot(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    # Windows에서 리디렉션된 출력은 cp1252라 한글 print가 죽는다(#200) - 콘솔 인코딩과 상관없이 UTF-8로.
+    # Windows에서 리디렉션된 출력은 cp1252라 한글 print가 죽는다 - 콘솔 인코딩과 상관없이 UTF-8로.
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8", errors="replace")

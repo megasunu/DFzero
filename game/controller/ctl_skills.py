@@ -2,7 +2,7 @@
 # (gameflow.py에서 분리 - N5. 화면은 gameflow.py 창구만 부른다. 설명은 gameflow.py 머리말)
 #
 # 지금 직업 계열의 스킬을 골드(50 x 차수)를 내고 배운다 - skill_learn_system.py.
-# 전직한 뒤에는 같은 계열 다른 전직의 훔쳐배우기 스킬·특성도 5배 값으로 산다(#365).
+# 전직한 뒤에는 같은 계열 다른 전직의 훔쳐배우기 스킬·특성도 5배 값으로 산다.
 
 from game.system import skill_learn_system
 from game.controller.ctl_registry import 전직_레지스트리, 직업_레지스트리
@@ -32,7 +32,7 @@ def _차수별_스킬목록(캐릭터):
 
 
 def _타입_목록(값):
-    """데이터 칸 "타입" - 문자열 하나거나 목록(#654). 없으면 빈 목록."""
+    """데이터 칸 "타입" - 문자열 하나거나 목록. 없으면 빈 목록."""
     if not 값:
         return []
     return [값] if isinstance(값, str) else list(값)

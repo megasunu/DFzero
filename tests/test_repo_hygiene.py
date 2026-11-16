@@ -43,7 +43,7 @@ def test_gitattributes는_LF_정규화():
 
 
 def test_할_일_기록은_작업_보드뿐이다():
-    """2026-10-16부터 할 일과 상태는 megasunu 작업 보드(이슈)에만 둔다(CLAUDE.md "작업 보드").
+    """할 일과 상태는 megasunu 작업 보드(이슈)에만 둔다(CLAUDE.md "작업 보드").
 
     MEMORY.md/.memory/가 다시 생기면 보드와 두 곳이 어긋난다 - 할 일은 이슈로, 게임 규칙은 docs/game-rules.md로.
     """
@@ -320,7 +320,7 @@ def _저장소_파일(상대경로):
 
 
 def test_APK_빌드는_v_태그_push로만_돈다():
-    """CLAUDE.md "Git" - 큰 기능을 끝내면 사용자가 v<version> 태그를 push해 빌드한다. 다른 트리거를 되살리지 않는다."""
+    """CLAUDE.md "Git" - v<version> 태그 push로 빌드한다. 다른 트리거를 되살리지 않는다."""
     워크플로 = _저장소_파일(".github/workflows/build-apk.yml")
     on = 워크플로.split("\npermissions:")[0]
     assert re.search(r"^  push:\n    tags:\n      - 'v\*'\n", on, re.M), on
@@ -491,7 +491,7 @@ def _잡(본문, 이름):
 
 
 def test_자동_병합_뒤와_매주_main_branch를_다시_검사한다():
-    """GITHUB_TOKEN 병합은 main-branch에 push 실행을 만들지 않아 병합 커밋이 검사되지 않았다(#206).
+    """GITHUB_TOKEN 병합은 main-branch에 push 실행을 만들지 않아 병합 커밋이 검사되지 않았다.
     workflow_dispatch는 GITHUB_TOKEN으로도 실행이 생기므로, 병합한 뒤 auto-merge.yml이 Check를 부른다."""
     워크플로들 = _워크플로들()
     병합, 검사 = 워크플로들["auto-merge.yml"], 워크플로들["check.yml"]
@@ -566,7 +566,7 @@ def test_context_guard_훅이_등록되고_게이트가_그_테스트를_돌린�
 
 
 def test_time_log_훅이_모든_도구와_턴에_등록되고_게이트가_그_테스트를_돌린다():
-    """작업시간 기록(임시, #236) - 등록이 빠지면 그 이벤트의 시간이 조용히 비어 버린다."""
+    """작업시간 기록(임시) - 등록이 빠지면 그 이벤트의 시간이 조용히 비어 버린다."""
     import json
 
     from tools import check
@@ -595,7 +595,7 @@ def test_time_log_훅이_모든_도구와_턴에_등록되고_게이트가_그_�
 
 
 def test_게이트는_단계별_시간을_작업시간_기록에_남긴다(tmp_path):
-    """작업시간 기록(임시, #239) - 가장 최근 세션 기록에 GateStep 한 줄. 기록 폴더가 없으면(CI) 아무것도 안 한다."""
+    """작업시간 기록(임시) - 가장 최근 세션 기록에 GateStep 한 줄. 기록 폴더가 없으면(CI) 아무것도 안 한다."""
     import json
 
     from tools import check
@@ -804,7 +804,7 @@ def test_게이트_골든_갱신은_서식을_먼저_고치고_통과하면_차�
 
 
 def test_출력_경고_훅이_읽기와_셸에_걸려_있고_게이트가_시험한다():
-    """output-guard(#388): 큰 파일 통째 읽기·제한 없는 검색·긴 편집 스크립트를 실행 전에 경고한다."""
+    """output-guard: 큰 파일 통째 읽기·제한 없는 검색·긴 편집 스크립트를 실행 전에 경고한다."""
     import json
 
     from tools import check

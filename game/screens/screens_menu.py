@@ -44,7 +44,7 @@ class 메인메뉴화면(Screen):
 
         레이아웃.add_widget(
             Label(
-                text="던파Zero",  # 주인 지정(#677) - 긴 제목은 화면 폭을 넘어 잘렸다
+                text="던파Zero",
                 font_size="28sp",
                 size_hint=(1, 0.3),
             )

@@ -1,12 +1,12 @@
-# 컨트롤러 - 전문직업 - 마을 [전문직업] 화면용(장비해체/봉인해제/봉인변환, 2026-10-15 사용자 결정,
-# 인형사 2026-10-19 사용자 결정)
+# 컨트롤러 - 전문직업 - 마을 [전문직업] 화면용(장비해체/봉인해제/봉인변환,
+# 인형사)
 # (화면은 gameflow.py 창구만 부른다. 설명은 gameflow.py 머리말)
 #
 # 봉인해제/봉인변환 규칙은 magic_seal_system.py. 장비해체는 상점에 있던 것을 옮겨 온 것이라
-# 함수는 ctl_shop의 상점_해체*를 그대로 쓴다. 마법부여(#178)는 enchant_system.
-# 장비강화(강화/증폭/재련, #636) 규칙은 enhance_system.py.
+# 함수는 ctl_shop의 상점_해체*를 그대로 쓴다. 마법부여는 enchant_system.
+# 장비강화(강화/증폭/재련) 규칙은 enhance_system.py.
 # 인형사: item_doll.py 인형을 "제작재료"로 만든다 - 소지품 소모품에 1개, 처음이면 도감 "인형"에 등록.
-# 연금술(2026-11-10): 라이언 코크스 -> 모순의 결정체/강렬한 기운, 무색 큐브 조각 -> 포션. 규칙은 alchemy_system.py.
+# 연금술: 라이언 코크스 -> 모순의 결정체/강렬한 기운, 무색 큐브 조각 -> 포션. 규칙은 alchemy_system.py.
 
 from game.data.item.item_doll import 인형_데이터
 from game.system import (

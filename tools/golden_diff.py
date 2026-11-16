@@ -105,7 +105,7 @@ def _git(*인자):
 
 
 def main(argv=None):
-    for stream in (sys.stdout, sys.stderr):  # Windows 콘솔에서도 한글(#200)
+    for stream in (sys.stdout, sys.stderr):  # Windows 콘솔에서도 한글
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8", errors="replace")
     인자 = sys.argv[1:] if argv is None else argv

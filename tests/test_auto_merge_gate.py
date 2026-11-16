@@ -1,7 +1,6 @@
 """tools/auto_merge_gate.py - 자동 병합 워크플로(.github/workflows/auto-merge.yml)의 판정.
 
-stella-rain/.github의 scripts/test_auto_merge_gate.py를 옮겼다(2026-10-15). asdf에서 더한 것:
-buildozer.spec도 기본 보호 경로다(버전 PR은 사용자가 병합한다 - CLAUDE.md "Git").
+buildozer.spec도 기본 보호 경로다(CLAUDE.md "Git").
 """
 
 import json
@@ -185,7 +184,7 @@ def test_판정_스크립트와_에이전트_규칙은_늘_보호된다(path):
 
 @pytest.mark.parametrize("path", [".claude/rules/tests.md", ".claude/rules/layers.md"])
 def test_테스트_지도와_모듈_배치는_기능_PR과_같이_병합된다(path):
-    """기능 PR이 새 테스트 파일·모듈을 적는 곳이다 - 이것 때문에 기능 PR이 손 병합으로 멈추지 않게(2026-10-16 Kade)."""
+    """기능 PR이 새 테스트 파일·모듈을 적는 곳이다 - 이것 때문에 기능 PR이 손 병합으로 멈추지 않게."""
     assert _판정(pr(), [file(path)]) == "merge"
     assert gate.protected_paths([file(path)]) == []
 

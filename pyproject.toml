@@ -28,7 +28,7 @@ select = ["E4", "E7", "E9", "F", "C901"]
 # 서식 결과가 ruff 버전마다 조금씩 달라서 CI는 ruff 버전을 고정한다(.github/workflows/check.yml).
 
 [tool.ruff.lint.mccabe]
-# 함수 복잡도 상한(품질 계획 P7, 2026-10-14). 측정 당시 게임 코드 최대는 combat.formula.수식_평가 15.
+# 함수 복잡도 상한.
 # 넘으면 함수를 나눈다 - 상한을 올리지 않는다.
 max-complexity = 16
 
