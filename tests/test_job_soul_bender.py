@@ -8,7 +8,15 @@ from game.data.ability import job_ability_010m
 from game.system import rng
 import gameflow as gf
 from game.system import skill_system as ss
-from game.system.combat import attacks, element, flow, hit, resources, stats
+from game.system.combat import (
+    attacks,
+    element,
+    flow,
+    hit,
+    hit_effects,
+    resources,
+    stats,
+)
 from tests import support
 
 
@@ -81,6 +89,8 @@ def 소울브링어전장():
     상태 = support.새게임([("", "귀검사"), ("", "격투가")])
     c = 상태["파티"]["파티원"][0]
     support.성장(상태, c, 8, 전직="소울브링어", 스킬습득=True)
+    # 산 귀영보(기본 켜짐)는 끈다 - 라운드마다 MP를 쓰고 은신하면 다른 규칙 검사가 흔들린다. 귀영보 테스트가 켠다
+    c["켜진특성"] = [n for n in c.get("켜진특성") or [] if n != "귀영보"]
     gf.전투_시작(상태, ["고블린", "고블린", "고블린"], 레벨=2, 차수=1)
     support.반응_처리(상태)
     전투상태 = 상태["전투상태"]
@@ -604,83 +614,6 @@ def test_툼스톤은_6번_무작위_적을_주문시전명중으로_차수d4_�
     assert [t["피해"] for t in 결과["타격"]] == [2 * 2 + 주문] * 6  # 2차수: 2d4
 
 
-# ------------------------------------------------------------------ 2차수 퍽 귀영보
-
-
-def _귀영보_고르기(캐릭터, 후보):
-    return next((이름, 정의) for 이름, 정의 in 후보 if 이름 == "귀영보")
-
-
-@pytest.fixture
-def 귀영보전장():
-    rng.시드(7)
-    상태 = support.새게임([("", "귀검사"), ("", "격투가")])
-    c = 상태["파티"]["파티원"][0]
-    support.성장(상태, c, 8, 전직="소울브링어")
-    support.성장(상태, c, 9, 퍽고르기=_귀영보_고르기)
-    gf.전투_시작(상태, ["고블린", "고블린"], 레벨=2, 차수=1)
-    support.반응_처리(상태)
-    전투상태 = 상태["전투상태"]
-    적 = [p for p in 전투상태["참가자"] if p["진영"] == "적"]
-    sb = next(p for p in 전투상태["참가자"] if p["원본"].get("전직") == "소울브링어")
-    sb["현재MP"] = 30
-    sb["행동자원"]["반응행동"] = 1
-    전투상태.pop("반응선택", None)  # 반응 자동 사용
-    return 상태, 전투상태, 적, sb
-
-
-def _눈들(monkeypatch, *눈):
-    남은 = list(눈)
-    monkeypatch.setattr(
-        rng.주사위, "randint", lambda a, b: 남은.pop(0) if b == 20 else a
-    )
-
-
-def test_귀영보는_소울브링어만_고르는_2차수_퍽이고_반응스킬을_준다():
-    rng.시드(7)
-    상태 = support.새게임([("", "귀검사"), ("", "귀검사")])
-    sb, bs = 상태["파티"]["파티원"]
-    support.성장(상태, sb, 8, 전직="소울브링어")
-    support.성장(상태, bs, 8, 전직="버서커")
-    assert "귀영보" in [n for n, _ in support.퍽_후보(sb)]
-    assert "귀영보" not in [n for n, _ in support.퍽_후보(bs)]
-    support.성장(상태, sb, 9, 퍽고르기=_귀영보_고르기)
-    assert "귀영보" in sb["보유스킬"]
-    assert _스킬("귀영보")["분류"] == "반응스킬" and _스킬("귀영보")["MP소모"] == 10
-
-
-def test_귀영보는_첫_피격에_반응행동과_MP10으로_불리점을_준다(귀영보전장, monkeypatch):
-    _, 전투상태, 적, sb = 귀영보전장
-    _눈들(monkeypatch, 19, 2)  # 원래 19(명중) -> 불리점 굴림 2
-    판정 = hit.명중_판정(전투상태, 적[0], sb, "근력판정")
-    assert not 판정["성공"] and 판정["자연눈"] == 2
-    assert (sb["행동자원"]["반응행동"], sb["현재MP"]) == (0, 20)
-    assert any(
-        isinstance(항목, dict) and 항목.get("반응") == "귀영보"
-        for 항목 in 전투상태["로그"]
-    )
-
-
-def test_귀영보는_자기_턴부터_첫_공격에만_쓴다(귀영보전장, monkeypatch):
-    _, 전투상태, 적, sb = 귀영보전장
-    _눈들(monkeypatch, 1, 19, 19, 2)
-    hit.명중_판정(전투상태, 적[0], sb, "근력판정")  # 첫 공격은 대실패 - 쓸 일이 없다
-    sb["행동자원"]["반응행동"] = 1
-    판정 = hit.명중_판정(전투상태, 적[1], sb, "근력판정")  # 두 번째는 안 쓴다
-    assert 판정["성공"] and sb["현재MP"] == 30
-    flow.턴_시작_처리(전투상태, sb)  # 자기 턴이 오면 다시
-    판정 = hit.명중_판정(전투상태, 적[0], sb, "근력판정")
-    assert not 판정["성공"] and sb["현재MP"] == 20
-
-
-def test_귀영보는_MP가_10보다_적으면_쓰지_않는다(귀영보전장, monkeypatch):
-    _, 전투상태, 적, sb = 귀영보전장
-    sb["현재MP"] = 9
-    _눈들(monkeypatch, 19, 2)
-    assert hit.명중_판정(전투상태, 적[0], sb, "근력판정")["성공"]
-    assert sb["행동자원"]["반응행동"] == 1
-
-
 # ------------------------------------------------------------------ 카잔
 
 
@@ -1175,3 +1108,120 @@ def test_흑영검이_없으면_일반공격은_한_번이다(monkeypatch):
     상태, p, 적 = _13레벨_소울브링어()
     p["행동자원"]["일반행동"] = 1
     assert "추가타격" not in gf.아군_일반공격(상태, 적)
+
+
+# ------------------------------------------------------------------ 귀영보·귀영섬·은신 (2026-11-16 사용자 결정)
+def _은신(p):
+    return any(i["이름"] == "은신" for i in p["상태이상"])
+
+
+def _은신_지우기(p):
+    p["상태이상"] = [i for i in p["상태이상"] if i["이름"] != "은신"]
+
+
+def _귀영보_켜기(sb):
+    for 키 in ("보유특성", "켜진특성"):
+        목록 = sb["원본"].setdefault(키, [])
+        if "귀영보" not in 목록:
+            목록.append("귀영보")
+
+
+def test_귀영보는_골드_스킬_두_개_값이고_사면_귀영섬과_켜진_특성_귀영보를_얻는다():
+    from game.system import skill_learn_system as sl
+
+    귀영보 = _스킬("귀영보")
+    assert (귀영보["분류"], 귀영보["습득방법"], 귀영보["전환특성"]) == (
+        "전환스킬",
+        "구매습득",
+        "귀영보",
+    )
+    assert sl.스킬습득_비용(2, 귀영보) == 2 * sl.스킬습득_비용(2, _스킬("툼스톤"))
+    assert _스킬("귀영섬")["습득방법"] == "동반습득"
+    상태 = support.새게임([("", "귀검사")])
+    c = 상태["파티"]["파티원"][0]
+    support.성장(상태, c, 6, 전직="소울브링어")
+    상태["소지품"]["골드"] = 10_000
+    목록 = {이름: 비용 for 이름, 비용, _ in gf.캐릭터_습득가능_스킬(c)}
+    assert 목록["귀영보"] == 200 and "귀영섬" not in 목록
+    gf.캐릭터_스킬_습득(상태, c, "귀영보")
+    assert {"귀영보", "귀영섬"} <= set(c["보유스킬"])
+    assert "귀영보" in c["보유특성"] and "귀영보" in c["켜진특성"]
+    assert 상태["소지품"]["골드"] == 10_000 - 200
+
+
+def test_귀영보가_켜져_있으면_라운드_시작마다_MP10을_내고_은신하고_모자라면_풀린다(
+    소울브링어전장,
+):
+    _, 전투상태, _, sb = 소울브링어전장
+    _귀영보_켜기(sb)
+    _은신_지우기(sb)
+    sb["현재MP"] = 25
+    flow.라운드시작_은신(전투상태)
+    assert _은신(sb) and sb["현재MP"] == 15
+    flow.라운드시작_은신(전투상태)  # 은신 중이어도 라운드마다 낸다
+    assert _은신(sb) and sb["현재MP"] == 5
+    flow.라운드시작_은신(전투상태)
+    assert not _은신(sb) and sb["현재MP"] == 5
+    sb["원본"]["켜진특성"].remove("귀영보")  # 끄면 아무것도 안 한다
+    sb["현재MP"] = 25
+    flow.라운드시작_은신(전투상태)
+    assert not _은신(sb) and sb["현재MP"] == 25
+
+
+def test_은신은_행동을_쓰면_풀리고_피격으로는_풀리지_않는다(
+    소울브링어전장, monkeypatch
+):
+    _, 전투상태, 적, sb = 소울브링어전장
+    정의 = 전투상태["상태이상정의"]["은신"]["효과"]["해제조건"]
+    assert [c["조건"] for c in 정의] == ["행동사용시", "은신하지않은동료없음"]
+    _은신_지우기(sb)
+    sb["상태이상"].append({"이름": "은신", "지속턴": None})
+    e = 적[0]
+    hit_effects.피격_처리(전투상태, e, sb, _명중())  # 맞아도(범위공격 등) 풀리지 않는다
+    assert _은신(sb)
+    _카잔_깔기(전투상태, sb)  # 귀신 : 카잔 - 보조행동
+    assert not _은신(sb)
+    sb["상태이상"].append({"이름": "은신", "지속턴": None})
+    attacks.일반공격_묶음(전투상태, sb, e)
+    assert not _은신(sb)
+
+
+def test_몬스터는_패턴을_쓰면_은신이_풀리고_은신한_아군을_단일_대상으로_고르지_않는다(
+    소울브링어전장,
+):
+    from game.system import monster_ai
+    from game.system.combat import monster_actions
+
+    _, 전투상태, 적, sb = 소울브링어전장
+    아군 = [p for p in 전투상태["참가자"] if p["진영"] == "아군" and p["생존"]]
+    sb["상태이상"].append({"이름": "은신", "지속턴": None})
+    for _ in range(20):
+        고른 = monster_ai.타겟_선택(아군, 전투상태["상태이상정의"])
+        assert 고른 is not sb
+    e = 적[0]
+    e["상태이상"].append({"이름": "은신", "지속턴": None})
+    monster_actions.몬스터_턴_실행(전투상태, e)
+    assert not _은신(e)
+
+
+def test_귀영섬은_은신일_때만_보조행동으로_무기공격력_주문시전보정치_암속성_참격이고_은신이_풀린다(
+    소울브링어전장, monkeypatch
+):
+    _, 전투상태, 적, sb = 소울브링어전장
+    데이터 = _스킬("귀영섬")
+    assert (데이터["데미지"], 데이터["속성"], 데이터["공격타입"]) == (
+        "무기공격력+주문시전보정치",
+        "암속성",
+        "참격",
+    )
+    sb["행동자원"].update(일반행동=0, 보조행동=1)
+    _은신_지우기(sb)
+    가능, 사유 = ss.사용_가능여부(전투상태, sb, 데이터)
+    assert not 가능 and "은신" in 사유
+    sb["상태이상"].append({"이름": "은신", "지속턴": None})
+    assert ss.사용_가능여부(전투상태, sb, 데이터)[0]
+    monkeypatch.setattr(hit, "명중_판정", lambda *a, **k: _명중())
+    e = 적[0]
+    결과 = ss.스킬_실행(전투상태, sb, "귀영섬", 데이터, e)
+    assert 결과["타격"][0]["피해"] > 0
+    assert sb["행동자원"]["보조행동"] == 0 and not _은신(sb)
