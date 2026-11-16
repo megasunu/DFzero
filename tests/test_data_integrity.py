@@ -97,7 +97,6 @@ from game.system.combat import formula, resources
     "보정치": 1,
     "주문시전보정치": 3,
     "스타일성장횟수": 1,
-    "귀신보유수": 2,
     "대상상태이상수": 2,
     "무기공격력": "1d8",
     "추가공격": 1,
