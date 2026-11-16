@@ -164,3 +164,15 @@ def test_분석_명령은_보고서를_쓴다(tmp_path):
     글 = 경로.read_text(encoding="utf-8")
     assert "파티 6개 x 파티당 1판 = 6판" in 글
     assert bs.main(["검귀", "--분석"]) == 2
+
+
+def test_분석_전투는_판의_시드로_퍽을_무작위로_고른다():
+    import gameflow as gf
+
+    환경 = ba.분석환경()
+    구성 = [("프리스트", "크루세이더"), ("거너", "레인저")]
+    조합들 = {
+        str([list(gf.캐릭터_보유퍽(c)) for c in 환경.파티(구성, s)["파티"]["파티원"]])
+        for s in range(8)
+    }
+    assert len(조합들) > 1
