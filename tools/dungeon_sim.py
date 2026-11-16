@@ -33,7 +33,7 @@ for _경로 in (ROOT, os.path.join(ROOT, "tests")):
         sys.path.insert(0, _경로)
 
 판당_최대턴 = 600
-기본_구성 = [  # S7의 기본 4인 파티(tests/support.py 구현된_전직)
+기본_구성 = [  # S2(옛 S7)의 기본 4인 파티(tests/support.py 구현된_전직)
     ["귀검사", "웨펀마스터"],
     ["격투가", "스트라이커"],
     ["거너", "레인저"],

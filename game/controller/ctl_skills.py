@@ -8,6 +8,7 @@ from game.system import skill_learn_system
 from game.controller.ctl_registry import 전직_레지스트리, 직업_레지스트리
 
 __all__ = [
+    "_타입_목록",
     "_차수별_스킬목록",
     "_상세값",
     "_스킬_상세글",
@@ -30,12 +31,19 @@ def _차수별_스킬목록(캐릭터):
     return 결과
 
 
+def _타입_목록(값):
+    """데이터 칸 "타입" - 문자열 하나거나 목록(#654). 없으면 빈 목록."""
+    if not 값:
+        return []
+    return [값] if isinstance(값, str) else list(값)
+
+
 def _특성_구매항목(정의):
     """훔쳐배우기 특성을 [스킬습득]이 파는 "특성스킬"처럼 - 배우면 그 특성을 얻는다. 특성에는 차수가 없어
     1차 전직(차수 2)의 값과 레벨로 판다."""
     return {
         "분류": "특성스킬",
-        "타입": list(정의.get("타입") or []),
+        "타입": _타입_목록(정의.get("타입")),
         "습득방법": "구매습득",
         "습득레벨": skill_learn_system.구매습득_레벨(2),
         "설명": 정의.get("설명", ""),

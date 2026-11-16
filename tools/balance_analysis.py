@@ -12,7 +12,6 @@
 
 import collections
 import concurrent.futures
-import copy
 import os
 import random
 import sys
@@ -49,25 +48,21 @@ def 고른_파티들(전직표, 묶음, R):
 
 
 class 분석환경:
-    """파티 구성마다 캐릭터를 한 번 키워 두고, 판마다 복사본으로 무작위 행동 전투를 돈다."""
+    """판마다 그 시드의 퍽 조합으로 파티를 키워 무작위 행동 전투를 돈다."""
 
     def __init__(self):
         self.gf, self.scenario, self.support, self.rng = bs.게임()
         self.gf.자동전투_방식_설정("전력전투")
-        self.상태모음 = {}
 
-    def 파티(self, 구성):
-        키 = tuple(tuple(x) for x in 구성)
-        if 키 not in self.상태모음:
-            self.상태모음[키] = bs.파티_상태(list(키))
-        return self.상태모음[키]
+    def 파티(self, 구성, 시드=0):
+        """그 판의 시드로 퍽을 무작위로 고른 새 파티 상태(balance_sim.파티_상태) - 판마다 퍽 조합이 다르다."""
+        return bs.파티_상태([tuple(x) for x in 구성], 시드)
 
     def 전투_열기(self, 구성, 시드):
-        """쉰 파티의 복사본으로 시드의 몬스터(balance_sim.조건)와 전투를 연다 -> 게임 상태. 게임 난수도 시드로 맞춘다."""
+        """시드의 퍽 조합으로 키워 쉰 파티로 시드의 몬스터(balance_sim.조건)와 전투를 연다 -> 게임 상태. 게임 난수도 시드로 맞춘다."""
         gf = self.gf
-        원본 = self.파티(구성)
-        gf.휴식(원본)
-        상태 = copy.deepcopy(원본)
+        상태 = self.파티(구성, 시드)
+        gf.휴식(상태)
         self.rng.시드(시드)
         rr = random.Random(시드)
         조건 = bs.조건
