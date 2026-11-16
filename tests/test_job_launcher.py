@@ -12,7 +12,7 @@ import pytest
 import gameflow as gf
 from game.system import rng
 from game.system import skill_system as ss
-from game.system.combat import attacks, damage, stats
+from game.system.combat import attacks, hit, stats
 from tests import support
 
 
@@ -69,7 +69,7 @@ def test_슈타이어_대전차포는_훔쳐배우기_대상이다():
 
 def test_APG63은_근력과_치명타범위를_1씩_올린다(런처전장):
     _, 전투상태, _, r = 런처전장
-    assert damage.유효_치명타범위(전투상태, r) == 19
+    assert hit.유효_치명타범위(전투상태, r) == 19
     상태 = support.새게임([("", "거너")])
     c = 상태["파티"]["파티원"][0]
     support.성장(상태, c, 5)

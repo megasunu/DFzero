@@ -4443,7 +4443,7 @@ class 스모크앱(main.DnfMobileApp):
         화속성에 맞으면 남성 그림으로 돌아온다. 반대 성별 그림이 없는 캐릭터는 그림만 그대로다."""
         from game.data.ability.job_ability_0000 import 특성목록 as 공용특성
         from game.system import effect_engine
-        from game.system.combat import damage
+        from game.system.combat import hit_effects
 
         귀검사 = next(c for c in 상태["파티"]["파티원"] if c["직업"] == "귀검사")
         원래 = (list(귀검사["보유특성"]), 귀검사.get("성별"))
@@ -4473,12 +4473,12 @@ class 스모크앱(main.DnfMobileApp):
 
             assert 그림().endswith("011m.webp"), 그림()
             판정 = {"성공": True, "자연눈": 10, "치명타": False, "자동실패": False}
-            damage.피격_처리(전투상태, 적, p, 판정, 속성="수속성")
+            hit_effects.피격_처리(전투상태, 적, p, 판정, 속성="수속성")
             전투.갱신()
             yield 0.4
             assert 귀검사["란마성별"] == "f" and 그림().endswith("011f.webp"), 그림()
             _찍기("battle_ranma_female")
-            damage.피격_처리(전투상태, 적, p, 판정, 속성="화속성")
+            hit_effects.피격_처리(전투상태, 적, p, 판정, 속성="화속성")
             전투.갱신()
             yield 0.3
             assert 그림().endswith("011m.webp"), 그림()

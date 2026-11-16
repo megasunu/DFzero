@@ -5,7 +5,7 @@ import pytest
 from game.system import rng
 import gameflow as gf
 from game.system import skill_system as ss
-from game.system.combat import damage, flow, stats
+from game.system.combat import damage, element, flow, hit, stats
 from tests import support
 
 
@@ -74,8 +74,8 @@ def test_넨마스터는_레벨6에_빛의친화와_축염포를_레벨8에_버�
 
 def test_빛의친화는_명속성_저항_암속성_취약_명속성_강화2(넨전장):
     _, 전투상태, 적, n, _ = 넨전장
-    assert damage.속성_피해배율(전투상태, n, "명속성") == 0.5
-    assert damage.속성_피해배율(전투상태, n, "암속성") == 2
+    assert element.속성_피해배율(전투상태, n, "명속성") == 0.5
+    assert element.속성_피해배율(전투상태, n, "암속성") == 2
     assert stats.속성_보정합(전투상태, n, "속성강화", "명속성") == 2
 
 
@@ -545,7 +545,7 @@ def test_뇌명이면_일반공격이_주문시전명중으로_1d8에_주문시�
         return 15 if b == 20 else b
 
     monkeypatch.setattr(rng.주사위, "randint", 고정)
-    원판정, 원피해 = damage.명중_판정, damage.피해_적용
+    원판정, 원피해 = hit.명중_판정, damage.피해_적용
 
     def 판정(전투상태, 공격자, 대상, 종류, *a, **k):
         명중.append(종류)
@@ -555,7 +555,7 @@ def test_뇌명이면_일반공격이_주문시전명중으로_1d8에_주문시�
         피해.append((양, k.get("속성")))
         return 원피해(전투상태, 대상, 양, **k)
 
-    monkeypatch.setattr(damage, "명중_판정", 판정)
+    monkeypatch.setattr(hit, "명중_판정", 판정)
     monkeypatch.setattr(damage, "피해_적용", 적용)
     결과 = attacks.일반공격_실행(전투상태, n, 적[0])
     assert 결과["판정"]["성공"]

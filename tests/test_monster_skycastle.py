@@ -21,6 +21,8 @@ from game.system import monster_ai, rng
 from game.system.combat import (
     damage,
     flow,
+    hit,
+    hit_effects,
     monster_actions,
     stats,
     status,
@@ -367,7 +369,7 @@ def _피해_기록(monkeypatch):
 def test_파괴광선은_양_옆에_절반(monkeypatch):
     전투상태, [눈], 아군 = _전장("이블아이의 왼쪽눈")
     monkeypatch.setattr(
-        damage,
+        hit,
         "명중_판정",
         lambda *a, **k: {
             "성공": True,
@@ -399,13 +401,13 @@ def test_사악한_눈은_맞으면_때린_상대에게_반격하고_라운드�
     전투상태, [눈], 아군 = _전장("이블아이의 오른쪽눈")
     _사악한_눈(monkeypatch, True)
     기록 = _피해_기록(monkeypatch)
-    damage.피격_처리(전투상태, 아군[0], 눈, {"성공": True})
+    hit_effects.피격_처리(전투상태, 아군[0], 눈, {"성공": True})
     assert [x[0] for x in 기록] == [아군[0]["이름"]]
     assert 1 <= 기록[0][1] <= 6
-    damage.피격_처리(전투상태, 아군[1], 눈, {"성공": True})
+    hit_effects.피격_처리(전투상태, 아군[1], 눈, {"성공": True})
     assert len(기록) == 1  # 같은 라운드에는 다시 터지지 않는다
     전투상태["라운드"] += 1
-    damage.피격_처리(전투상태, 아군[1], 눈, {"성공": True})
+    hit_effects.피격_처리(전투상태, 아군[1], 눈, {"성공": True})
     assert [x[0] for x in 기록] == [아군[0]["이름"], 아군[1]["이름"]]
 
 
@@ -413,10 +415,10 @@ def test_사악한_눈은_30퍼센트_확률이_빗나가면_반격하지_않고
     전투상태, [눈], 아군 = _전장("이블아이의 왼쪽눈")
     _사악한_눈(monkeypatch, False)
     기록 = _피해_기록(monkeypatch)
-    damage.피격_처리(전투상태, 아군[0], 눈, {"성공": True})
+    hit_effects.피격_처리(전투상태, 아군[0], 눈, {"성공": True})
     assert 기록 == []
     _사악한_눈(monkeypatch, True)
-    damage.피격_처리(전투상태, 아군[0], 눈, {"성공": True})
+    hit_effects.피격_처리(전투상태, 아군[0], 눈, {"성공": True})
     assert [x[0] for x in 기록] == [아군[0]["이름"]]
     assert _특성["사악한 눈"]["피격시효과"][0]["확률"] == 0.3
 

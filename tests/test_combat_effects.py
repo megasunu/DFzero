@@ -17,7 +17,7 @@ import gameflow as gf
 from game.data.buff.debuff import 디버프목록
 from game.data.buff.buff import 버프목록
 from game.data.buff.status_effects import 상태이상목록
-from game.system.combat import damage, flow, stats, status
+from game.system.combat import damage, flow, hit, stats, status
 from game.system import skill_system as ss
 from tests import support
 from tests.test_combat_skills import 정리, 참가자_요약
@@ -107,7 +107,7 @@ def _수치(전투상태, p):
         "능력치": stats.유효_능력치(전투상태, p),
         "이니셔티브": stats.유효_이니셔티브(전투상태, p),
         "우선도": stats.유효_우선도(전투상태, p),
-        "치명타범위": damage.유효_치명타범위(전투상태, p),
+        "치명타범위": hit.유효_치명타범위(전투상태, p),
         "최대HP": stats.유효_최대HP(전투상태, p),
         "평타보정": stats.평타_능력치_보정치(전투상태, p),
         "변동": {k: stats.버프디버프_수치(전투상태, p, k) for k in 변동대상들},

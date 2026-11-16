@@ -8,7 +8,17 @@ import pytest
 
 import gameflow as gf
 from game.system import monster_ai
-from game.system.combat import damage, flow, monster_actions, stats, status, traits
+from game.system.combat import (
+    damage,
+    element,
+    flow,
+    hit,
+    hit_effects,
+    monster_actions,
+    stats,
+    status,
+    traits,
+)
 from tests import support
 
 
@@ -44,7 +54,7 @@ def _패턴(몬스터, 이름):
 
 
 def _맞히기(전투상태, 공격자, 몬스터):
-    damage.피격_처리(전투상태, 공격자, 몬스터, {"성공": True})
+    hit_effects.피격_처리(전투상태, 공격자, 몬스터, {"성공": True})
 
 
 # ------------------------------------------------------------- 석상 상태
@@ -153,7 +163,7 @@ def _헤븐(monkeypatch):
     몬스터["상태이상"] = []
     support.주사위고정(monkeypatch, 10)
     monkeypatch.setattr(
-        damage,
+        hit,
         "명중_판정",
         lambda *a, **k: {
             "성공": True,
@@ -181,7 +191,7 @@ def test_친위대장은_찌르기도_명속성으로_공격한다(monkeypatch):
 
 def test_친위대장은_명속성_저항():
     전투상태, 몬스터, _ = _전장("헤븐 익스펠러")
-    assert damage.속성_피해배율(전투상태, 몬스터, "명속성") == 0.5
+    assert element.속성_피해배율(전투상태, 몬스터, "명속성") == 0.5
 
 
 def test_친위대장도_한_턴에_패턴을_한_번만_쓴다(monkeypatch):

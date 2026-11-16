@@ -12,7 +12,7 @@ import gameflow as gf
 from game.system import rng
 from game.system import skill_system as ss
 from game.system.skill import skill_run
-from game.system.combat import damage, flow, resources, stats
+from game.system.combat import flow, hit, resources, stats
 from tests import support
 
 
@@ -134,9 +134,9 @@ def test_죄업_쾌락_교만_탐욕_폭식_수치(미스트리스전장):
     _죄업(전투상태, m, "탐욕")
     assert stats.속성_보정합(전투상태, m, "속성강화", "수속성") == 수 + 2
     assert stats.속성_보정합(전투상태, m, "속성내성", "암속성") == 내성 - 2
-    치명 = damage.유효_치명타범위(전투상태, m)
+    치명 = hit.유효_치명타범위(전투상태, m)
     _죄업(전투상태, m, "폭식")
-    assert damage.유효_치명타범위(전투상태, m) == 치명 - 1
+    assert hit.유효_치명타범위(전투상태, m) == 치명 - 1
     assert stats.버프디버프_수치(전투상태, m, "펌블범위") == 1
     # 죄업은 전투가 끝날 때까지 - 지속턴이 없다
     assert all(
@@ -154,8 +154,8 @@ def test_죄업_분노는_공격과_피격_모두_명중_이점(미스트리스�
 
     monkeypatch.setattr(stats.dice_utils, "d20_굴림", d20)
     _죄업(전투상태, m, "분노")
-    damage.명중_판정(전투상태, m, 적[0], "보정명중률")
-    damage.명중_판정(전투상태, 적[0], m, "보정명중률")
+    hit.명중_판정(전투상태, m, 적[0], "보정명중률")
+    hit.명중_판정(전투상태, 적[0], m, "보정명중률")
     assert 이점들 == [True, True]
 
 

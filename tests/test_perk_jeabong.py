@@ -11,7 +11,7 @@ from game.data.perks.perks_class_0000 import 퍽목록
 from game.system import character_data_system as 캐릭터데이터
 from game.system import rng
 from game.system import skill_system as ss
-from game.system.combat import core, damage, stats, status
+from game.system.combat import core, damage, hit, stats, status
 from game.data import common_names
 from tests import support
 
@@ -145,9 +145,9 @@ def test_명중이점과_무력화_약화CC_면역(monkeypatch):
         기록.append((이점, 불리))
         return 10
 
-    monkeypatch.setattr(damage.dice_utils, "d20_굴림", 굴림)
+    monkeypatch.setattr(hit.dice_utils, "d20_굴림", 굴림)
     고블린 = next(e for e in gf.적_목록(상태) if e["생존"])
-    damage.명중_판정_계산(전투상태, p, 고블린, "보정명중률")
+    hit.명중_판정_계산(전투상태, p, 고블린, "보정명중률")
     assert 기록 == [(True, False)]
 
 

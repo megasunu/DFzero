@@ -8,7 +8,15 @@ import pytest
 
 import gameflow as gf
 from game.system import monster_ai, rng
-from game.system.combat import attacks, damage, flow, monster_actions, stats, traits
+from game.system.combat import (
+    attacks,
+    damage,
+    flow,
+    hit,
+    monster_actions,
+    stats,
+    traits,
+)
 from tests import support
 
 
@@ -49,7 +57,7 @@ def _명중_차례로(monkeypatch, 성공들):
         성공 = 남은.pop(0) if 남은 else True
         return {"성공": 성공, "자연눈": 10, "치명타": False, "자동실패": False}
 
-    monkeypatch.setattr(damage, "명중_판정", 판정)
+    monkeypatch.setattr(hit, "명중_판정", 판정)
 
 
 # ------------------------------------------------------------- 종족:골렘
@@ -135,7 +143,7 @@ def test_청동탄은_명중하면_명중굴림을_따로_해_1d6_역장을_더_
         판정수.append(1)
         return {"성공": 본탄명중, "자연눈": 10, "치명타": False, "자동실패": False}
 
-    monkeypatch.setattr(damage, "명중_판정", 판정)
+    monkeypatch.setattr(hit, "명중_판정", 판정)
     시작 = len(전투상태["로그"])
     _한턴(전투상태, 골렘, monkeypatch, _패턴(골렘, "청동탄 발사"), 대상)
     폭발 = _타격로그(전투상태, 시작, "청동탄 폭발")
@@ -161,7 +169,7 @@ def test_키_큰놈들_죽어는_넘어진_적과_마법사를_반드시_빗맞�
         판정대상.append(대상["이름"])
         return {"성공": True, "자연눈": 10, "치명타": False, "자동실패": False}
 
-    monkeypatch.setattr(damage, "명중_판정", 판정)
+    monkeypatch.setattr(hit, "명중_판정", 판정)
     HP전 = {p["이름"]: p["현재HP"] for p in 아군}
     _한턴(전투상태, 레이조, monkeypatch, _패턴(레이조, "키 큰놈들 죽어!"))
     for p in 아군:

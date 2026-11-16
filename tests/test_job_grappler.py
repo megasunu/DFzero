@@ -10,7 +10,7 @@ import gameflow as gf
 from game.data.ability import job_ability_020f
 from game.system import rng
 from game.system import skill_system as ss
-from game.system.combat import core, damage, flow, stats, traits
+from game.system.combat import control, core, flow, hit_effects, stats, traits
 from tests import support
 
 
@@ -304,14 +304,14 @@ def test_반드시_잡는다_중_홀딩이_남은_동안_시전자는_슈퍼아�
     support.주사위고정(monkeypatch, 15)
     _쓰기(전투상태, g, "수플렉스", 적[0])
     assert "슈퍼아머" not in _상태(g)  # 버프 전에는 없다
-    damage.홀딩_발동(전투상태, 적[0])
+    hit_effects.홀딩_발동(전투상태, 적[0])
     _쓰기(전투상태, g, "반드시 잡는다!")
     _쓰기(전투상태, g, "수플렉스", 적[0])
     assert "슈퍼아머" in _상태(g)
     우선도 = g.get("우선도", 0)
-    damage.경직_적용(전투상태, g, ("잡기",))
+    hit_effects.경직_적용(전투상태, g, ("잡기",))
     assert g.get("우선도", 0) == 우선도
-    damage.홀딩_발동(전투상태, 적[0])
+    hit_effects.홀딩_발동(전투상태, 적[0])
     assert "슈퍼아머" not in _상태(g)
 
 
@@ -324,6 +324,6 @@ def test_반드시_잡는다_슈퍼아머는_시전자가_무력화되면_홀딩
     _쓰기(전투상태, g, "로플링", 적[0])
     assert "슈퍼아머" in _상태(g)
     ss.상태이상_부여(전투상태, g, "기절", 1)
-    damage.홀딩_정리(전투상태)
+    control.홀딩_정리(전투상태)
     assert "홀딩" not in _상태(적[0])
     assert "슈퍼아머" not in _상태(g)

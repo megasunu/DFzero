@@ -5,7 +5,7 @@ import pytest
 from game.system import rng
 import gameflow as gf
 from game.system import skill_system as ss
-from game.system.combat import attacks, damage, flow, status, stats, traits
+from game.system.combat import attacks, damage, flow, hit, stats, status, traits
 from tests import support
 
 
@@ -170,19 +170,19 @@ def test_폭주는_레벨8_버프이고_행동없이_HP_5로_10턴_휴식당_1�
 def test_폭주는_공격에_이점_피격에_공격자_이점을_준다(버서커전장, monkeypatch):
     _, 전투상태, 적, bs = 버서커전장
     굴림 = []
-    원래 = damage.dice_utils.d20_굴림
+    원래 = hit.dice_utils.d20_굴림
 
     def 기록(이점=False, 불리=False):
         굴림.append((이점, 불리))
         return 원래(이점=이점, 불리=불리)
 
-    monkeypatch.setattr(damage.dice_utils, "d20_굴림", 기록)
-    damage.명중_판정_계산(전투상태, bs, 적[0], "보정명중률")
-    damage.명중_판정_계산(전투상태, 적[0], bs, "근력판정")
+    monkeypatch.setattr(hit.dice_utils, "d20_굴림", 기록)
+    hit.명중_판정_계산(전투상태, bs, 적[0], "보정명중률")
+    hit.명중_판정_계산(전투상태, 적[0], bs, "근력판정")
     assert 굴림 == [(False, False), (False, False)]
     _폭주_걸기(전투상태, bs)
-    damage.명중_판정_계산(전투상태, bs, 적[0], "보정명중률")
-    damage.명중_판정_계산(전투상태, 적[0], bs, "근력판정")
+    hit.명중_판정_계산(전투상태, bs, 적[0], "보정명중률")
+    hit.명중_판정_계산(전투상태, 적[0], bs, "근력판정")
     assert 굴림[2:] == [(True, False), (True, False)]
 
 
@@ -319,7 +319,7 @@ def test_프렌지가_켜져_있으면_턴_시작에_최대HP_10퍼센트를_올
 
 def test_프렌지는_모든_공격에_건강_내성_출혈_3턴을_건다(광기전장, monkeypatch):
     _, 전투상태, 적, bs = 광기전장
-    monkeypatch.setattr(damage, "명중_판정", lambda *a, **k: _명중())
+    monkeypatch.setattr(hit, "명중_판정", lambda *a, **k: _명중())
     _주사위고정(monkeypatch, 1)  # 내성굴림 1 - 실패
     ss.분할공격_실행(전투상태, bs, _스킬("블러드 러스트"), 적[0])
     assert all(s["이름"] != "출혈" for s in 적[0]["상태이상"])  # 꺼져 있으면 없다
@@ -414,7 +414,7 @@ def test_블러드_러스트는_1타_1d8을_바로_주고_2타_2차수_d12는_�
         굴림.append(명중률종류)
         return _명중()
 
-    monkeypatch.setattr(damage, "명중_판정", 판정)
+    monkeypatch.setattr(hit, "명중_판정", 판정)
     monkeypatch.setattr(
         stats, "장비_데미지보너스", lambda 참가자, 대상=None, 전투상태=None: 0
     )
@@ -434,7 +434,7 @@ def test_블러드_러스트는_1타_1d8을_바로_주고_2타_2차수_d12는_�
 def test_블러드_러스트는_1타가_빗나가면_2타가_없다(버서커전장, monkeypatch):
     _, 전투상태, 적, bs = 버서커전장
     monkeypatch.setattr(
-        damage,
+        hit,
         "명중_판정",
         lambda 전투상태, 공격자, 대상, 명중률종류, *a, **k: dict(
             _명중(), 성공=명중률종류 == "필중"
@@ -503,7 +503,7 @@ def test_피폭발은_적1체를_3번_명중마다_굴리고_1더하기차수_d1
         굴림.append((대상["이름"], 명중보너스))
         return _명중()
 
-    monkeypatch.setattr(damage, "명중_판정", 판정)
+    monkeypatch.setattr(hit, "명중_판정", 판정)
     monkeypatch.setattr(
         stats, "장비_데미지보너스", lambda 참가자, 대상=None, 전투상태=None: 0
     )
