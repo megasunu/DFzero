@@ -14,7 +14,7 @@ from game.system import (
     character_levelup_system as 캐릭터레벨업,
     equipment_system,
 )
-from game.system.combat import core, damage, participants, stats, traits
+from game.system.combat import core, hit, participants, stats, traits
 from game.controller.ctl_levelup import (
     캐릭터_다음_레벨업_항목,
     캐릭터_보유퍽,
@@ -170,7 +170,7 @@ def 캐릭터_상세정보(게임상태, 캐릭터):
             + f"   보정치 {_부호(보정)}"
         )
 
-    치명 = damage.유효_치명타범위(전투상태, 참가자)
+    치명 = hit.유효_치명타범위(전투상태, 참가자)
     # 남아 있는 상태이상(취기/만취 - 취권이면 이득)의 명중/데미지도 전투처럼 더한다
     명중_평타 = (
         stats.평타_능력치_보정치(전투상태, 참가자)

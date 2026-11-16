@@ -9,6 +9,7 @@ from game.data.monster import monster_title
 from game.system import rng
 from game.system.combat import (
     damage,
+    element,
     flow,
     formula,
     monster_actions,
@@ -140,8 +141,10 @@ def test_인챈트는_공격에_속성을_더하고_속성강화_2다(속성):
     챔피언 = gf.적_목록(상태)[0]
     assert traits.특성_문자열_변동값_목록(전투상태, 챔피언, "공격속성추가") == [속성]
     아군 = _아군(상태)[0]
-    assert damage.속성_최종배율(전투상태, 챔피언, 아군, 속성) == pytest.approx(
-        damage.속성_최종배율(전투상태, gf.적_목록(_전투([_챔피언()])[0])[0], 아군, 속성)
+    assert element.속성_최종배율(전투상태, 챔피언, 아군, 속성) == pytest.approx(
+        element.속성_최종배율(
+            전투상태, gf.적_목록(_전투([_챔피언()])[0])[0], 아군, 속성
+        )
         + 0.2
     )
 

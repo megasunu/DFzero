@@ -9,7 +9,7 @@ import pytest
 import gameflow as gf
 import scenario
 import support
-from game.system.combat import damage
+from game.system.combat import element
 from tests.support import 구현된_전직
 
 
@@ -54,7 +54,9 @@ def _전투(상태, 사용기록):
                 if 적 is not None:
                     배율.append(
                         {
-                            속성: damage.속성_최종배율(상태["전투상태"], 엘마, 적, 속성)
+                            속성: element.속성_최종배율(
+                                상태["전투상태"], 엘마, 적, 속성
+                            )
                             for 속성 in 속성들 + ["무속성"]
                         }
                     )

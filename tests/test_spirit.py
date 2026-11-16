@@ -10,7 +10,16 @@ import pytest
 import gameflow as gf
 from game.data.buff.summon_40 import 마법사소환수목록 as 소환수목록
 from game.system import monster_ai
-from game.system.combat import damage, flow, monster_actions, stats, status, traits
+from game.system.combat import (
+    damage,
+    element,
+    flow,
+    hit,
+    monster_actions,
+    stats,
+    status,
+    traits,
+)
 from tests import support
 
 _능력치 = ("근력", "민첩", "건강", "지능", "지혜", "매력")
@@ -180,15 +189,15 @@ def test_속성방어력은_특성이_없으면_0():
 def test_속성_정령은_자기_속성_저항_반대_속성_취약(이름):
     속성, 반대 = _속성[_정령[이름][0]]
     전투상태, 몬스터, _ = _전장(이름)
-    assert damage.속성_피해배율(전투상태, 몬스터, 속성) == 0.5
-    assert damage.속성_피해배율(전투상태, 몬스터, 반대) == 2
+    assert element.속성_피해배율(전투상태, 몬스터, 속성) == 0.5
+    assert element.속성_피해배율(전투상태, 몬스터, 반대) == 2
 
 
 @pytest.mark.parametrize("이름", ["아도르", "쉬스케", "데드 멀커", "글레어린"])
 def test_속성_정령은_자기_속성_강화_1(이름):
     속성, _ = _속성[_정령[이름][0]]
     전투상태, 몬스터, 아군 = _전장(이름)
-    assert damage.속성_최종배율(전투상태, 몬스터, 아군[0], 속성) == pytest.approx(1.1)
+    assert element.속성_최종배율(전투상태, 몬스터, 아군[0], 속성) == pytest.approx(1.1)
 
 
 @pytest.mark.parametrize("이름", ["나이아스", "플레임 헐크"])
@@ -206,7 +215,7 @@ def test_속성_정령의_공격은_모두_자기_속성이다(monkeypatch, 이�
     monkeypatch.setattr(damage, "피해_적용", 기록)
     monkeypatch.setattr(monster_ai, "행동_선택", lambda p: 무속성패턴)
     monkeypatch.setattr(
-        damage,
+        hit,
         "명중_판정",
         lambda *a, **k: {
             "성공": True,

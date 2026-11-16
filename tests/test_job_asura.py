@@ -5,7 +5,7 @@ import pytest
 import gameflow as gf
 from game.system import rng
 from game.system import skill_system as ss
-from game.system.combat import damage, flow, stats, status
+from game.system.combat import flow, hit, hit_effects, stats, status
 from tests import support
 
 
@@ -175,18 +175,18 @@ def test_관조는_치명타범위_1과_명중보너스_1(아수라전장):
 def test_정신이_번쩍은_처음_맞을_때_한_번만_전투_끝까지_AC_1(아수라전장):
     _, 전투상태, 적, 아수라 = 아수라전장
     전 = stats.최종AC(전투상태, 아수라)
-    damage.피격_처리(전투상태, 적[0], 아수라, _명중())
+    hit_effects.피격_처리(전투상태, 적[0], 아수라, _명중())
     # 버프가 아니라 상태변화다(#462)
     assert [b["이름"] for b in 아수라["상태이상"]].count("정신이 번쩍!") == 1
     assert "지속턴" not in next(
         b for b in 아수라["상태이상"] if b["이름"] == "정신이 번쩍!"
     )
     assert stats.최종AC(전투상태, 아수라) == 전 + 1
-    damage.피격_처리(전투상태, 적[1], 아수라, _명중())  # 두 번째는 없다
+    hit_effects.피격_처리(전투상태, 적[1], 아수라, _명중())  # 두 번째는 없다
     assert stats.최종AC(전투상태, 아수라) == 전 + 1
     # 상태가 지워져도 전투당 한 번이라 다시 걸리지 않는다
     아수라["상태이상"] = [b for b in 아수라["상태이상"] if b["이름"] != "정신이 번쩍!"]
-    damage.피격_처리(전투상태, 적[2], 아수라, _명중())
+    hit_effects.피격_처리(전투상태, 적[2], 아수라, _명중())
     assert stats.최종AC(전투상태, 아수라) == 전
 
 
@@ -195,7 +195,7 @@ def test_살의의_파동을_쓰면_정신이_번쩍이_걸리고_피격돼도_�
     전 = stats.최종AC(전투상태, 아수라)
     _살의_걸기(상태, 아수라)
     assert stats.최종AC(전투상태, 아수라) == 전 + 1
-    damage.피격_처리(전투상태, 적[0], 아수라, _명중())
+    hit_effects.피격_처리(전투상태, 적[0], 아수라, _명중())
     assert stats.최종AC(전투상태, 아수라) == 전 + 1
 
 
@@ -216,7 +216,7 @@ def test_살의의_파동은_행동_MP_없이_10턴_아군_전체_치명타범�
         for 이름, 값 in stats.출처별_내역(전투상태, 아수라, "치명타범위")
         if 이름 not in ("관조", "살의의 파동")
     )
-    assert damage.유효_치명타범위(전투상태, 아수라) == 18 - 스타일
+    assert hit.유효_치명타범위(전투상태, 아수라) == 18 - 스타일
 
 
 def test_살의의_파동이_있으면_적은_턴_시작마다_역장_피해를_받는다(
@@ -288,9 +288,7 @@ def test_아이스_웨이브는_적1체_2x차수번_따로_명중_1d4_수속성_
     assert (데이터["속성"], 데이터["공격타입"]) == ("수속성", "역장")
     assert 데이터["명중률"] == "주문시전명중률" and 데이터["각공격명중굴림"] is True
     판정수 = []
-    monkeypatch.setattr(
-        damage, "명중_판정", lambda *a, **k: 판정수.append(1) or _명중()
-    )
+    monkeypatch.setattr(hit, "명중_판정", lambda *a, **k: 판정수.append(1) or _명중())
     support.주사위고정(monkeypatch, 3)  # 1d4 = 3, 건강 내성 3 - 실패
     결과 = ss.공격스킬_실행(전투상태, 아수라, _스킬("아이스 웨이브"), 적[0])
     assert len(결과["타격"]) == 4 and len(판정수) == 4  # 아수라는 2차수
@@ -311,7 +309,7 @@ def test_파이어_웨이브는_적3체_차수d6_화속성_화상3턴(아수라�
     )
     assert "하단공격" in 데이터["타입"]
     assert (데이터["속성"], 데이터["공격타입"]) == ("화속성", "역장")
-    monkeypatch.setattr(damage, "명중_판정", lambda *a, **k: _명중())
+    monkeypatch.setattr(hit, "명중_판정", lambda *a, **k: _명중())
     support.주사위고정(monkeypatch, 2)  # 2d6 = 4, 건강 내성 2 - 실패
     결과 = ss.공격스킬_실행(전투상태, 아수라, _스킬("파이어 웨이브"), 적[1])
     assert [t["대상"] for t in 결과["타격"]] == [e["이름"] for e in 적]
@@ -335,7 +333,7 @@ def test_진공참은_적_크기만큼_치고_타격마다_경직(아수라전�
     assert {"경직", "훔쳐배우기스킬"} <= set(데이터["타입"])
     assert (데이터["속성"], 데이터["공격타입"]) == ("무속성", "역장")
     적[0]["원본"] = dict(적[0]["원본"], 크기=크기)
-    monkeypatch.setattr(damage, "명중_판정", lambda *a, **k: _명중())
+    monkeypatch.setattr(hit, "명중_판정", lambda *a, **k: _명중())
     support.주사위고정(monkeypatch, 5)
     우선도 = 적[0].get("우선도", 0)
     결과 = ss.공격스킬_실행(전투상태, 아수라, _스킬("진공참"), 적[0])

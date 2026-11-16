@@ -7,7 +7,14 @@ from game.controller.ctl_registry import 전투용_몬스터특성정의
 from game.data.buff.status_effects import 상태이상목록
 from game.data.monster import monster_title
 from game.system import dungeon_system, loot_system, rng
-from game.system.combat import damage, monster_actions, stats, status, traits
+from game.system.combat import (
+    element,
+    hit_effects,
+    monster_actions,
+    stats,
+    status,
+    traits,
+)
 from game.system.combat import formula
 from tests.support import 새게임, 전투_열기
 
@@ -184,7 +191,7 @@ def test_돌연변이_무는_무속성_저항과_데미지보너스_2다():
     상태 = _전투([_챔피언("고블린", "돌연변이")])
     전투상태 = 상태["전투상태"]
     챔피언 = gf.적_목록(상태)[0]
-    assert damage.속성_피해배율(전투상태, 챔피언, "무속성") == 0.5
+    assert element.속성_피해배율(전투상태, 챔피언, "무속성") == 0.5
     assert traits.특성_수치(전투상태, 챔피언, "데미지보너스") == 2 - 1  # 종족:고블린 -1
 
 
@@ -219,8 +226,8 @@ def test_가속_히트커버리는_경직을_받지_않는다():
     상태 = _전투([_챔피언(버프=["가속-히트커버리"])])
     챔피언 = gf.적_목록(상태)[0]
     전 = (챔피언["우선도"], 챔피언["이니셔티브"])
-    damage.경직_적용(상태["전투상태"], 챔피언)
-    damage.경직_적용(상태["전투상태"], 챔피언, 태그=("잡기",))
+    hit_effects.경직_적용(상태["전투상태"], 챔피언)
+    hit_effects.경직_적용(상태["전투상태"], 챔피언, 태그=("잡기",))
     assert (챔피언["우선도"], 챔피언["이니셔티브"]) == 전
 
 
@@ -228,7 +235,7 @@ def test_가속_히트커버리는_경직을_받지_않는다():
 def test_이뮨_속성은_그_속성_피해가_0이다(속성):
     상태 = _전투([_챔피언(버프=[f"이뮨-{속성}"])])
     챔피언 = gf.적_목록(상태)[0]
-    assert damage.속성_피해배율(상태["전투상태"], 챔피언, 속성) == 0.0
+    assert element.속성_피해배율(상태["전투상태"], 챔피언, 속성) == 0.0
 
 
 def test_이뮨_상태변화는_지속피해와_CC에_면역이다():

@@ -19,7 +19,7 @@
 #   "설명" : 화면에 보일 글
 #   상태이상 지속턴: 무력화CC 1턴, 약화CC 2턴, 그 밖(지속피해형) 3턴.
 # 봉인 해제는 magic_seal_system, 효과의 전투 반영은 equipment_system.마봉_수치(상시)와
-# combat.flow 턴 시작 / combat.damage.마봉_명중시효과 / combat.stats.마봉_추가피해(발동)다.
+# combat.flow 턴 시작 / combat.hit_effects.마봉_명중시효과 / combat.stats.마봉_추가피해(발동)다.
 
 from game.data import common_names
 

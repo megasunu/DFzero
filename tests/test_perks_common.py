@@ -10,7 +10,17 @@ from game.data.ability.job_ability_0000 import 특성목록
 from game.data.perks.perks_class_0000 import 퍽목록
 from game.data.ability.job_ability_030f import 특성목록 as 거너특성목록
 from game.system import effect_engine
-from game.system.combat import attacks, damage, monster_actions, stats, status, traits
+from game.system.combat import (
+    attacks,
+    damage,
+    element,
+    hit,
+    hit_effects,
+    monster_actions,
+    stats,
+    status,
+    traits,
+)
 from game.system import skill_system as ss
 from game.system.combat import core
 from tests import support
@@ -86,7 +96,7 @@ def _굴림_기록(monkeypatch):
         기록.append((이점, 불리))
         return 10
 
-    monkeypatch.setattr(damage.dice_utils, "d20_굴림", 굴림)
+    monkeypatch.setattr(hit.dice_utils, "d20_굴림", 굴림)
     return 기록
 
 
@@ -98,22 +108,22 @@ def test_심안은_암흑에_걸리지_않는다():
 def test_심안은_공격할_때_이점(monkeypatch):
     전투상태, 고블린, 귀검사 = _전장("심안")
     기록 = _굴림_기록(monkeypatch)
-    damage.명중_판정_계산(전투상태, 귀검사, 고블린, "보정명중률")
+    hit.명중_판정_계산(전투상태, 귀검사, 고블린, "보정명중률")
     assert 기록 == [(True, False)]
 
 
 def test_심안을_공격하는_상대는_불리점(monkeypatch):
     전투상태, 고블린, 귀검사 = _전장("심안")
     기록 = _굴림_기록(monkeypatch)
-    damage.명중_판정_계산(전투상태, 고블린, 귀검사, "보정명중률")
+    hit.명중_판정_계산(전투상태, 고블린, 귀검사, "보정명중률")
     assert 기록 == [(False, True)]
 
 
 def test_심안이_없으면_이점도_불리점도_없다(monkeypatch):
     전투상태, 고블린, 귀검사 = _전장()
     기록 = _굴림_기록(monkeypatch)
-    damage.명중_판정_계산(전투상태, 귀검사, 고블린, "보정명중률")
-    damage.명중_판정_계산(전투상태, 고블린, 귀검사, "보정명중률")
+    hit.명중_판정_계산(전투상태, 귀검사, 고블린, "보정명중률")
+    hit.명중_판정_계산(전투상태, 고블린, 귀검사, "보정명중률")
     assert 기록 == [(False, False), (False, False)]
 
 
@@ -187,11 +197,11 @@ def _란마_전장(성별="m"):
 
 def _맞기(전투상태, 공격자, 대상, 속성):
     판정 = {"성공": True, "자연눈": 10, "치명타": False, "자동실패": False}
-    damage.피격_처리(전투상태, 공격자, 대상, 판정, 속성=속성)
+    hit_effects.피격_처리(전투상태, 공격자, 대상, 판정, 속성=속성)
 
 
 def _배율(전투상태, 대상):
-    return {s: damage.속성_피해배율(전투상태, 대상, s) for s in ("수속성", "화속성")}
+    return {s: element.속성_피해배율(전투상태, 대상, s) for s in ("수속성", "화속성")}
 
 
 def test_란마_퍽은_2차수_선행없이_야빠빠_야빠빠_하나를_준다():
@@ -257,7 +267,7 @@ def test_수속성에_맞으면_여자_화속성에_맞으면_남자가_된다()
 def test_빗나가면_바뀌지_않는다():
     전투상태, 고블린, 귀검사 = _란마_전장("m")
     판정 = {"성공": False, "자연눈": 2, "치명타": False, "자동실패": False}
-    damage.피격_처리(전투상태, 고블린, 귀검사, 판정, 속성="수속성")
+    hit_effects.피격_처리(전투상태, 고블린, 귀검사, 판정, 속성="수속성")
     assert "란마성별" not in 귀검사["원본"]
 
 
@@ -531,8 +541,8 @@ def test_포켓몬_흡수_특성은_그_속성_면역이고_피해만큼_회복�
 def test_불가사의부적은_저항을_면역으로():
     전투상태, _, 귀검사 = _전장("불가사의부적")
     귀검사["원본"]["저항"] = ["화속성"]
-    assert damage.속성_피해배율(전투상태, 귀검사, "화속성") == 0.0
-    assert damage.속성_피해배율(전투상태, 귀검사, "수속성") == 1.0
+    assert element.속성_피해배율(전투상태, 귀검사, "화속성") == 0.0
+    assert element.속성_피해배율(전투상태, 귀검사, "수속성") == 1.0
 
 
 def test_질풍날개는_라운드_시작에_HP가_가득이면_우선도_1():
@@ -555,7 +565,7 @@ def test_까칠한피부는_때린_적에게_타격마다_1d8_참격(monkeypatch
     monkeypatch.setattr(rng.주사위, "randint", lambda a, b: 5)
     판정 = {"성공": True, "자연눈": 10, "치명타": False, "자동실패": False}
     for 번 in (1, 2):  # 여러 번 맞으면 타격마다
-        damage.피격_처리(전투상태, 고블린, 귀검사, 판정, 속성="무속성")
+        hit_effects.피격_처리(전투상태, 고블린, 귀검사, 판정, 속성="무속성")
         assert 고블린["현재HP"] < 500
     assert 500 - 고블린["현재HP"] >= 2  # 두 번 다 들어갔다(방어력 뒤 최소 1씩)
     로그 = [e for e in 전투상태["로그"] if isinstance(e, dict)]
@@ -572,12 +582,12 @@ def test_피격시_상태이상_특성은_때린_적이_건강내성_12에_실�
     전투상태, 고블린, 귀검사 = _전장(특성)
     판정 = {"성공": True, "자연눈": 10, "치명타": False, "자동실패": False}
     monkeypatch.setattr(rng.주사위, "randint", lambda a, b: 1)  # 내성 실패
-    damage.피격_처리(전투상태, 고블린, 귀검사, 판정, 속성="무속성")
+    hit_effects.피격_처리(전투상태, 고블린, 귀검사, 판정, 속성="무속성")
     걸린 = [i for i in 고블린["상태이상"] if i["이름"] == 상태이상]
     assert 걸린 and 걸린[0]["지속턴"] == 지속턴
     고블린["상태이상"] = []
     monkeypatch.setattr(rng.주사위, "randint", lambda a, b: 20)  # 내성 성공
-    damage.피격_처리(전투상태, 고블린, 귀검사, 판정, 속성="무속성")
+    hit_effects.피격_처리(전투상태, 고블린, 귀검사, 판정, 속성="무속성")
     assert not [i for i in 고블린["상태이상"] if i["이름"] == 상태이상]
 
 
@@ -894,11 +904,11 @@ def test_얀데레는_펌블이면_집요함이_치명타주사위만큼_더해�
     귀검사["버프"].append({"이름": "집요함증가", "중첩": 5})
     귀검사["치명타주사위"] = 3
     전 = 고블린["현재HP"]
-    damage.집요함_발동(전투상태, 귀검사, 고블린, "무속성", 판정=_빗나감(True))
+    hit_effects.집요함_발동(전투상태, 귀검사, 고블린, "무속성", 판정=_빗나감(True))
     assert 고블린["현재HP"] == 전 - 5 * (1 + 3)
     # 펌블이 아닌 빗나감은 집요함 1회
     전 = 고블린["현재HP"]
-    damage.집요함_발동(전투상태, 귀검사, 고블린, "무속성", 판정=_빗나감())
+    hit_effects.집요함_발동(전투상태, 귀검사, 고블린, "무속성", 판정=_빗나감())
     assert 고블린["현재HP"] == 전 - 5
 
 
@@ -907,7 +917,7 @@ def test_치명타주사위_강화가_없어도_얀데레_펌블은_집요함_�
     귀검사["버프"].append({"이름": "집요함증가", "중첩": 5})
     assert stats.치명타_주사위수(전투상태, 귀검사) == 1
     전 = 고블린["현재HP"]
-    damage.집요함_발동(전투상태, 귀검사, 고블린, "무속성", 판정=_빗나감(True))
+    hit_effects.집요함_발동(전투상태, 귀검사, 고블린, "무속성", 판정=_빗나감(True))
     assert 고블린["현재HP"] == 전 - 10
 
 
@@ -917,24 +927,24 @@ def test_얀데레가_없으면_펌블도_집요함_1회():
     귀검사["버프"].append({"이름": "집요함증가", "중첩": 5})
     귀검사["치명타주사위"] = 3
     전 = 고블린["현재HP"]
-    damage.집요함_발동(전투상태, 귀검사, 고블린, "무속성", 판정=_빗나감(True))
+    hit_effects.집요함_발동(전투상태, 귀검사, 고블린, "무속성", 판정=_빗나감(True))
     assert 고블린["현재HP"] == 전 - 5
-    assert damage.유효_펌블범위(전투상태, 귀검사, 고블린) == 1
+    assert hit.유효_펌블범위(전투상태, 귀검사, 고블린) == 1
     귀검사["치명타범위"] = 18
-    assert damage.유효_펌블범위(전투상태, 귀검사, 고블린) == 1
+    assert hit.유효_펌블범위(전투상태, 귀검사, 고블린) == 1
 
 
 def test_얀데레는_치명타범위가_낮아진_만큼_펌블범위가_는다():
     전투상태, 고블린, 귀검사 = _얀데레_전장()
-    assert damage.유효_펌블범위(전투상태, 귀검사, 고블린) == 1
+    assert hit.유효_펌블범위(전투상태, 귀검사, 고블린) == 1
     귀검사["치명타범위"] = 18  # 20 -> 18: 펌블 1 -> 3
-    assert damage.유효_펌블범위(전투상태, 귀검사, 고블린) == 3
+    assert hit.유효_펌블범위(전투상태, 귀검사, 고블린) == 3
     # 버프로 치명타범위가 바뀌면 그때그때 따라간다
     귀검사["버프"].append({"이름": "치명타확률증가", "중첩": 1})
-    assert damage.유효_펌블범위(전투상태, 귀검사, 고블린) == 1 + (
-        20 - damage.유효_치명타범위(전투상태, 귀검사)
+    assert hit.유효_펌블범위(전투상태, 귀검사, 고블린) == 1 + (
+        20 - hit.유효_치명타범위(전투상태, 귀검사)
     )
-    assert damage.유효_치명타범위(전투상태, 귀검사) < 18
+    assert hit.유효_치명타범위(전투상태, 귀검사) < 18
 
 
 def test_얀데레_일반공격이_늘어난_펌블범위에서_펌블이면_집요함이_늘어난다(monkeypatch):
@@ -968,7 +978,7 @@ def _흡혈귀_전장():
 def test_흡혈귀는_암수에_저항_화명에_취약하고_흡혈_10():
     전투상태, 고블린, 귀검사 = _흡혈귀_전장()
     배율 = {
-        s: damage.속성_피해배율(전투상태, 귀검사, s)
+        s: element.속성_피해배율(전투상태, 귀검사, s)
         for s in ("암속성", "수속성", "화속성", "명속성", "무속성")
     }
     assert 배율 == {
@@ -1297,7 +1307,7 @@ def _트리거_전장(*특성들):
 
 
 def _판정(전투상태, 공격자, 대상):
-    return damage.명중_판정_계산(전투상태, 공격자, 대상, "보정명중률")
+    return hit.명중_판정_계산(전투상태, 공격자, 대상, "보정명중률")
 
 
 def test_트리거형_특성_퍽은_특성획득이다():

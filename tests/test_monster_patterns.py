@@ -14,7 +14,9 @@ from game.system.combat import (
     attacks,
     core,
     damage,
+    element,
     flow,
+    hit,
     monster_actions,
     stats,
     status,
@@ -347,7 +349,7 @@ def _명중_이점(monkeypatch, 전투상태, 공격자, 대상):
         return 10
 
     monkeypatch.setattr(dice_utils, "d20_굴림", 굴림)
-    damage.명중_판정_계산(전투상태, 공격자, 대상, "근력판정")
+    hit.명중_판정_계산(전투상태, 공격자, 대상, "근력판정")
     return 받음["이점"] and not 받음["불리"]
 
 
@@ -828,7 +830,7 @@ def test_몬스터_공격_데미지의_근력보정치는_버프_디버프를_�
         "조건부효과": None,
     }
     monkeypatch.setattr(
-        damage, "명중_판정", lambda *a, **k: {"성공": True, "치명타": False}
+        hit, "명중_판정", lambda *a, **k: {"성공": True, "치명타": False}
     )
     monkeypatch.setattr(monster_ai, "행동_선택", lambda p: 패턴)
     monkeypatch.setattr(monster_ai, "타겟_선택", lambda *a, **k: 대상)
@@ -978,7 +980,7 @@ def test_종족_타우는_데미지보너스_플러스1_명중보너스_마이�
     monkeypatch.setattr(dice_utils, "d20_굴림", lambda **kw: 10)
 
     def 명중결과():
-        return damage.명중_판정_계산(전투상태, 아미, 아군, "근력판정")["명중결과"]
+        return hit.명중_판정_계산(전투상태, 아미, 아군, "근력판정")["명중결과"]
 
     보너스 = monster_actions.몬스터_데미지보너스(전투상태, 아미)
     명중 = 명중결과()
@@ -1299,11 +1301,11 @@ def test_감옥은_대실패면_빗나간다(monkeypatch):
 
 def test_얼음감옥은_수속성_저항_화속성_취약_운석은_반대(monkeypatch):
     전투상태, 마녀, 아군, 얼음 = _가두기(monkeypatch, "결빙의 케라하", 0)
-    assert damage.피해_속성배율(전투상태, 얼음, "수속성") == 0.5
-    assert damage.피해_속성배율(전투상태, 얼음, "화속성") == 2
+    assert element.피해_속성배율(전투상태, 얼음, "수속성") == 0.5
+    assert element.피해_속성배율(전투상태, 얼음, "화속성") == 2
     전투상태, 마녀, 아군, 운석 = _가두기(monkeypatch, "화염의 비노슈", 0)
-    assert damage.피해_속성배율(전투상태, 운석, "화속성") == 0.5
-    assert damage.피해_속성배율(전투상태, 운석, "수속성") == 2
+    assert element.피해_속성배율(전투상태, 운석, "화속성") == 0.5
+    assert element.피해_속성배율(전투상태, 운석, "수속성") == 2
 
 
 def test_감옥은_공격_대상_목록에_나오고_턴은_없고_승패에서_빠진다(monkeypatch):
@@ -1438,7 +1440,7 @@ def test_얼음감옥은_라운드가_끝날_때_갇힌_사람에게_수속성_1
     [기록] = _얼음감옥_공격(전투상태, 시작, 감옥)
     assert 기록["대상"] == 아군[0]["이름"] and 기록["타격"][0]["판정"]["성공"]
     기대 = damage.최종피해_계산(
-        1 * damage.피해_속성배율(전투상태, 아군[0], "수속성"),
+        1 * element.피해_속성배율(전투상태, 아군[0], "수속성"),
         stats.유효_방어력(전투상태, 아군[0]),
         stats.유효_보호률(전투상태, 아군[0]),
     )

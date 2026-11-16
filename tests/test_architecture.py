@@ -15,7 +15,13 @@ combat_모듈 = sorted(p.stem for p in combat_폴더.glob("*.py") if p.stem != "
 
 # 도메인 재귀로 남은 순환(피격 -> 반응/특성 발동 -> 피해, 능력치 <-> 특성). 새 순환이 생기거나 이 묶음이
 # 커지면 실패하고, 작아지면 이 목록도 같이 줄이라고 알려 준다.
-허용_순환 = [frozenset({"damage", "reactions", "stats", "traits"})]
+# hit(명중 판정)·element(속성 배율·연출)·hit_effects(피격 부가효과)는 damage를 주제별로 나눈 조각이라(#577) 같은
+# 묶음에 든다 - 새 의존이 아니라 원래 damage 안에 있던 순환이다. 순환이 없는 조각(control·channeling)은 밖에 있다.
+허용_순환 = [
+    frozenset(
+        {"damage", "element", "hit", "hit_effects", "reactions", "stats", "traits"}
+    )
+]
 
 
 def _combat_import_그래프():

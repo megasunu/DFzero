@@ -14,7 +14,16 @@ from game.system import (
     loot_system,
     magic_seal_system,
 )
-from game.system.combat import attacks, damage, flow, formula, stats
+from game.system.combat import (
+    attacks,
+    damage,
+    element,
+    flow,
+    formula,
+    hit,
+    hit_effects,
+    stats,
+)
 from game.system.skill import skill_attack
 from tests import support
 
@@ -231,9 +240,9 @@ def test_기력_참선은_전투_안팎의_최대HP를_올린다(마봉전장):
 
 def test_회심은_치명타범위를_1_넓힌다(마봉전장):
     상태, 전투상태, 아군, _ = 마봉전장
-    assert damage.유효_치명타범위(전투상태, 아군[0]) == 20
+    assert hit.유효_치명타범위(전투상태, 아군[0]) == 20
     _착용(상태, 아군[0], "무기", "회심")
-    assert damage.유효_치명타범위(전투상태, 아군[0]) == 19
+    assert hit.유효_치명타범위(전투상태, 아군[0]) == 19
 
 
 def test_안젤루스는_모든_내성굴림에_1을_더한다(마봉전장):
@@ -250,12 +259,16 @@ def test_속성내성과_속성강화는_그_속성에만_붙고_무속성에는
     _착용(상태, 귀검사, "반지", "볼케이노", 슬롯="팔찌")
     assert stats.속성_보정합(전투상태, 귀검사, "속성내성", "화속성") == 3
     assert stats.속성_보정합(전투상태, 귀검사, "속성내성", "수속성") == 1
-    assert damage.속성_최종배율(전투상태, 적[0], 귀검사, "화속성") == pytest.approx(0.7)
-    assert damage.속성_최종배율(전투상태, 적[0], 귀검사, "무속성") == 1
+    assert element.속성_최종배율(전투상태, 적[0], 귀검사, "화속성") == pytest.approx(
+        0.7
+    )
+    assert element.속성_최종배율(전투상태, 적[0], 귀검사, "무속성") == 1
     _착용(상태, 귀검사, "반지", "화 증폭")
     assert stats.속성_보정합(전투상태, 귀검사, "속성강화", "화속성") == 2
     assert stats.속성_보정합(전투상태, 귀검사, "속성강화", "수속성") == 0
-    assert damage.속성_최종배율(전투상태, 귀검사, 적[0], "화속성") == pytest.approx(1.2)
+    assert element.속성_최종배율(전투상태, 귀검사, 적[0], "화속성") == pytest.approx(
+        1.2
+    )
 
 
 def test_부여는_무기_주사위_공격의_속성만_바꾼다(마봉전장):
@@ -359,12 +372,12 @@ def test_명중시_상태이상은_DC12_건강_내성에_실패하면_걸린다(
     귀검사 = 아군[0]
     _착용(상태, 귀검사, "귀걸이", "빙결")
     _주사위(monkeypatch, 20)  # 내성 성공
-    damage.마봉_명중시효과(전투상태, 귀검사, 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, 귀검사, 적[0], {"성공": True})
     assert not 적[0]["상태이상"]
     _주사위(monkeypatch, 1)  # 내성 실패
-    damage.마봉_명중시효과(전투상태, 귀검사, 적[0], {"성공": False})
+    hit_effects.마봉_명중시효과(전투상태, 귀검사, 적[0], {"성공": False})
     assert not 적[0]["상태이상"]  # 빗나간 공격은 발동하지 않는다
-    damage.마봉_명중시효과(전투상태, 귀검사, 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, 귀검사, 적[0], {"성공": True})
     assert 적[0]["상태이상"] == [{"이름": "빙결", "지속턴": 1}]
     assert "'마법의 빙결 귀걸이'" in 전투상태["로그"][-1]["비고"]
 
@@ -379,7 +392,7 @@ def test_마봉_저주는_DC12_지혜_내성이다(마봉전장, monkeypatch):
         "상태이상_효과_적용",
         lambda 전투, 시전자, 대상, 효과, 출처: 받은.append(효과),
     )
-    damage.마봉_명중시효과(전투상태, 아군[0], 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, 아군[0], 적[0], {"성공": True})
     assert [(e["이름"], e["내성"], e["난이도"]) for e in 받은] == [
         ("저주", "지혜", "12")
     ]
@@ -389,7 +402,9 @@ def test_일반공격과_공격스킬은_명중하면_마봉_명중시효과를_
     상태, 전투상태, 아군, 적 = 마봉전장
     불림 = []
     monkeypatch.setattr(
-        damage, "마봉_명중시효과", lambda 전, 공, 대, 판정: 불림.append(판정["성공"])
+        hit_effects,
+        "마봉_명중시효과",
+        lambda 전, 공, 대, 판정: 불림.append(판정["성공"]),
     )
     _주사위(monkeypatch, 15)
     _착용(상태, 아군[0], "무기", None)
@@ -415,11 +430,11 @@ def test_브레이커는_10퍼센트로_전투가_끝날_때까지_최대_5중�
     _착용(상태, 아군[0], "무기", 능력)
     전 = stats.버프디버프_수치(전투상태, 적[0], 변동대상)
     _확률(monkeypatch, 0.1)  # 10% 밖
-    damage.마봉_명중시효과(전투상태, 아군[0], 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, 아군[0], 적[0], {"성공": True})
     assert not 적[0]["디버프"]
     _확률(monkeypatch, 0.05)
     for _ in range(7):
-        damage.마봉_명중시효과(전투상태, 아군[0], 적[0], {"성공": True})
+        hit_effects.마봉_명중시효과(전투상태, 아군[0], 적[0], {"성공": True})
     걸림 = [i for i in 적[0]["디버프"] if i["이름"] == 디버프]
     assert len(걸림) == 5 and all("지속턴" not in i for i in 걸림)
     assert stats.버프디버프_수치(전투상태, 적[0], 변동대상) == 전 - 5
@@ -432,12 +447,12 @@ def test_공허는_10퍼센트로_대상의_버프_하나를_지운다(마봉전
     _착용(상태, 아군[0], "무기", "공허")
     적[0]["버프"] = [{"이름": "방어증가", "중첩": 1, "지속턴": 3}]
     _확률(monkeypatch, 0.5)
-    damage.마봉_명중시효과(전투상태, 아군[0], 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, 아군[0], 적[0], {"성공": True})
     assert 적[0]["버프"]
     _확률(monkeypatch, 0.0)
-    damage.마봉_명중시효과(전투상태, 아군[0], 적[0], {"성공": True})
+    hit_effects.마봉_명중시효과(전투상태, 아군[0], 적[0], {"성공": True})
     assert 적[0]["버프"] == []
-    damage.마봉_명중시효과(
+    hit_effects.마봉_명중시효과(
         전투상태, 아군[0], 적[0], {"성공": True}
     )  # 버프가 없으면 아무 일 없음
 

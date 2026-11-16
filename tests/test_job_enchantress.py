@@ -6,7 +6,7 @@ import pytest
 
 import gameflow as gf
 from game.system import dice_utils, rng
-from game.system.combat import damage, stats
+from game.system.combat import hit, stats
 from game.system.skill import skill_grant, skill_run
 from tests import support
 
@@ -63,11 +63,11 @@ def test_사악한_호기심은_치명타범위와_치명타주사위를_1씩_�
     상태, p, _ = _인챈트리스(monkeypatch)
     전투상태 = 상태["전투상태"]
     범위, 주사위 = (
-        damage.유효_치명타범위(전투상태, p),
+        hit.유효_치명타범위(전투상태, p),
         stats.치명타_주사위수(전투상태, p),
     )
     _특성_빼기(p, "사악한 호기심")
-    assert damage.유효_치명타범위(전투상태, p) - 범위 == 1  # 치명타가 나는 가장 낮은 눈
+    assert hit.유효_치명타범위(전투상태, p) - 범위 == 1  # 치명타가 나는 가장 낮은 눈
     assert 주사위 - stats.치명타_주사위수(전투상태, p) == 1
 
 
