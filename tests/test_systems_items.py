@@ -622,7 +622,7 @@ def test_gameflow는_손상오류를_그대로_올린다(임시_세이브폴더)
 def test_세이브에는_버전이_들어_있다(임시_세이브폴더):
     _저장(1)
     저장 = json.loads((임시_세이브폴더 / "slot_1.json").read_text(encoding="utf-8"))
-    assert 저장["버전"] == save_system.세이브_버전 == 20
+    assert 저장["버전"] == save_system.세이브_버전 == 21
 
 
 def test_버전_없는_세이브는_0으로_보고_현재_형태로_변환한다(임시_세이브폴더):
@@ -1741,3 +1741,26 @@ def test_설정_쓰기는_도중에_실패해도_옛_파일을_지키고_임시_
     assert settings_system.설정_쓰기(str(경로), {"반응자동": False}) is False
     assert settings_system.설정_읽기(str(경로)) == {"반응자동": True}
     assert sorted(p.name for p in tmp_path.iterdir()) == ["설정.json"]
+
+
+def test_버전20_세이브의_퍽_귀영보는_골드_스킬_귀영보와_귀영섬_켜진_특성이_된다(
+    임시_세이브폴더,
+):
+    """2026-11-16 사용자 결정 - 퍽/반응스킬 귀영보가 없어지고 골드 스킬(켜고 끄는 특성 + 귀영섬)이 됐다."""
+    _저장(1)
+    경로 = 임시_세이브폴더 / "slot_1.json"
+    옛 = json.loads(경로.read_text(encoding="utf-8"))
+    옛["버전"] = 20
+    옛["플레이어"]["파티"]["파티원"] = [
+        _핵심캐릭터(
+            "철수", 전직="소울브링어", 보유스킬=["귀참", "귀영보"], 보유퍽=["귀영보"]
+        ),
+        _핵심캐릭터("영희", 전직="소울브링어", 보유스킬=["귀참"], 보유퍽=[]),
+    ]
+    경로.write_text(json.dumps(옛, ensure_ascii=False), encoding="utf-8")
+    플레이어, _ = save_system.게임_불러오기(1)
+    철수, 영희 = 플레이어["파티"]["파티원"]
+    assert 철수["보유퍽"] == []
+    assert 철수["보유스킬"] == ["귀참", "귀영보", "귀영섬"]
+    assert "귀영보" in 철수["보유특성"] and 철수["켜진특성"] == ["귀영보"]
+    assert 영희["보유스킬"] == ["귀참"] and "귀영보" not in (영희.get("보유특성") or [])

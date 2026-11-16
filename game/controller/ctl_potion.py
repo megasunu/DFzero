@@ -22,7 +22,7 @@ from game.system import (
     shop_system,
     skill_system,
 )
-from game.system.combat import channeling, core, flow, resources, stats
+from game.system.combat import channeling, core, flow, resources, stats, status
 from game.controller.ctl_battle import 현재_턴_참가자
 from game.controller.ctl_levelup import 능력치_역할_바꾸기, 전직전_이름
 from game.controller.ctl_skills import 캐릭터_배운스킬_골드
@@ -203,6 +203,7 @@ def 아군_포션사용(게임상태, 포션이름):
     회복 = potion_system.포션_적용(참가자, 포션, 보정치, 최대값)
     potion_system.소지품_차감(게임상태["소지품"], 포션이름)
     참가자["행동자원"]["보조행동"] -= 1
+    status.행동_은신해제(게임상태["전투상태"], 참가자)  # 행동을 쓰면 은신이 풀린다
     channeling.채널링_행동해제(게임상태["전투상태"], 참가자)  # 넨가드 - 다음 턴의 행동
     core.로그(
         전투상태,
@@ -282,6 +283,7 @@ def 아군_버프포션사용(게임상태, 포션이름):
             참가자["행동자원"][종류] = 참가자["행동자원"].get(종류, 0) + 값 - 이전[종류]
     potion_system.소지품_차감(게임상태["소지품"], 포션이름)
     참가자["행동자원"]["보조행동"] -= 1
+    status.행동_은신해제(게임상태["전투상태"], 참가자)  # 행동을 쓰면 은신이 풀린다
     channeling.채널링_행동해제(게임상태["전투상태"], 참가자)  # 넨가드 - 다음 턴의 행동
     core.로그(
         전투상태,
@@ -340,6 +342,7 @@ def 아군_소환아이템사용(게임상태, 이름):
         게임상태["소지품"], drink_system.소지품_카테고리, 이름
     )
     참가자["행동자원"]["보조행동"] -= 1
+    status.행동_은신해제(게임상태["전투상태"], 참가자)  # 행동을 쓰면 은신이 풀린다
     channeling.채널링_행동해제(게임상태["전투상태"], 참가자)  # 넨가드 - 다음 턴의 행동
     정의, _ = resources.효과정의_조회(아이템["버프이름"])
     소환수이름 = ((정의 or {}).get("효과") or {}).get("소환수이름", "")
@@ -427,6 +430,7 @@ def 아군_부여아이템사용(게임상태, 이름):
         raise ValueError(사유)
     속성 = _부여_적용(게임상태, 참가자["원본"], 이름)
     참가자["행동자원"]["보조행동"] -= 1
+    status.행동_은신해제(게임상태["전투상태"], 참가자)  # 행동을 쓰면 은신이 풀린다
     channeling.채널링_행동해제(전투상태, 참가자)  # 넨가드 - 다음 턴의 행동
     core.로그(
         전투상태,
@@ -631,6 +635,7 @@ def 아군_주류사용(게임상태, 이름):
         게임상태["소지품"], drink_system.소지품_카테고리, 이름
     )
     참가자["행동자원"]["보조행동"] -= 1
+    status.행동_은신해제(게임상태["전투상태"], 참가자)  # 행동을 쓰면 은신이 풀린다
     channeling.채널링_행동해제(게임상태["전투상태"], 참가자)  # 넨가드 - 다음 턴의 행동
     core.로그(
         전투상태,
