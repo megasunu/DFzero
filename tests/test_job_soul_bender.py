@@ -1219,6 +1219,11 @@ def test_귀영섬은_은신일_때만_보조행동으로_무기공격력_주문
     가능, 사유 = ss.사용_가능여부(전투상태, sb, 데이터)
     assert not 가능 and "은신" in 사유
     sb["상태이상"].append({"이름": "은신", "지속턴": None})
+    assert 데이터["MP소모"] == 5  # 2026-11-17 #767 - 전에는 MP 0
+    sb["현재MP"] = 4
+    가능, 사유 = ss.사용_가능여부(전투상태, sb, 데이터)
+    assert not 가능 and "MP" in 사유
+    sb["현재MP"] = 5
     assert ss.사용_가능여부(전투상태, sb, 데이터)[0]
     monkeypatch.setattr(hit, "명중_판정", lambda *a, **k: _명중())
     e = 적[0]
