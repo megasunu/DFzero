@@ -546,14 +546,14 @@ _설정_항목 = (
 _설정_설명 = (
     "반응 자동 사용: 매번 묻기면 반응행동을 쓰는 반응(회피/반격/피해감소 등)마다 창이 뜹니다.\n"
     "연계 자동 사용: 매번 묻기면 앞 스킬에 이어 치는 연계스킬(수플렉스 썬더 등)마다 창이 뜹니다.\n"
-    "자동전투: 일반공격은 일반공격(마법사 계열은 매직미사일), 전력전투는 스킬을 우선 씁니다.\n"
+    "자동전투: 기본전투는 일반공격(마법사 계열은 매직미사일)만, 자동전투는 스킬을 골고루, 전력전투는 가장 센 스킬을 씁니다.\n"
     "자동전투 포션: 사용이면 자동전투 차례에 HP가 절반 이하일 때 HP 포션을 먼저 마십니다.\n"
     "전투로그: 자세하게는 굴림마다 주사위와 더해진 값의 계산 줄을 함께 보여 줍니다."
 )
 
 
 class 설정화면(Screen):
-    """메인메뉴의 [설정]과 게임 중 [메뉴]의 [설정]이 같이 쓴다. 줄마다 오른쪽 체크박스 두 개 중 하나를
+    """메인메뉴의 [설정]과 게임 중 [메뉴]의 [설정]이 같이 쓴다. 줄마다 오른쪽 체크박스(자동전투는 셋) 중 하나를
     고른다(같은 줄은 한 묶음). [뒤로]는 연 화면(돌아갈화면, 기본 메인메뉴)으로 돌아간다."""
 
     def __init__(self, **kwargs):
@@ -567,9 +567,11 @@ class 설정화면(Screen):
         for 키, 줄이름, 선택지, 넣기, 읽기 in _설정_항목:
             줄 = BoxLayout(orientation="horizontal", size_hint=(1, None), height=dp(56))
             줄.add_widget(Label(text=줄이름, size_hint=(0.34, 1), halign="left"))
+            # 남은 0.66을 선택지 수로 나눈다(자동전투는 셋) - 칸마다 체크박스 0.08 + 글
+            칸 = 0.66 / len(선택지)
             for 값, 글 in 선택지:
                 체크 = CheckBox(
-                    group=f"설정_{키}", size_hint=(0.1, 1), allow_no_selection=False
+                    group=f"설정_{키}", size_hint=(0.08, 1), allow_no_selection=False
                 )
                 체크.active = 읽기() == 값
                 체크.bind(
@@ -579,7 +581,7 @@ class 설정화면(Screen):
                 )
                 self.체크박스[(키, 값)] = 체크
                 줄.add_widget(체크)
-                줄.add_widget(Label(text=글, size_hint=(0.23, 1), halign="left"))
+                줄.add_widget(Label(text=글, size_hint=(칸 - 0.08, 1), halign="left"))
             설정틀.add_widget(줄)
         설명 = Label(
             text=_설정_설명,
