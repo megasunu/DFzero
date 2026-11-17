@@ -4,7 +4,7 @@
 from game.data.character.job_info import 직업정보
 from game.data.item.item_potion import 포션_데이터
 from game.system import rng, skill_system
-from game.system.combat import contribution, flow, formula, resources, stats
+from game.system.combat import contribution, flow, formula, resources, stats, status
 from game.controller.ctl_party import 캐릭터_최대HP
 from game.controller.ctl_potion import 아군_포션사용, 아군_회복포션_목록
 from game.controller.ctl_battle import (
@@ -53,6 +53,8 @@ __all__ = [
     "_공격하는_적이_있나",
     "_다친_아군",
     "_전력전투_인수",
+    "_잡기불가_무시특성",
+    "_잡기_막히나",
     "_버프_점수",
     "_지속가중_최대",
     "_남아_있나",
@@ -415,6 +417,24 @@ def _다친_아군(게임상태):
     )
 
 
+# 잡기불가 적에게도 잡기 스킬로 피해를 주는 그래플러 특성(아직 데이터가 없다 - #759). 이 특성이 있으면 자동전투도
+# 잡기불가 적을 잡기 스킬의 대상으로 고른다.
+_잡기불가_무시특성 = "그랩 캐논"
+
+
+def _잡기_막히나(게임상태, 데이터, 참가자, 대상):
+    """잡기 스킬(스킬 "타입"에 "잡기")이 이 대상에게 들어가지 않나 - 대상이 특성 "잡기불가"(골렘·정령)면 굴림·피해가
+    없다(hit_effects.잡기_막힘). 자동전투는 이런 대상을 고르지 않는다(화면에서 플레이어는 고를 수 있다).
+    분할공격의 한 단계만 잡기인 스킬(넥 업 사이드)은 다른 단계가 들어가므로 막지 않는다."""
+    if "잡기" not in (데이터.get("타입") or ()):
+        return False
+    if 참가자 is not None and _잡기불가_무시특성 in (
+        참가자["원본"].get("보유특성") or ()
+    ):
+        return False
+    return status.특성_플래그(게임상태["전투상태"], 대상, "잡기불가")
+
+
 def _전력전투_인수(게임상태, 데이터, 참가자=None):
     """스킬을 낼 인수(중심대상). 낼 수 없으면 None. "타겟제한" "자신제외"(새크리파이스)면 참가자는 빼고 고른다."""
     타겟 = 스킬_실제_타겟(게임상태, 데이터)
@@ -425,6 +445,7 @@ def _전력전투_인수(게임상태, 데이터, 참가자=None):
             p
             for p in _칠_수_있는_적(게임상태)
             if not 스킬_지정불가인가(게임상태, 데이터, p)
+            and not _잡기_막히나(게임상태, 데이터, 참가자, p)
         ]
         return {"중심대상": 적들[0]} if 적들 else None
     if 타겟 == "아군단일":
