@@ -1,13 +1,13 @@
 """크루세이더(051f) 공격 스킬 수치(스킬 밸런스 기준과 견줘 조정).
 
-승리의 창: 일반행동, MP 10, 적 1체, (차수+1)d8+주문시전보정치."""
+승리의 창: 일반행동, MP 10, 적 1체, (차수+1)d8+주문시전보정치. 잡기 - 피해는 바로 주고 홀딩(홀딩값 1)을 건다."""
 
 import pytest
 
 import gameflow as gf
 from game.system import rng
 from game.system import skill_system as ss
-from game.system.combat import stats
+from game.system.combat import flow, stats
 from tests import support
 
 
@@ -47,3 +47,27 @@ def test_승리의_창은_차수_더하기_1_d8_더하기_주문시전보정치(
     assert not _스킬("승리의 창")["일반공격취급"]
     # 레벨 8 = 2차수 -> 3d8 최대 24 + 주문시전보정치(한 번만)
     assert 결과["타격"][0]["피해"] == 24 + stats.주문시전_보정치(전투상태, c)
+
+
+def test_승리의_창은_피해를_바로_주고_홀딩만_건다(크루전장, monkeypatch):
+    """2026-11-17 - 홀딩과 피해 시점은 따로다. 승리의 창은 "홀딩" 태그 없이 홀딩값 1 - 피해는 바로,
+    홀딩으로 우선도 -1, 경직으로 이니셔티브 -1. 대상의 차례가 시작되면 피해 없이 풀린다."""
+    _, 전투상태, 적, c = 크루전장
+    스킬 = _스킬("승리의 창")
+    assert "잡기" in 스킬["타입"] and "홀딩" not in 스킬["타입"] and 스킬["홀딩값"] == 1
+    monkeypatch.setattr(stats.dice_utils, "d20_굴림", lambda 이점=False, 불리=False: 15)
+    c["행동자원"].update(일반행동=1, 보조행동=1)
+    c["현재MP"] = 50
+    e = 적[0]
+    우선도, 이니 = e.get("우선도", 0), e["이니셔티브"]
+    로그수 = len(전투상태["로그"])
+    결과 = ss.스킬_실행(전투상태, c, "승리의 창", 스킬, e)
+    피해 = 결과["타격"][0]["피해"]
+    assert 피해 > 0 and e["현재HP"] == 999 - 피해
+    assert [s["이름"] for s in e["상태이상"]].count("홀딩") == 1
+    assert (e["우선도"], e["이니셔티브"]) == (우선도 - 1, 이니 - 1)
+    문장 = [줄 for 항목 in 전투상태["로그"][로그수:] for 줄 in gf.로그_문장들(항목)]
+    assert any("붙잡았다!" in 줄 for 줄 in 문장)
+    assert not any("움직일 때 들어간다" in 줄 for 줄 in 문장)
+    flow.턴_시작_처리(전투상태, e)
+    assert e["현재HP"] == 999 - 피해 and all(s["이름"] != "홀딩" for s in e["상태이상"])
