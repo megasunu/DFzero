@@ -5,7 +5,16 @@ import pytest
 from game.system import rng
 import gameflow as gf
 from game.system import skill_system as ss
-from game.system.combat import attacks, damage, flow, hit, stats, status, traits
+from game.system.combat import (
+    attacks,
+    control,
+    damage,
+    flow,
+    hit,
+    stats,
+    status,
+    traits,
+)
 from tests import support
 
 
@@ -515,3 +524,170 @@ def test_피폭발은_적1체를_3번_명중마다_굴리고_1더하기차수_d1
     assert [t["피해"] for t in 결과["타격"]] == [3] * 3  # 2차수: (1 + 2)d12
     assert [e["현재HP"] for e in 적] == [999, 999 - 9, 999]
     assert any(s["이름"] == "공중에뜸" for s in 적[1]["상태이상"])
+
+
+# ------------------------------------------------------------------ 3차수 - 레벨 13 아웃레이지 브레이크, 골드 블러디 레이브
+# (2026-11-17 사용자 결정)
+
+
+def _13레벨_버서커(큐브=5):
+    """레벨 13 버서커(3차수) 대 고블린 셋, 그 캐릭터의 차례. 공용 소지품에 무색 큐브 조각."""
+    rng.시드(support.추가행동_시드)
+    상태 = support.새게임([("", "귀검사")])
+    c = 상태["파티"]["파티원"][0]
+    support.성장(상태, c, 13, 전직="버서커", 스킬습득=True)
+    gf.파티_최대치로_회복(상태)
+    상태["소지품"]["재료"]["무색 큐브 조각"] = 큐브
+    gf.전투_시작(상태, ["고블린", "고블린", "고블린"], 레벨=2, 차수=1)
+    support.반응_처리(상태)
+    while not gf.아군_차례인가(상태):
+        gf.턴_넘기기(상태)
+    p = gf.현재_턴_참가자(상태)
+    p["현재MP"] = 200
+    # 앞 차례에 반격 등으로 쓰러진 고블린도 되살려 셋을 대형위치 순으로 세운다
+    적 = sorted(gf.적_목록(상태), key=lambda e: e["대형위치"])
+    for e in 적:
+        e["생존"] = True
+        e["현재HP"] = e["최대HP"] = 10**6
+    return 상태, p, 적
+
+
+def test_아웃레이지_브레이크는_레벨13_스킬이다():
+    from game.data.job_level import job_level_013m_berserker as 표
+
+    assert 표.레벨업테이블[13]["획득"]["획득스킬"] == ["아웃레이지 브레이크"]
+    스킬 = _스킬("아웃레이지 브레이크")
+    assert (스킬["습득방법"], 스킬["습득레벨"], 스킬["행동"]) == (
+        "레벨습득",
+        13,
+        "일반행동",
+    )
+    assert (스킬["타겟"], 스킬["데미지"], 스킬["공격횟수"]) == (
+        "적3체",
+        "(차수+3)d4",
+        3,
+    )
+    assert 스킬["각공격명중굴림"] is True
+    assert (스킬["MP소모"], 스킬["재료소모"]) == (30, {"무색 큐브 조각": 5})
+
+
+def test_아웃레이지_브레이크는_적3체를_타격마다_명중굴림으로_3번씩_치고_MP30_큐브조각5를_쓴다(
+    monkeypatch,
+):
+    상태, p, 적 = _13레벨_버서커(큐브=7)
+    assert "아웃레이지 브레이크" in p["원본"]["보유스킬"]
+    _특성_빼기(p, "혈기왕성")  # MP 소모를 HP로 바꾸는 특성 - MP를 그대로 보려고 뺀다
+    굴림 = []
+
+    def 판정(전투상태, 공격자, 대상, 명중률종류, *a, **k):
+        굴림.append((대상["id"], 명중률종류))
+        return _명중()
+
+    monkeypatch.setattr(hit, "명중_판정", 판정)
+    p["행동자원"].update(일반행동=1, 보조행동=1)
+    gf.아군_스킬사용(상태, "아웃레이지 브레이크", 적[1])
+    assert sorted(굴림) == sorted((e["id"], "보정명중률") for e in 적 for _ in range(3))
+    assert all(e["현재HP"] < 10**6 for e in 적)
+    assert p["현재MP"] == 200 - 30
+    assert 상태["소지품"]["재료"]["무색 큐브 조각"] == 2
+    assert p["행동자원"]["일반행동"] == 0
+
+
+def test_아웃레이지_브레이크는_큐브조각이_모자라면_쓸_수_없다():
+    상태, p, _ = _13레벨_버서커(큐브=4)
+    p["행동자원"].update(일반행동=1, 보조행동=1)
+    가능, 사유 = ss.사용_가능여부(상태["전투상태"], p, _스킬("아웃레이지 브레이크"))
+    assert not 가능 and "무색 큐브 조각" in 사유
+
+
+def test_블러디_레이브는_버서커_3차수_골드_2단계_스킬이다():
+    스킬 = _스킬("블러디 레이브")
+    assert (스킬["습득방법"], 스킬["습득레벨"], 스킬["습득차수"]) == ("구매습득", 11, 3)
+    assert (스킬["행동"], 스킬["MP소모"]) == ("일반행동", 20)
+    단계1, 단계2 = 스킬["공격단계1"], 스킬["공격단계2"]
+    assert (단계1["타겟"], 단계1["데미지"], 단계1["명중률"]) == (
+        "적전체",
+        "(차수)d4",
+        "필중",
+    )
+    assert "잡기" not in 단계1["타입"] + 단계2["타입"] + 스킬["타입"]
+    assert (단계2["데미지"], 단계2["명중률"]) == ("(차수)d8", "보정명중률")
+    assert set(단계2["타입"]) == {"경직", "홀딩"} and 단계2["홀딩몹몰이"] is True
+
+
+def _몹몰이(e):
+    return any(s["이름"] == "몹몰이" for s in e["상태이상"])
+
+
+def _블러디_레이브(버서커전장, monkeypatch, 빗나갈=()):
+    """레벨 8(2차수) 버서커의 블러디 레이브 - 1타 필중, 2타는 빗나갈 대상만 빗나간다. 주사위 3 고정."""
+    _, 전투상태, 적, bs = 버서커전장
+    굴림 = []
+
+    def 판정(전투상태, 공격자, 대상, 명중률종류, *a, **k):
+        굴림.append(명중률종류)
+        return dict(_명중(), 성공=명중률종류 == "필중" or 대상 not in 빗나갈)
+
+    monkeypatch.setattr(hit, "명중_판정", 판정)
+    monkeypatch.setattr(
+        stats, "장비_데미지보너스", lambda 참가자, 대상=None, 전투상태=None: 0
+    )
+    _주사위고정(monkeypatch, 3)
+    for e in 적:
+        e["현재HP"] = 999
+        e["우선도"] = 0
+    ss.분할공격_실행(전투상태, bs, _스킬("블러디 레이브"), 적[0])
+    return 전투상태, 적, bs, 굴림
+
+
+def test_블러디_레이브는_1타_적전체_차수d4_2타_맞으면_우선도1_홀딩과_몹몰이(
+    버서커전장, monkeypatch
+):
+    전투상태, 적, _, 굴림 = _블러디_레이브(버서커전장, monkeypatch)
+    assert 굴림.count("보정명중률") == 3  # 2타만 대상마다 굴린다
+    for e in 적:
+        assert e["현재HP"] == 999 - 3 * 2  # 1타 (2차수)d4만 바로
+        assert len([s for s in e["상태이상"] if s["이름"] == "홀딩"]) == 1
+        assert _몹몰이(e) and e["우선도"] == -1
+
+
+def test_블러디_레이브_2타가_빗나간_적은_홀딩도_몹몰이도_없다(버서커전장, monkeypatch):
+    _, _, 적, _ = 버서커전장
+    전투상태, 적, _, 굴림 = _블러디_레이브(버서커전장, monkeypatch, 빗나갈=(적[2],))
+    assert 굴림.count("보정명중률") == 3
+    for e in 적:
+        assert e["현재HP"] == 999 - 3 * 2  # 1타 (2차수)d4만 바로
+    for e in 적[:2]:
+        assert len([s for s in e["상태이상"] if s["이름"] == "홀딩"]) == 1
+        assert _몹몰이(e) and e["우선도"] == -1
+    assert not _몹몰이(적[2]) and 적[2]["우선도"] == 0
+    assert all(s["이름"] != "홀딩" for s in 적[2]["상태이상"])
+
+
+def test_블러디_레이브_몹몰이는_홀딩_동안_피해를_잇고_홀딩_피해는_잇지_않는다(
+    버서커전장, monkeypatch
+):
+    전투상태, 적, bs, _ = _블러디_레이브(버서커전장, monkeypatch)
+    a, b, c = 적
+    damage.피해_적용(
+        전투상태, a, 10, 공격측=bs
+    )  # 홀딩 동안 다른 공격 - 몹몰이로 이어진다
+    assert (a["현재HP"], b["현재HP"], c["현재HP"]) == (989 - 6, 989 - 6, 989 - 6)
+    flow.턴_시작_처리(전투상태, a)
+    assert a["현재HP"] == 989 - 6 - 3 * 2  # (2차수)d8 홀딩 피해
+    assert not _몹몰이(a) and _몹몰이(b)
+    assert (b["현재HP"], c["현재HP"]) == (989 - 6, 989 - 6)  # 홀딩 피해는 잇지 않는다
+    flow.턴_시작_처리(전투상태, b)
+    assert b["현재HP"] == 989 - 6 - 6 and not _몹몰이(b)
+    assert c["현재HP"] == 989 - 6
+
+
+def test_블러디_레이브_시전자가_쓰러지면_홀딩과_몹몰이가_함께_풀린다(
+    버서커전장, monkeypatch
+):
+    전투상태, 적, bs, _ = _블러디_레이브(버서커전장, monkeypatch)
+    bs["생존"] = False
+    control.홀딩_정리(전투상태)
+    for e in 적:
+        assert not _몹몰이(e)
+        assert all(s["이름"] != "홀딩" for s in e["상태이상"])
