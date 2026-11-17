@@ -93,17 +93,31 @@ def test_가속_기상은_넘어짐에_걸리지_않는다():
     assert status.상태이상_면역(전투상태, gf.적_목록(상태)[0], "넘어짐")
 
 
-@pytest.mark.parametrize("버프, 캐스팅", [((), True), (("가속-캐스팅",), False)])
-def test_가속_캐스팅은_패턴_캐스팅_없이_바로_쓴다(monkeypatch, 버프, 캐스팅):
+@pytest.mark.parametrize(
+    "종류, 버프, 시작함",
+    [
+        ("차징", (), True),
+        ("차징", ("가속-캐스팅",), True),  # 차징은 가속-캐스팅이어도 한다
+        ("캐스팅", (), True),
+        ("캐스팅", ("가속-캐스팅",), False),
+    ],
+)
+def test_가속_캐스팅은_캐스팅_패턴만_바로_쓰고_차징은_한다(
+    monkeypatch, 종류, 버프, 시작함
+):
     상태, 전투상태 = _전투([_챔피언("라키우스", 버프)])
     챔피언 = gf.적_목록(상태)[0]
-    번호 = next(
-        k for k, p in 챔피언["원본"]["패턴"].items() if p.get("이름") == "심장 찌르기"
-    )
+    패턴들 = 챔피언["원본"]["패턴"]
+    번호 = next(k for k, p in 패턴들.items() if p.get("이름") == "심장 찌르기")
+    if (
+        종류 == "캐스팅"
+    ):  # 지금 몬스터 캐스팅 패턴이 없어 심장 찌르기를 캐스트로 바꿔 본다
+        패턴 = {k: v for k, v in 패턴들[번호].items() if k != "차지"}
+        monkeypatch.setitem(패턴들, 번호, 패턴 | {"캐스트": {"이니셔티브": -5}})
     _주사위(monkeypatch, 번호)  # 패턴 고르기 d6
     monster_actions.몬스터_턴_실행(전투상태, 챔피언)
     글 = [str(항목.get("비고", "")) for 항목 in 전투상태["로그"]]
-    assert any("심장 찌르기 캐스팅을 시작했다" in g for g in 글) == 캐스팅
+    assert any(f"심장 찌르기 {종류}을 시작했다" in g for g in 글) == 시작함
 
 
 def test_가속_HP회복은_턴_시작에_차수d6_건강보정치를_회복한다(monkeypatch):
