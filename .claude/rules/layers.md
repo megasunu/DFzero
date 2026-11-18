@@ -34,6 +34,7 @@ tools/project_bridge.py  이슈 <-> megasunu 작업 보드 브리지 (project-sy
 tools/balance_sim.py  직업 밸런스 모의전투(승률·랜덤·변형 패턴) - 기록은 docs/balance/, 게이트 밖에서 직접
 tools/balance_analysis.py  밸런스 체크 분석용 전투(무작위 파티·무작위 행동, 회귀 기여) - balance_sim --분석이 부른다
 tools/balance_winrate.py  밸런스 체크 승률용 전투(파티원 패턴을 돌아가며 다듬어 최고 승률) - balance_sim --승률이 부른다
+tools/skill_balance.py  스킬 밸런스 기준표(1~5차수 기대·기준·비율, 빌드 대입) -> docs/balance/스킬기준표.md, 테스트가 최신인지 검사
 tools/npc_sheet.py   움직이는 NPC 그림 -> 장면 이어 붙인 정지 웹피 + 장면 정보(필로 필요, 게이트 밖에서 직접)
 tools/dungeon_sim.py  던전 밸런스 모의전투(인카운트·보스·원정 승률, 조정안 임시 적용) - 결과는 docs/balance/, 게이트 밖에서 직접
 tools/policy_sim.py  측정용 전투 정책 - 분석용(무작위)·승률용(몬테카를로 탐색)·전력전투 비교(균등 4인 파티) - 게이트 밖에서 직접
