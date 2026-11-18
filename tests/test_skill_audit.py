@@ -41,8 +41,11 @@ def _소유표():
 
 
 소유표 = _소유표()
+# 특성스킬(그랩 캐넌)은 배우면 특성을 얻는 항목이라 쓰는 스킬이 아니다(skill_usage가 막는다)
 직접쓰는스킬 = [
-    n for n, d in 스킬데이터.items() if d["분류"] not in ("반응스킬", "던전스킬")
+    n
+    for n, d in 스킬데이터.items()
+    if d["분류"] not in ("반응스킬", "던전스킬", "특성스킬")
 ]
 무기카탈로그 = {
     k: v for 정보 in gf.직업_레지스트리.values() for k, v in 정보["무기목록"].items()
