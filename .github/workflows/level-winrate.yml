@@ -1,0 +1,59 @@
+# 레벨별 등록 파티 승률(tools/level_winrate.py, #790) - 버튼으로만 돈다(Actions 탭 > Level winrate > Run workflow).
+# 등록 파일 docs/balance/레벨별_파티.json의 파티로 레벨마다 그 던전의 인카운트·보스·원정 승률을 재고,
+# 표는 이 실행의 요약 화면에, 표와 결과 JSON은 아티팩트로 남긴다. 저장소에는 아무것도 쓰지 않는다.
+name: Level winrate
+
+on:
+  workflow_dispatch:
+    inputs:
+      games:
+        description: "조건마다 판 수"
+        default: "200"
+        required: true
+      levels:
+        description: "잴 레벨(공백으로 구분, 비우면 전부)"
+        default: ""
+        required: false
+      seed:
+        description: "시작 시드"
+        default: "1000"
+        required: true
+
+permissions: {}
+
+jobs:
+  winrate:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Measure
+        env:
+          GAMES: ${{ inputs.games }}
+          LEVELS: ${{ inputs.levels }}
+          SEED: ${{ inputs.seed }}
+        run: |
+          LEVEL_ARGS=()
+          if [ -n "$LEVELS" ]; then LEVEL_ARGS=(--레벨 $LEVELS); fi
+          python tools/level_winrate.py --판 "$GAMES" --시드 "$SEED" "${LEVEL_ARGS[@]}" \
+            --표 level-winrate.md --출력 level-winrate.json > /dev/null
+          cat level-winrate.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: level-winrate
+          path: |
+            level-winrate.md
+            level-winrate.json
+          if-no-files-found: ignore
