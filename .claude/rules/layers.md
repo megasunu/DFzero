@@ -27,7 +27,8 @@ game/data/         직업, 몬스터, 맵, 아이템 데이터(파이썬 딕셔�
 game/assets/       폰트, 이미지
 tests/             헤드리스 테스트 + golden/*.json (kivy 없이 돈다, 테스트 지도는 docs/test-map.md)
 tools/check.py     완료 기준 게이트 (CLAUDE.md "완료 기준"), --골든은 골든 갱신 요약
-tools/ui_smoke.py  화면 스모크(kivy + Xvfb, 스크린샷) - CI 밖, 화면 바꿀 때 직접
+tools/ui_smoke.py  화면 스모크(kivy + Xvfb, 스크린샷) 실행 파일 - 단계 순서(`_단계들`)만 둔다. 화면 바꿀 때 직접
+  smoke/             스모크 단계 - 주제별 믹스인 party/town/battle/world/jobs/menu, 창 설정·도우미는 common.py
 tools/fix_eol.py   줄끝을 LF로 통일 (pre-commit 훅이 부른다)
 tools/golden_diff.py  바뀐 골든 요약(파일마다 한 줄) - 큰 diff 대신 읽는다
 tools/project_bridge.py  이슈 <-> megasunu 작업 보드 브리지 (project-sync/-snapshot 워크플로가 부른다)
