@@ -6,7 +6,8 @@
 import gameflow as gf
 from game.controller.ctl_registry import 던전_레지스트리
 from game.data.monster.monster_drop import 드랍표_모음
-from game.system import loot_system, rng
+from game.system import rng
+from game.system.item import loot_system
 from tests import support
 
 기본보석 = ["오닉스", "아쿠아마린", "다이아몬드", "혈류석", "옵시디언"]

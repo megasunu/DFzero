@@ -8,12 +8,10 @@ from game.system import (
     collection_system,
     drink_system,
     dungeon_system,
-    equipment_system,
-    loot_system,
     player_system,
-    shop_system,
     town_system,
 )
+from game.system.item import equipment_system, loot_system, shop_system
 from game.controller.ctl_battle import 아군_목록, 전투_시작
 from game.controller.ctl_party import 내아내몬_보유, 플레이어뷰
 from game.controller.ctl_registry import 플레이어레벨업_트리거

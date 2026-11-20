@@ -16,7 +16,7 @@
 # 등록은 이름만 적는다 - 목록(어떤 항목이 도감에 보이나)은 데이터에서 매번 계산한다.
 
 from game.data import common_names
-from game.system import equipment_system
+from game.system.item import equipment_system
 
 도감_대분류 = ["몬스터", "장비", "소모품", "재료", "인형"]
 

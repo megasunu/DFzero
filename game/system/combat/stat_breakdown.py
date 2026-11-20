@@ -2,7 +2,7 @@
 
 stats.py(수치 집계)에서 갈라져 나왔다. 집계 값은 stats를 속성으로 불러 쓴다(stats.최종AC - 시험의 monkeypatch가 그대로 듣게)."""
 
-from game.system import equipment_system
+from game.system.item import equipment_system
 from game.system.combat import participants, traits
 from game.system.combat import stats
 

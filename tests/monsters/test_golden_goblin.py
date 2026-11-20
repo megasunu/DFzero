@@ -138,7 +138,7 @@ def test_인카운트는_1퍼센트로_한_마리를_황금_고블린으로_바�
 
 def test_커먼_장비_드랍표는_종류별로_나뉘고_세트는_커먼세트군에만():
     from game.data.equipment.eq_02_armor_set import 방어구세트목록
-    from game.system import equipment_system
+    from game.system.item import equipment_system
 
     카탈로그 = 새게임()["상점카탈로그"]["장비"]
     모든 = {n: d for 탭 in 카탈로그.values() for n, d in 탭.items()}

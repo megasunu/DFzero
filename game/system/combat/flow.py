@@ -5,7 +5,7 @@ from game.system import rng
 from game.data import common_names
 
 from game.system import dice_utils
-from game.system import equipment_system
+from game.system.item import equipment_system
 from game.system import party_system
 from game.system.combat import (
     attacks,

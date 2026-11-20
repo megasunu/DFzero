@@ -1,7 +1,8 @@
 # 컨트롤러 - 주점 - 파티원 영입/대기/합류/추방(모험단 숙소, lodge_system.py)
 # (gameflow.py에서 분리 - N5. 화면은 gameflow.py 창구만 부른다. 설명은 gameflow.py 머리말)
 
-from game.system import collection_system, equipment_system, lodge_system, party_system
+from game.system import collection_system, lodge_system, party_system
+from game.system.item import equipment_system
 from game.controller.ctl_equip import 장비변경_후처리
 from game.controller.ctl_party import (
     이름_자르기,

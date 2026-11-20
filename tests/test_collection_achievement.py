@@ -9,7 +9,8 @@ import pytest
 
 import gameflow as gf
 from game.data.achievement.achievement_list import 업적_목록, 업적_분류
-from game.system import achievement_system, collection_system, loot_system, save_system
+from game.system import achievement_system, collection_system, save_system
+from game.system.item import loot_system
 from game.system.combat import core, damage
 from tests import support
 

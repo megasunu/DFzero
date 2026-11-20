@@ -18,7 +18,8 @@ import pytest
 
 import gameflow as gf
 from game.controller import ctl_battle, ctl_battle_log
-from game.system import equipment_system, rng
+from game.system import rng
+from game.system.item import equipment_system
 from game.system import skill_system as ss
 from game.system.combat import flow
 from tests import support

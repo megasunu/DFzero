@@ -1053,7 +1053,7 @@ def test_웨펀마스터는_귀검사_무기_5종_숙련을_전부_얻는다():
 
 
 def test_중갑_판금을_입으면_패널티_그_숙련이_있으면_없다():
-    from game.system import equipment_system as 장비
+    from game.system.item import equipment_system as 장비
     from game.system import skill_system as ss
 
     상태 = 새게임([("", "귀검사")])
@@ -1171,7 +1171,7 @@ def test_산들바람은_장비효과로_최대MP_10을_더한다():
 
 
 def test_천갑숙련_세트는_최대MP_10x차수_가죽은_방어력_차수():
-    from game.system import equipment_system as 장비
+    from game.system.item import equipment_system as 장비
 
     상태 = 새게임([("", "마법사")])
     c = 상태["파티"]["파티원"][0]
@@ -1184,7 +1184,7 @@ def test_천갑숙련_세트는_최대MP_10x차수_가죽은_방어력_차수():
 
 
 def test_가죽숙련은_5부위_모두_가죽일_때만_방어력_차수():
-    from game.system import equipment_system as 장비
+    from game.system.item import equipment_system as 장비
 
     상태 = 새게임([("", "거너")])
     c = 상태["파티"]["파티원"][0]
@@ -1226,7 +1226,7 @@ def test_방어구_숙달은_숙련이_있어야_퍽으로_고른다():
     ],
 )
 def test_방어구_숙달_세트_능력치(재질, 능력치):
-    from game.system import equipment_system as 장비
+    from game.system.item import equipment_system as 장비
 
     상태 = 새게임([("", "마법사")])
     c = 상태["파티"]["파티원"][0]

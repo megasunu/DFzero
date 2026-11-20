@@ -8,12 +8,8 @@ import pytest
 from game.system import rng
 import gameflow as gf
 from game.data.equipment.eq_00_magic_seal import 마봉능력
-from game.system import (
-    collection_system,
-    equipment_system,
-    loot_system,
-    magic_seal_system,
-)
+from game.system import collection_system
+from game.system.item import equipment_system, loot_system, magic_seal_system
 from game.system.combat import (
     attacks,
     damage,

@@ -9,12 +9,8 @@
 import copy
 
 from game.data import common_names
-from game.system import (
-    collection_system,
-    dismantle_system,
-    equipment_system,
-    shop_system,
-)
+from game.system import collection_system
+from game.system.item import dismantle_system, equipment_system, shop_system
 from game.controller.ctl_party import 플레이어뷰
 
 __all__ = [

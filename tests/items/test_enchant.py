@@ -6,8 +6,8 @@
 import pytest
 
 import gameflow as gf
-from game.system import (
-    collection_system,
+from game.system import collection_system
+from game.system.item import (
     dismantle_system,
     enhance_system,
     loot_system,
@@ -398,7 +398,7 @@ def _헨돈_장착(카탈로그):
 
 def _바꾸기(원본, 순서):
     """순서: "부여"/"강화"를 차례로 적용한 장비 데이터."""
-    from game.system import enchant_system
+    from game.system.item import enchant_system
 
     아이템 = 원본
     for 단계 in 순서:
@@ -412,7 +412,7 @@ def _바꾸기(원본, 순서):
 @pytest.mark.parametrize("순서", [("부여",), ("강화", "부여"), ("부여", "강화")])
 def test_마법부여한_세트_장비를_껴도_세트_효과가_그대로다(순서):
     from game.data.equipment.eq_02_armor_set import 방어구세트목록
-    from game.system import equipment_system
+    from game.system.item import equipment_system
 
     카탈로그 = gf._상점_카탈로그_생성()["장비"]
     장착 = _헨돈_장착(카탈로그)
@@ -458,7 +458,7 @@ def _구역_데이터():
 
 
 def test_마법부여_구역_파일은_자기_구역_부위에만_건다():
-    from game.system import enchant_system
+    from game.system.item import enchant_system
 
     for 파일, 데이터, 부위 in _구역_데이터():
         for 이름 in 데이터:
@@ -470,7 +470,7 @@ def test_마법부여_구역_파일은_자기_구역_부위에만_건다():
 
 
 def test_마법부여_구역_파일끼리_이름이_겹치지_않고_합친_표가_전부다():
-    from game.system import enchant_system
+    from game.system.item import enchant_system
 
     이름들 = [이름 for _, 데이터, _ in _구역_데이터() for 이름 in 데이터]
     assert len(이름들) == len(set(이름들))
@@ -490,7 +490,7 @@ def test_마법부여_구역_파일끼리_이름이_겹치지_않고_합친_표�
     ],
 )
 def test_속성강화_표시는_시스템이_악세서리_속성강화_1로_채운다(이름, 속성):
-    from game.system import enchant_system
+    from game.system.item import enchant_system
 
     assert enchant_system.마법부여[이름] == {
         "부위": ["목걸이", "반지", "팔찌"],

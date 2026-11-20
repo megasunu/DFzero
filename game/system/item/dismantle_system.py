@@ -12,7 +12,7 @@ from game.data import common_names
 from game.system import rng
 
 from game.system import player_system
-from game.system import shop_system
+from game.system.item import shop_system
 
 # 해체하면 소울이 나오는 레어도 - 크로니클은 소울을 주지 않는다
 소울_레어도 = [r for r in common_names.레어도_순서 if r != "크로니클"]

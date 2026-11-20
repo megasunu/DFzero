@@ -6,7 +6,7 @@ from support import 새게임
 
 import gameflow as gf
 from game.data.monster.monster_drop import 드랍표_모음
-from game.system import loot_system as 전리품
+from game.system.item import loot_system as 전리품
 from game.system import rng
 
 _탭별 = {

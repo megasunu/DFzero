@@ -5,7 +5,8 @@ import pytest
 
 import gameflow as gf
 from game.data.equipment.eq_03_accessory_set import 장비세트목록
-from game.system import dice_utils, equipment_system as 장비, rng
+from game.system import dice_utils, rng
+from game.system.item import equipment_system as 장비
 from game.system.combat import flow, hit_effects, stats
 from tests import support
 

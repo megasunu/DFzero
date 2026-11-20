@@ -18,11 +18,12 @@ game/system/       전투, 스킬, 장비, 세이브 등 게임 로직
                      `from game.system.combat import flow, stats` 처럼 모듈을 직접 불러 쓴다
   skill/             스킬 실행 엔진 모듈 7개(skill_grant -> usage/target -> apply -> attack -> run -> turn, 아래로만).
                      쓰는 쪽은 `game.system.skill_system`(재수출 창구)을 부른다
+  item/              아이템 시스템 - 장비·상점·전리품·강화·마법부여·봉인·해체·연금술(*_system.py 8개, 목록은 item/__init__.py)
 game/system/rng.py 모든 무작위의 출처 - 용도별 흐름(주사위/확률/대상/던전/보상/칭호/대화). 전역 random을 직접 쓰지 않는다
 game/data/         직업, 몬스터, 맵, 아이템 데이터(파이썬 딕셔너리)
   common_names.py    여러 계층이 같이 쓰는 이름 목록·표(속성, 연출 모양, 행동자원 ...) - 새로 반복하지 말고 여기서 가져다 쓴다
   enchant/           마법부여 - 부위 구역별 enchant_01~04(무기/방어구/악세서리/특수장비) + 양식 enchant_00_format.py.
-                     함수 없이 데이터만 - 합치기와 표시 채우기는 game/system/enchant_system.py
+                     함수 없이 데이터만 - 합치기와 표시 채우기는 game/system/item/enchant_system.py
   character/job_info.py  1차 직업 하나의 정보(데이터 파일 이름, 기본 주/보조/약점스탯, 전직 기본스탯, 자동전투 대체스킬)
 game/assets/       폰트, 이미지
 tests/             헤드리스 테스트 + golden/*.json (kivy 없이 돈다, 테스트 지도는 docs/test-map.md, 주제 폴더는 rules/tests.md)

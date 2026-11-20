@@ -19,7 +19,8 @@ from game.data.job_level.job_level_000x_style import (
     직업스타일,
     직업스타일_성장레벨,
 )
-from game.system import dice_utils, enhance_system
+from game.system import dice_utils
+from game.system.item import enhance_system
 from game.system.combat import formula
 
 # =====================================================

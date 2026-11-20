@@ -2,7 +2,8 @@
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
 import math
-from game.system import equipment_system, rng
+from game.system import rng
+from game.system.item import equipment_system
 import re
 
 from game.system.combat import (

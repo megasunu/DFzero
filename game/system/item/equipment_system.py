@@ -19,7 +19,7 @@ import re
 
 from game.data.ability.job_ability_0000 import 특성목록 as _공용특성
 from game.system import character_data_system as 캐릭터데이터
-from game.system import enchant_system, enhance_system
+from game.system.item import enchant_system, enhance_system
 from game.system.combat import formula
 
 

@@ -5,7 +5,8 @@ import re
 
 from game.data import common_names
 from game.system import character_data_system as 캐릭터데이터
-from game.system import dice_utils, equipment_system, rng
+from game.system import dice_utils, rng
+from game.system.item import equipment_system
 from game.system.combat import core, formula, participants, resources, status, traits
 
 # =====================================================

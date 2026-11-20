@@ -5,7 +5,7 @@ from game.data import common_names
 from game.system import rng
 
 from game.system import character_data_system as 캐릭터데이터
-from game.system import equipment_system
+from game.system.item import equipment_system
 from game.system.combat import (
     core,
     element,

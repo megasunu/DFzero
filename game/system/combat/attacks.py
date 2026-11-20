@@ -1,7 +1,8 @@
 # 전투 시스템 - 아군 일반공격.
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
-from game.system import equipment_system, rng
+from game.system import rng
+from game.system.item import equipment_system
 from game.system.combat import (
     channeling,
     core,

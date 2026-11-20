@@ -11,7 +11,7 @@
 import pytest
 
 import gameflow as gf
-from game.system import loot_system
+from game.system.item import loot_system
 from game.system.combat import damage, monster_actions, stats
 from game.system.skill import skill_turn
 from tests import support

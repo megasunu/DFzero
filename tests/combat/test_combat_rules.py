@@ -239,7 +239,7 @@ def test_피격펌블_증가_감소는_나를_공격하는_쪽의_펌블범위�
 
 def test_판금_벨트는_치명타주사위를_1_줄인다_디버프_치명타피해감소를_늘_가진_셈(전장):
     from game.data.equipment.eq_02_armor_04_belt import 벨트목록
-    from game.system import equipment_system
+    from game.system.item import equipment_system
 
     _, 전투상태, _, 아군 = 전장
     합계 = equipment_system.장비_보너스_합산({"벨트": 벨트목록["합금 벨트"]})

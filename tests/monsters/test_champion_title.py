@@ -6,7 +6,8 @@ import gameflow as gf
 from game.controller.ctl_registry import 전투용_몬스터특성정의
 from game.data.buff.status_effects import 상태이상목록
 from game.data.monster import monster_title
-from game.system import dungeon_system, loot_system, rng
+from game.system import dungeon_system, rng
+from game.system.item import loot_system
 from game.system.combat import (
     element,
     hit_effects,

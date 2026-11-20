@@ -12,10 +12,12 @@ from game.system import (
     character_data_system as 데이터,
     dice_utils,
     character_levelup_system as 레벨업,
-    equipment_system as 장비,
-    loot_system as 전리품,
     player_system,
     potion_system as 포션시스템,
+)
+from game.system.item import (
+    equipment_system as 장비,
+    loot_system as 전리품,
     shop_system as 상점,
 )
 
@@ -180,7 +182,7 @@ def _캐릭터(**덮어쓰기):
 
 
 def test_마법봉인_무기는_타입이_목록이어도_종류로_장착_분류된다(카탈로그):
-    from game.system import magic_seal_system
+    from game.system.item import magic_seal_system
     from game.system.combat import traits
 
     봉인 = 카탈로그["장비"]["무기"]["마법으로 봉인된 소검"]

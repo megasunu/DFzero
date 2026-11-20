@@ -17,7 +17,8 @@ import sys
 import pytest
 
 import game.data as 데이터패키지
-from game.system import equipment_system, rng
+from game.system import rng
+from game.system.item import equipment_system
 import gameflow as gf
 from game.data.collection.collection_monster import 도감_출현장소
 from game.data.equipment.eq_00_magic_seal import 마봉능력, 봉인장비_해제이름

@@ -6,7 +6,7 @@ import pytest
 
 import gameflow as gf
 from game.data.equipment.eq_02_armor_set import 방어구세트목록
-from game.system import equipment_system as 장비
+from game.system.item import equipment_system as 장비
 from game.system.combat import flow, monster_actions, stats
 from tests import support
 

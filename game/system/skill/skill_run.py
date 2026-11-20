@@ -6,7 +6,8 @@
 
 from game.system import rng
 
-from game.system import dice_utils, effect_engine, equipment_system
+from game.system import dice_utils, effect_engine
+from game.system.item import equipment_system
 from game.system.combat import (
     channeling,
     control,

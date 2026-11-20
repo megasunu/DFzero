@@ -6,7 +6,7 @@ import pytest
 
 from game.system import rng
 import gameflow as gf
-from game.system import loot_system
+from game.system.item import loot_system
 from tests import support
 from tests.support import 던전파일명, 보스_처치, 새게임, 전투_열기
 

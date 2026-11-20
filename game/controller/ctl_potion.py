@@ -15,13 +15,11 @@ from game.system import (
     character_data_system as 캐릭터데이터,
     collection_system,
     drink_system,
-    equipment_system,
-    loot_system,
     player_system,
     potion_system,
-    shop_system,
     skill_system,
 )
+from game.system.item import equipment_system, loot_system, shop_system
 from game.system.combat import channeling, core, flow, resources, stats, status
 from game.controller.ctl_battle import 현재_턴_참가자
 from game.controller.ctl_levelup import 능력치_역할_바꾸기, 전직전_이름

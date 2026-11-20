@@ -5,7 +5,8 @@
 from game.system import rng
 from dataclasses import dataclass, field, replace
 
-from game.system import dice_utils, equipment_system
+from game.system import dice_utils
+from game.system.item import equipment_system
 from game.system.combat import (
     attacks,
     control,

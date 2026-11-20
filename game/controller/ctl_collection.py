@@ -6,7 +6,8 @@
 
 from game.data.collection.collection_monster import 도감_출현장소
 from game.data.monster.monster_drop import 드랍표_모음
-from game.system import alchemy_system, collection_system
+from game.system import collection_system
+from game.system.item import alchemy_system
 from game.controller.ctl_registry import 던전_레지스트리, 몬스터목록
 from game.controller.ctl_shop import 상점_탭목록, 상점_탭줄
 

@@ -9,13 +9,12 @@
 # 연금술: 라이언 코크스 -> 모순의 결정체/강렬한 기운, 무색 큐브 조각 -> 포션. 규칙은 alchemy_system.py.
 
 from game.data.item.item_doll import 인형_데이터
-from game.system import (
+from game.system import collection_system, player_system
+from game.system.item import (
     alchemy_system,
-    collection_system,
     enchant_system,
     enhance_system,
     magic_seal_system,
-    player_system,
 )
 from game.controller.ctl_registry import 직업_레지스트리
 from game.controller.ctl_party import 플레이어뷰

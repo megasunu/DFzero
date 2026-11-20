@@ -6,7 +6,8 @@
 import pytest
 
 import gameflow as gf
-from game.system import dice_utils, equipment_system, rng, skill_system as ss
+from game.system import dice_utils, rng, skill_system as ss
+from game.system.item import equipment_system
 from game.system.combat import flow, hit, hit_effects, reactions, stats
 from tests import support
 

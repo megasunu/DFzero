@@ -6,9 +6,8 @@
 import pytest
 
 import gameflow as gf
-from game.system import (
-    character_data_system,
-    collection_system,
+from game.system import character_data_system, collection_system
+from game.system.item import (
     dismantle_system,
     enhance_system,
     equipment_system,

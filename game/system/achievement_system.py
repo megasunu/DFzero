@@ -16,7 +16,8 @@
 from game.system import rng
 
 from game.data.achievement.achievement_list import 업적_목록, 이름있는_보상
-from game.system import collection_system, player_system, shop_system
+from game.system import collection_system, player_system
+from game.system.item import shop_system
 
 조건_종류 = (
     "플레이어레벨",

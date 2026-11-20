@@ -23,7 +23,7 @@ from game.data.enchant.enchant_01_weapon import 무기마법부여
 from game.data.enchant.enchant_02_armor import 방어구마법부여
 from game.data.enchant.enchant_03_accessory import 악세서리마법부여
 from game.data.enchant.enchant_04_special import 특수장비마법부여
-from game.system import enhance_system
+from game.system.item import enhance_system
 
 
 def _속성강화(속성):
