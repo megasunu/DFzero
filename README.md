@@ -41,7 +41,7 @@ tests/  tools/    테스트, 게이트(check.py)와 화면 스모크(ui_smoke.py
 docs/             빌드 노트, 구조 점검 보고서, 게임 규칙(game-rules.md), 보드 설정(setup/)
 ```
 
-계층은 한 방향이다: `screens -> gameflow -> controller -> system -> data`. 자세한 구조와 점검 결과는 [`docs/architecture_review.md`](docs/architecture_review.md).
+계층은 한 방향이다: `screens -> gameflow -> controller -> system -> data`. 자세한 구조와 점검 결과는 [`docs/reports/architecture_review.md`](docs/reports/architecture_review.md).
 
 ## 빌드
 
@@ -52,9 +52,9 @@ APK는 GitHub Actions의 "Build APK" 워크플로(수동 실행)가 만든다. �
 | 파일 | 내용 |
 |---|---|
 | [`CLAUDE.md`](CLAUDE.md), [`.claude/`](.claude/) | 규칙(완료 기준, 가드레일), 주제별 규칙, 스킬 |
-| [`docs/architecture_review.md`](docs/architecture_review.md) | 구조/아키텍처 점검, 다음 로드맵 |
-| [`docs/refactoring_report.md`](docs/refactoring_report.md) | 점검 항목의 리팩터링 전/후 비교(병합 후 재측정) |
-| [`docs/code_quality_review.md`](docs/code_quality_review.md) | 코드 품질·아키텍처 재점검(2026-10-13, 10-06 대비 변화와 백로그) |
+| [`docs/reports/architecture_review.md`](docs/reports/architecture_review.md) | 구조/아키텍처 점검, 다음 로드맵 |
+| [`docs/reports/refactoring_report.md`](docs/reports/refactoring_report.md) | 점검 항목의 리팩터링 전/후 비교(병합 후 재측정) |
+| [`docs/reports/code_quality_review.md`](docs/reports/code_quality_review.md) | 코드 품질·아키텍처 재점검(2026-10-13, 10-06 대비 변화와 백로그) |
 | [`docs/scenarios.md`](docs/scenarios.md) | 풀 시나리오 장부 |
 | [`docs/mobile_apk_build_notes.md`](docs/mobile_apk_build_notes.md) | APK 빌드 노트 |
 | [`docs/game-rules.md`](docs/game-rules.md) | 게임 규칙과 수치(사용자 결정) |

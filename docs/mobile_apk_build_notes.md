@@ -57,7 +57,7 @@
 - `main.py`는 처리 못 한 예외를 `/storage/emulated/0/Download/dnf_crash_log.txt`에 쓴다(`sys.excepthook`). 앱이 Kivy 화면을 띄우기도 전에 죽는 경우를 잡으려는 임시 장치다.
   이벤트 루프 안의 예외는 `ExceptionHandler`가 잡아 오류 팝업(복사 버튼 포함)으로 보여 준다.
 - `android.permissions = WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE`는 그 로그용이다. **API 33에서 이 권한이 실제로 효과가 있는지, 로그 파일이 써지는지는 실기기로 확인하지 못했다**
-  (`docs/architecture_review.md` W-7). 확인되면 로그 위치를 앱 전용 폴더로 옮기고 권한을 뺀다.
+  (`docs/reports/architecture_review.md` W-7). 확인되면 로그 위치를 앱 전용 폴더로 옮기고 권한을 뺀다.
 
 ## 6. 앱 ID와 세이브
 

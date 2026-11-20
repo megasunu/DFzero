@@ -41,7 +41,8 @@ tools/dungeon_sim.py  던전 밸런스 모의전투(인카운트·보스·원정
 tools/level_winrate.py  레벨별 등록 파티(docs/balance/레벨별_파티.json) 던전 승률 - 깃허브 액션 Level winrate(버튼)가 돌린다
 tools/policy_sim.py  측정용 전투 정책 - 분석용(무작위)·승률용(몬테카를로 탐색)·전력전투 비교(균등 4인 파티) - 게이트 밖에서 직접
 .githooks/         pre-commit (줄끝 통일)
-docs/              빌드 노트, 구조 점검 보고서, 리뷰 보고서, 시나리오 장부, 게임 규칙(game-rules.md)
+docs/              빌드 노트, 시나리오 장부, 게임 규칙(game-rules.md), 테스트 지도, 밸런스 기록(balance/)
+  reports/           지난 점검·리뷰 보고서(구조 점검, 품질 재점검, 리팩터링 전후, 스킬 전수 점검) - 기록용
 README.md          입구(실행/개발/구조/빌드 요약)
 ```
 
