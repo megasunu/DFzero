@@ -19,7 +19,7 @@ from kivy.core.window import Window
 from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
 import gameflow as gf
-from game.screens import screens_common, screens_party
+from game.screens import screens_common, screens_member
 from game.system import quest_system
 from tests import support
 
@@ -338,7 +338,7 @@ class 세계단계:
         finally:
             판매목록[:] = 원래_판매목록
         매니저.current = "파티원"
-        screens_party._장비교체_팝업(상태["파티"]["파티원"][0], "무기", lambda: None)
+        screens_member._장비교체_팝업(상태["파티"]["파티원"][0], "무기", lambda: None)
         yield 0.5
         팝업스크롤 = next(
             w

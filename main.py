@@ -129,15 +129,14 @@ from game.screens.screens_menu import (
 from game.screens.screens_town import (
     마을화면,
     마을이동목록화면,
-    상점화면,
-    소지품화면,
-    전문직업화면,
     모험단화면,
     주점화면,
 )
+from game.screens.screens_shop import 상점화면, 소지품화면, 전문직업화면
 from game.screens.screens_dungeon import 던전목록화면, 던전화면
 from game.screens.screens_battle import 전투화면
-from game.screens.screens_party import 파티관리화면, 파티원화면
+from game.screens.screens_party import 파티관리화면
+from game.screens.screens_member import 파티원화면
 from game.screens.screens_collection import 도감화면, 업적화면
 from game.screens.screens_common import 뒤로키_처리, 기준화면틀
 import gameflow

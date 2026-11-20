@@ -32,7 +32,7 @@ from game.screens.screens_common import (
     글자_높이,
     아이템_이름_글,
 )
-from game.screens.screens_town import 소지품화면
+from game.screens.screens_shop import 소지품화면
 
 _미등록_색 = "5c6068"  # 등록하지 않은 항목 이름 - 어둡게
 

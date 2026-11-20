@@ -17,7 +17,7 @@ from kivy.uix.label import Label
 from kivy.metrics import dp
 from kivy.uix.togglebutton import ToggleButton
 import gameflow as gf
-from game.screens import screens_party
+from game.screens import screens_member
 from game.system import rng
 from tests import support
 
@@ -525,7 +525,7 @@ class 파티단계:
         귀검사 = 상태["파티"]["파티원"][0]
         매니저.current = "파티원"
         for 슬롯, 요약 in (("무기", "무기 공격력 "), ("상의", "AC ")):
-            screens_party._장비교체_팝업(귀검사, 슬롯, lambda: None)
+            screens_member._장비교체_팝업(귀검사, 슬롯, lambda: None)
             yield 0.5
             _찍기(f"equip_swap_{슬롯}")
             팝업 = Window.children[0]
@@ -544,7 +544,7 @@ class 파티단계:
             칸들 = [
                 w
                 for w in 팝업.walk(restrict=True)
-                if isinstance(w, screens_party._테두리상자)
+                if isinstance(w, screens_member._테두리상자)
             ]
             assert 칸들 and max(w.height for w in 칸들) <= dp(84) + 1, [
                 w.height for w in 칸들
@@ -574,7 +574,7 @@ class 파티단계:
         귀검사["보유특성"] = [t for t in 원래특성 if not t.endswith("숙련")] + [
             "판금숙련"
         ]
-        screens_party._장비교체_팝업(귀검사, "상의", lambda: None)
+        screens_member._장비교체_팝업(귀검사, "상의", lambda: None)
         yield 0.5
         탭들 = [
             w
@@ -589,7 +589,7 @@ class 파티단계:
         yield 0.3
         귀검사["보유특성"] = 원래특성
         # 세트 장비 상세보기: 세트 이름·구성·효과
-        screens_party._아이템_상세_팝업(
+        screens_member._아이템_상세_팝업(
             상태["상점카탈로그"]["장비"]["신발"]["브론델의 신발"]
         )
         yield 0.5
@@ -613,7 +613,7 @@ class 파티단계:
             "숙련 재질 탭으로 열기, 세트 상세(구성·효과)"
         )
         무기 = next(iter(상태["상점카탈로그"]["장비"]["무기"].values()))
-        screens_party._아이템_상세_팝업(무기)
+        screens_member._아이템_상세_팝업(무기)
         yield 0.5
         _찍기("equip_detail")
         _팝업_닫기()
@@ -621,7 +621,7 @@ class 파티단계:
         # 레어 무기: 파티 상세보기와 상점 자세히 보기에 "설명"이 보이고, 효과 원소 칸은 그대로 안 보인다
         레어 = 상태["상점카탈로그"]["장비"]["무기"]["복수의 영혼도"]
         for 이름, 열기 in (
-            ("equip_detail_rare", lambda: screens_party._아이템_상세_팝업(레어)),
+            ("equip_detail_rare", lambda: screens_member._아이템_상세_팝업(레어)),
             ("shop_detail_rare", lambda: 매니저.get_screen("상점")._자세히보기(레어)),
         ):
             열기()
@@ -729,8 +729,8 @@ class 파티단계:
         """핸드폰 [뒤로] 키 - 팝업 겹침/파티원/파티관리/마을/상점/메인메뉴"""
         귀검사 = 상태["파티"]["파티원"][0]
         # 핸드폰 [뒤로] 키(27): 맨 위 팝업의 취소/닫기 -> 화면의 뒤로/나가기 순
-        screens_party._장비교체_팝업(귀검사, "무기", lambda: None)
-        screens_party._아이템_상세_팝업(무기)
+        screens_member._장비교체_팝업(귀검사, "무기", lambda: None)
+        screens_member._아이템_상세_팝업(무기)
         yield 0.5
         assert _팝업수() == 2, _팝업수()
         _뒤로키()

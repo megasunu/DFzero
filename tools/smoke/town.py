@@ -17,7 +17,7 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.togglebutton import ToggleButton
 import gameflow as gf
-from game.screens import screens_common, screens_party
+from game.screens import screens_common, screens_member
 from game.system import rng
 from tests import support
 
@@ -490,7 +490,7 @@ class 마을단계:
         assert 무기데이터["마법부여"]["속성"] == "화속성", 무기데이터
         _찍기("profession_enchant_done")
         # 상세보기 맨 아래에 마법부여 효과를 따로 적는다
-        screens_party._아이템_상세_팝업(무기데이터)
+        screens_member._아이템_상세_팝업(무기데이터)
         yield 0.5
         글 = " ".join(
             w.text

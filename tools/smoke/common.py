@@ -148,7 +148,7 @@ def _팝업글():
 
 
 def _스킬줄_버튼들():
-    """떠 있는 스킬 팝업의 줄 버튼들(screens_battle._스킬_줄 - 버튼에 스킬이름이 붙어 있다)"""
+    """떠 있는 스킬 팝업의 줄 버튼들(screens_battle_popups._스킬_줄 - 버튼에 스킬이름이 붙어 있다)"""
     return [w for w in Window.children[0].walk(restrict=True) if hasattr(w, "스킬이름")]
 
 
