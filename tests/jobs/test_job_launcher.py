@@ -13,6 +13,7 @@ import gameflow as gf
 from game.system import rng
 from game.system import skill_system as ss
 from game.system.combat import attacks, hit, stats
+from game.system.skill import skill_turn
 from tests import support
 
 
@@ -203,3 +204,154 @@ def test_양자폭탄이_빗나간_적은_라운드가_끝나도_맞지_않는�
     _쓰기(전투상태, r, "양자폭탄")
     assert not attacks.라운드종료_지속공격(전투상태)
     assert all(p["현재HP"] == 999 for p in 적)
+
+
+# ------------------------------------------------------------------ 3차수 - 레벨 13 익스트루더, 골드 스팅어, 퍽 팜페로 부스터
+
+
+def _팜페로_고르기(캐릭터, 후보):
+    return next(
+        ((이름, 정의) for 이름, 정의 in 후보 if 이름 == "팜페로 부스터"), 후보[0]
+    )
+
+
+@pytest.fixture
+def 런처13전장():
+    """레벨 13 런처(레벨 9 퍽 팜페로 부스터, 골드 스킬 전부 습득)와 귀검사, 고블린 셋(HP 999, 저항 없음)."""
+    rng.시드(5)
+    상태 = support.새게임([("", "거너"), ("", "귀검사")])
+    런, _ = 상태["파티"]["파티원"]
+    support.성장(상태, 런, 13, 전직="런처", 스킬습득=True, 퍽고르기=_팜페로_고르기)
+    gf.전투_시작(상태, ["고블린", "고블린", "고블린"], 레벨=2, 차수=1)
+    support.반응_처리(상태)
+    전투상태 = 상태["전투상태"]
+    적 = sorted(
+        (p for p in 전투상태["참가자"] if p["진영"] == "적"),
+        key=lambda p: p["대형위치"],
+    )
+    for p in 적:
+        p["현재HP"] = p["최대HP"] = 999
+        p["원본"] = {**p["원본"], "저항": [], "취약": [], "면역": []}
+    r = next(p for p in 전투상태["참가자"] if p["원본"] is 런)
+    r["장비보너스"] = {}
+    return 상태, 전투상태, 적, r
+
+
+def _슈퍼아머(참가자):
+    return any(s["이름"] == "슈퍼아머" for s in 참가자["상태이상"])
+
+
+def _몹몰이(참가자):
+    return any(s["이름"] == "몹몰이" for s in 참가자["상태이상"])
+
+
+def test_레벨13에_익스트루더_퍽_팜페로_부스터_스팅어는_11레벨부터_3차수_골드(
+    런처13전장,
+):
+    _, _, _, r = 런처13전장
+    c = r["원본"]
+    assert {"익스트루더", "팜페로 부스터", "스팅어"} <= set(c["보유스킬"])
+    assert _스킬("스팅어")["습득차수"] == 3 and _스킬("스팅어")["습득레벨"] == 11
+    assert all(
+        _스킬(n)["MP소모"] == 30 for n in ("익스트루더", "팜페로 부스터", "스팅어")
+    )
+
+
+def test_팜페로_부스터_퍽은_런처만_고른다():
+    rng.시드(5)
+    상태 = support.새게임([("", "거너"), ("", "거너")])
+    r, m = 상태["파티"]["파티원"]
+    support.성장(상태, r, 8, 전직="런처")
+    support.성장(상태, m, 8, 전직="메카닉")
+    assert "팜페로 부스터" in [n for n, _ in support.퍽_후보(r)]
+    assert "팜페로 부스터" not in [n for n, _ in support.퍽_후보(m)]
+
+
+def test_익스트루더는_차징을_시작할_때_맞힌_적을_몹몰이로_만들고_슈퍼아머(
+    런처13전장, monkeypatch
+):
+    상태, 전투상태, 적, r = 런처13전장
+    상태["소지품"]["재료"]["무색 큐브 조각"] = 5
+    눈들 = iter([15, 1, 15])  # 가운데 적만 빗나간다
+    monkeypatch.setattr(
+        stats.dice_utils, "d20_굴림", lambda 이점=False, 불리=False: next(눈들)
+    )
+    결과 = _쓰기(전투상태, r, "익스트루더")
+    assert 결과["캐스팅"] and [맞음 for _, 맞음 in 결과["차징시작"]] == [
+        True,
+        False,
+        True,
+    ]
+    맞음 = dict(결과["차징시작"])
+    assert all(_몹몰이(p) == 맞음[p["이름"]] for p in 적)
+    assert all(p["현재HP"] == 999 for p in 적)  # 피해는 밀린 차례에
+    assert r["캐스팅"]["밀림"] == {"우선도": -3, "이니셔티브": 0}
+    assert 상태["소지품"]["재료"].get("무색 큐브 조각", 0) == 0
+    assert _슈퍼아머(r)  # 중화기 마스터리 - 중화기 차징
+
+
+def test_익스트루더는_밀린_차례에_적_전체에게_무속성_역장_피해(런처13전장, monkeypatch):
+    상태, 전투상태, 적, r = 런처13전장
+    상태["소지품"]["재료"]["무색 큐브 조각"] = 5
+    _쓰기(전투상태, r, "익스트루더")
+    _굴림_기록(monkeypatch, 15)
+    결과 = skill_turn.캐스팅_발사(전투상태, r)
+    assert len(결과["타격"]) == 3
+    # 4d8(1) = 4, 중화기 마스터리 +1 = 5 - 몹몰이가 둘 이상 함께 맞아도 피해는 겹치지 않는다
+    assert all(999 - p["현재HP"] == 5 for p in 적)
+    assert not _슈퍼아머(r)
+
+
+def test_중화기가_아닌_레이저_라이플_차징에는_슈퍼아머가_없다(런처13전장):
+    _, 전투상태, 적, r = 런처13전장
+    _쓰기(전투상태, r, "레이저 라이플", 적[0])
+    assert r["캐스팅"] and not _슈퍼아머(r)
+
+
+def test_중화기_마스터리가_없으면_익스트루더_차징에_슈퍼아머가_없다(런처13전장):
+    상태, 전투상태, _, r = 런처13전장
+    상태["소지품"]["재료"]["무색 큐브 조각"] = 5
+    r["원본"]["보유특성"].remove("중화기 마스터리")
+    _쓰기(전투상태, r, "익스트루더")
+    assert r["캐스팅"] and not _슈퍼아머(r)
+
+
+def test_팜페로_부스터는_적_전체_수속성_피해와_건강_DC8_빙결(런처13전장, monkeypatch):
+    _, 전투상태, 적, r = 런처13전장
+    _굴림_기록(monkeypatch, 15)
+    난이도들 = []
+
+    def 가짜(보정치, 난이도, 이점=False, 불리=False):
+        난이도들.append(난이도)
+        return False, 1
+
+    monkeypatch.setattr(stats.dice_utils, "내성_굴림", 가짜)
+    결과 = _쓰기(전투상태, r, "팜페로 부스터")
+    assert len(결과["타격"]) == 3 and 난이도들 == [8, 8, 8]
+    assert all(999 - p["현재HP"] == 4 for p in 적)  # 4d4(1) = 4
+    assert all(
+        any(s["이름"] == "빙결" and s["지속턴"] == 1 for s in p["상태이상"]) for p in 적
+    )
+    assert _스킬("팜페로 부스터")["속성"] == "수속성"
+
+
+def test_스팅어는_3턴_장판으로_라운드가_끝날_때마다_내성_없이_화속성_피해(
+    런처13전장, monkeypatch
+):
+    _, 전투상태, 적, r = 런처13전장
+    monkeypatch.setattr(rng.주사위, "randint", lambda a, b: a)
+
+    def 굴리면_안됨(*a, **k):
+        raise AssertionError("스팅어는 내성굴림이 없다")
+
+    monkeypatch.setattr(stats.dice_utils, "내성_굴림", 굴리면_안됨)
+    _쓰기(전투상태, r, "스팅어")
+    assert all(p["현재HP"] == 999 for p in 적)
+    피해 = []
+    for _ in range(4):
+        전 = [p["현재HP"] for p in 적]
+        attacks.라운드종료_지속공격(전투상태)
+        피해.append([a - p["현재HP"] for a, p in zip(전, 적)])
+    # 3d4(1) = 3, 화속성강화 1 -> 3.x 올림 - 3턴 동안만
+    assert 피해[0] == 피해[1] == 피해[2] and all(x > 0 for x in 피해[0])
+    assert 피해[3] == [0, 0, 0]
