@@ -1,7 +1,7 @@
 """스킬 전수 점검(작업 14) - 직접 쓰는 스킬 모두를 사용 조건을 갖춘 실제 전투에서 쓴다.
 
 test_combat_skills는 그냥 쓴 결과를 골든에 박는다(조건이 안 맞으면 "사용 불가"도 그대로). 여기서는
-조건(자원·무기·소환수·체이서·특수행동)을 갖춘 뒤 불변식만 단언한다 - 결과표는 docs/skill_audit.md.
+조건(자원·무기·소환수·체이서·특수행동)을 갖춘 뒤 불변식만 단언한다 - 결과표는 docs/reports/skill_audit.md.
 - 쓸 수 있고 예외 없이 끝나며, 그 스킬(연계스킬은 앞 스킬에 이어)이 로그에 남는다.
 - 전투 기록 문장에 dict·None·TODO가 그대로 보이지 않는다(뒤 3라운드 포함).
 - 데이터의 MP소모만큼 MP가 줄고(조건부효과가 없을 때), 버프획득·지속턴이 실제로 붙는다.
@@ -18,7 +18,8 @@ import pytest
 
 import gameflow as gf
 from game.controller import ctl_battle, ctl_battle_log
-from game.system import equipment_system, rng
+from game.system import rng
+from game.system.item import equipment_system
 from game.system import skill_system as ss
 from game.system.combat import flow
 from tests import support

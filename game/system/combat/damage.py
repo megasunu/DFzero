@@ -19,6 +19,8 @@ from game.system.combat import (
     status,
     traits,
 )
+from game.system.combat import stat_breakdown
+from game.system.combat import trait_triggers
 
 
 def 유효_흡혈(전투상태, 참가자):
@@ -187,9 +189,9 @@ def 피해내역(
     출처는 부르는 쪽이 계산한 앞항목 [(이름, 값)](스킬/역할군/추가피해 굴림 등)과 장비 값, 그리고 출처별
     버프/특성/칭호(명중률종류/대상/속성/스킬타입 조건 반영 - 피해 계산과 같은 인수를 넘긴다). 배수(원펀맨)는
     장비·출처 몫에 곱하는 늘어난 몫을 따로 적는다. 그래도 남으면 "기타". 상세로그가 아니면 None."""
-    if not stats.상세로그(전투상태):
+    if not stat_breakdown.상세로그(전투상태):
         return None
-    출처 = [("장비", 장비)] + stats.출처별_내역(
+    출처 = [("장비", 장비)] + stat_breakdown.출처별_내역(
         전투상태,
         공격자,
         "데미지보너스",
@@ -200,7 +202,7 @@ def 피해내역(
     )
     추가 = list(앞항목) + 출처 + [("원펀맨", (배수 - 1) * sum(v for _, v in 출처))]
     추가 = [(n, v) for n, v in 추가 if v]
-    stats.기타_채우기(추가, 합 - 굴림합)
+    stat_breakdown.기타_채우기(추가, 합 - 굴림합)
     return {"식": str(식), "굴림합": 굴림합, "추가": 추가, "합": 합, "최종": 최종}
 
 
@@ -433,7 +435,7 @@ def 피해_적용(
         and 공격자.get("진영") != 대상.get("진영")
     ):
         # 공격자의 "속성피해시" 몬스터특성(알비노 고블린 - 명속성 피해를 주면 감전, 쓰러진 대상 제외)
-        traits.특성_속성피해시_발동(
+        trait_triggers.특성_속성피해시_발동(
             전투상태, 공격자, 대상, [s for _, s in 부분들 if s is not None]
         )
     if 공격측 is not None and 공격측.get("진영") != 대상.get("진영"):

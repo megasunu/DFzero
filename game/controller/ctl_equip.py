@@ -9,7 +9,7 @@
 from game.data import common_names
 from game.data.equipment.eq_02_armor_set import 방어구세트목록
 from game.data.equipment.eq_03_accessory_set import 장비세트목록
-from game.system import enchant_system, equipment_system
+from game.system.item import enchant_system, equipment_system
 from game.controller.ctl_party import (
     장비데이터모음_생성,
     캐릭터_장비데이터,

@@ -16,31 +16,34 @@ game/screens/      Kivy 화면 (kivy 의존은 여기와 main.py에만)
 game/system/       전투, 스킬, 장비, 세이브 등 게임 로직
   combat/            전투 패키지(모듈 목록은 combat/__init__.py). 쓰는 쪽은
                      `from game.system.combat import flow, stats` 처럼 모듈을 직접 불러 쓴다
-  skill/             스킬 실행 엔진 모듈 6개(skill_grant -> usage/target -> apply -> attack -> run, 아래로만).
+  skill/             스킬 실행 엔진 모듈 7개(skill_grant -> usage/target -> apply -> attack -> run -> turn, 아래로만).
                      쓰는 쪽은 `game.system.skill_system`(재수출 창구)을 부른다
+  item/              아이템 시스템 - 장비·상점·전리품·강화·마법부여·봉인·해체·연금술(*_system.py 8개, 목록은 item/__init__.py)
 game/system/rng.py 모든 무작위의 출처 - 용도별 흐름(주사위/확률/대상/던전/보상/칭호/대화). 전역 random을 직접 쓰지 않는다
 game/data/         직업, 몬스터, 맵, 아이템 데이터(파이썬 딕셔너리)
   common_names.py    여러 계층이 같이 쓰는 이름 목록·표(속성, 연출 모양, 행동자원 ...) - 새로 반복하지 말고 여기서 가져다 쓴다
   enchant/           마법부여 - 부위 구역별 enchant_01~04(무기/방어구/악세서리/특수장비) + 양식 enchant_00_format.py.
-                     함수 없이 데이터만 - 합치기와 표시 채우기는 game/system/enchant_system.py
+                     함수 없이 데이터만 - 합치기와 표시 채우기는 game/system/item/enchant_system.py
   character/job_info.py  1차 직업 하나의 정보(데이터 파일 이름, 기본 주/보조/약점스탯, 전직 기본스탯, 자동전투 대체스킬)
 game/assets/       폰트, 이미지
-tests/             헤드리스 테스트 + golden/*.json (kivy 없이 돈다, 테스트 지도는 docs/test-map.md)
+tests/             헤드리스 테스트 + golden/*.json (kivy 없이 돈다, 테스트 지도는 docs/test-map.md, 주제 폴더는 rules/tests.md)
 tools/check.py     완료 기준 게이트 (CLAUDE.md "완료 기준"), --골든은 골든 갱신 요약
-tools/ui_smoke.py  화면 스모크(kivy + Xvfb, 스크린샷) - CI 밖, 화면 바꿀 때 직접
+tools/ui_smoke.py  화면 스모크(kivy + Xvfb, 스크린샷) 실행 파일 - 단계 순서(`_단계들`)만 둔다. 화면 바꿀 때 직접
+  smoke/             스모크 단계 - 주제별 믹스인 party/town/battle/world/jobs/menu, 창 설정·도우미는 common.py
 tools/fix_eol.py   줄끝을 LF로 통일 (pre-commit 훅이 부른다)
 tools/golden_diff.py  바뀐 골든 요약(파일마다 한 줄) - 큰 diff 대신 읽는다
 tools/project_bridge.py  이슈 <-> megasunu 작업 보드 브리지 (project-sync/-snapshot 워크플로가 부른다)
-tools/balance_sim.py  직업 밸런스 모의전투(승률·랜덤·변형 패턴) - 기록은 docs/balance/, 게이트 밖에서 직접
-tools/balance_analysis.py  밸런스 체크 분석용 전투(무작위 파티·무작위 행동, 회귀 기여) - balance_sim --분석이 부른다
-tools/balance_winrate.py  밸런스 체크 승률용 전투(파티원 패턴을 돌아가며 다듬어 최고 승률) - balance_sim --승률이 부른다
-tools/skill_balance.py  스킬 밸런스 기준표(1~5차수 기대·기준·비율, 빌드 대입) -> docs/balance/스킬기준표.md, 테스트가 최신인지 검사
+tools/balance/balance_sim.py  직업 밸런스 모의전투(승률·랜덤·변형 패턴) - 기록은 docs/balance/, 게이트 밖에서 직접
+tools/balance/balance_analysis.py  밸런스 체크 분석용 전투(무작위 파티·무작위 행동, 회귀 기여) - balance_sim --분석이 부른다
+tools/balance/balance_winrate.py  밸런스 체크 승률용 전투(파티원 패턴을 돌아가며 다듬어 최고 승률) - balance_sim --승률이 부른다
+tools/balance/skill_balance.py  스킬 밸런스 기준표(1~5차수 기대·기준·비율, 빌드 대입) -> docs/balance/스킬기준표.md, 테스트가 최신인지 검사
 tools/npc_sheet.py   움직이는 NPC 그림 -> 장면 이어 붙인 정지 웹피 + 장면 정보(필로 필요, 게이트 밖에서 직접)
-tools/dungeon_sim.py  던전 밸런스 모의전투(인카운트·보스·원정 승률, 조정안 임시 적용) - 결과는 docs/balance/, 게이트 밖에서 직접
-tools/level_winrate.py  레벨별 등록 파티(docs/balance/레벨별_파티.json) 던전 승률 - 깃허브 액션 Level winrate(버튼)가 돌린다
-tools/policy_sim.py  측정용 전투 정책 - 분석용(무작위)·승률용(몬테카를로 탐색)·전력전투 비교(균등 4인 파티) - 게이트 밖에서 직접
+tools/balance/dungeon_sim.py  던전 밸런스 모의전투(인카운트·보스·원정 승률, 조정안 임시 적용) - 결과는 docs/balance/, 게이트 밖에서 직접
+tools/balance/level_winrate.py  레벨별 등록 파티(docs/balance/레벨별_파티.json) 던전 승률 - 깃허브 액션 Level winrate(버튼)가 돌린다
+tools/balance/policy_sim.py  측정용 전투 정책 - 분석용(무작위)·승률용(몬테카를로 탐색)·전력전투 비교(균등 4인 파티) - 게이트 밖에서 직접
 .githooks/         pre-commit (줄끝 통일)
-docs/              빌드 노트, 구조 점검 보고서, 리뷰 보고서, 시나리오 장부, 게임 규칙(game-rules.md)
+docs/              빌드 노트, 시나리오 장부, 게임 규칙(game-rules.md), 테스트 지도, 밸런스 기록(balance/)
+  reports/           지난 점검·리뷰 보고서(구조 점검, 품질 재점검, 리팩터링 전후, 스킬 전수 점검) - 기록용
 README.md          입구(실행/개발/구조/빌드 요약)
 ```
 

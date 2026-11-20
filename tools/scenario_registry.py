@@ -1,6 +1,6 @@
 """풀 시나리오 장부(docs/scenarios.md)와 테스트(@pytest.mark.scenario("S1"))를 대조한다.
 
-규칙은 .claude/rules/scenarios.md. tests/test_repo_hygiene.py가 부른다.
+규칙은 .claude/rules/scenarios.md. tests/structure/test_repo_hygiene.py가 부른다.
 """
 
 import ast
@@ -53,7 +53,9 @@ def 테스트_표시(소스, 파일명):
 
 def 모든_테스트_표시(폴더=TESTS):
     표시 = {}
-    for 경로 in sorted(glob.glob(os.path.join(폴더, "test_*.py"))):
+    for 경로 in sorted(
+        glob.glob(os.path.join(폴더, "**", "test_*.py"), recursive=True)
+    ):
         with open(경로, encoding="utf-8") as f:
             표시.update(테스트_표시(f.read(), os.path.basename(경로)))
     return 표시

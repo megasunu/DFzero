@@ -301,6 +301,7 @@ def test_아몬_하층_보스전은_2차수_AC와_HP로_시작한다():
     실행값으로 본다. 딜러 AC = 9+차수(2)+민첩(14 -> +2)+종족:용족 1+종족:세리말리온 -1(+보스 2),
     HP = 5+건강보정치(0)+올림(6x5/2) = 20(보스 x2). 차수만큼 행동하므로 한 차례 2번."""
     from game.system.combat import stats
+    from game.system.combat import stat_breakdown
 
     rng.시드(0)
     상태 = support.새게임()
@@ -310,7 +311,7 @@ def test_아몬_하층_보스전은_2차수_AC와_HP로_시작한다():
     전투 = 상태["전투상태"]
     적 = {p["원본"]["몬스터명"]: p for p in 전투["참가자"] if p["진영"] == "적"}
     보스 = 적["불숨의 샐리온"]
-    assert stats.AC_내역(전투, 보스) == [
+    assert stat_breakdown.AC_내역(전투, 보스) == [
         ("딜러", 9),
         ("차수", 2),
         ("민첩", 2),

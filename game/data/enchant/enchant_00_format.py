@@ -2,7 +2,7 @@
 # 마법부여 양식
 # =====================
 # 마법부여 데이터 파일들의 공용 양식을 모아둔 참고용 파일이다(실제 데이터 없음).
-# 마을 [전문직업] > [마법부여]에서 장비에 거는 효과이고, 규칙은 game/system/enchant_system.py와 docs/game-rules.md.
+# 마을 [전문직업] > [마법부여]에서 장비에 거는 효과이고, 규칙은 game/system/item/enchant_system.py와 docs/game-rules.md.
 #
 # 파일명과 부위 구역 대응 (장비 파일 eq_01~04 번호 체계와 동일):
 #   enchant_01_weapon    - 무기          (무기마법부여)

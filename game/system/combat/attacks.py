@@ -1,7 +1,8 @@
 # 전투 시스템 - 아군 일반공격.
 # (combat 패키지에서 분리 - R4. 전체 설계 설명은 game/system/combat/__init__.py)
 
-from game.system import equipment_system, rng
+from game.system import rng
+from game.system.item import equipment_system
 from game.system.combat import (
     channeling,
     core,
@@ -16,6 +17,7 @@ from game.system.combat import (
     status,
     traits,
 )
+from game.system.combat import stat_breakdown
 
 # =====================================================
 # 공격 실행
@@ -421,7 +423,7 @@ def _턴시작_내성공격_1회(전투상태, 시전자, 대상, 이름, 원소
             전투상태, 시전자, 대상, _내성실패_효과(원소["효과"]), f"'{이름}'"
         )
     타격 = {"대상": 대상["이름"], "내성": "성공" if 성공 else "실패", "내성값": 값}
-    if stats.상세로그(전투상태):
+    if stat_breakdown.상세로그(전투상태):
         타격 |= {"내성스탯": 원소["내성"], "내성보정": 보정치}
     core.로그(
         전투상태,

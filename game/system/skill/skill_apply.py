@@ -14,6 +14,7 @@ from game.system.combat import (
     stats,
     status,
 )
+from game.system.combat import stat_breakdown
 from game.system.skill.skill_grant import (
     상태이상_부여,
     이름있는효과_부여,
@@ -69,7 +70,7 @@ def _내성_실패인가(문맥, 항목, 이점검사):
         추가불리=항목.get("내성불리점", False),  # 고각도 슬라이딩
     )
     계산 = []
-    if stats.상세로그(문맥.전투상태):
+    if stat_breakdown.상세로그(문맥.전투상태):
         계산 = [
             f"DC 계산: {원식} = {난이도}"
             if isinstance(원식, str)

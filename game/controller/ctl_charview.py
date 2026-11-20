@@ -12,8 +12,8 @@ from game.data.monster.monster_title import 칭호목록
 from game.system import (
     character_data_system as 캐릭터데이터,
     character_levelup_system as 캐릭터레벨업,
-    equipment_system,
 )
+from game.system.item import equipment_system
 from game.system.combat import core, hit, participants, stats, traits
 from game.controller.ctl_levelup import (
     캐릭터_다음_레벨업_항목,
