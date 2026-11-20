@@ -19,6 +19,7 @@ from game.system.combat import (
     status,
     traits,
 )
+from game.system.combat import trait_triggers
 
 
 def 유효_흡혈(전투상태, 참가자):
@@ -433,7 +434,7 @@ def 피해_적용(
         and 공격자.get("진영") != 대상.get("진영")
     ):
         # 공격자의 "속성피해시" 몬스터특성(알비노 고블린 - 명속성 피해를 주면 감전, 쓰러진 대상 제외)
-        traits.특성_속성피해시_발동(
+        trait_triggers.특성_속성피해시_발동(
             전투상태, 공격자, 대상, [s for _, s in 부분들 if s is not None]
         )
     if 공격측 is not None and 공격측.get("진영") != 대상.get("진영"):

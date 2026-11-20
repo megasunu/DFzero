@@ -14,6 +14,7 @@ from game.data.job_level.job_level_000x_style import 전투스타일
 from game.system import character_data_system as 캐릭터데이터
 from game.data.job_level import job_level_000x_style as 스타일파일
 from game.system.combat import hit, traits
+from game.system.combat import trait_triggers
 from game.system import dice_utils
 from game.system import skill_system as ss
 from game.system import character_levelup_system as 레벨업
@@ -999,16 +1000,16 @@ def test_무기의_극의_둔기는_명중시_20퍼센트_기절(monkeypatch):
     적 = next(x for x in 전투상태["참가자"] if x["진영"] != "아군")
     monkeypatch.setattr(dice_utils, "내성_굴림", lambda *a, **k: (False, 1))
     monkeypatch.setattr(rng.확률, "random", lambda: 0.5)  # 20% 밖
-    traits.특성_공격명중시_발동(전투상태, p, 적)
+    trait_triggers.특성_공격명중시_발동(전투상태, p, 적)
     assert not 적.get("상태이상")
     monkeypatch.setattr(rng.확률, "random", lambda: 0.1)
-    traits.특성_공격명중시_발동(전투상태, p, 적)
+    trait_triggers.특성_공격명중시_발동(전투상태, p, 적)
     assert [s["이름"] for s in 적["상태이상"]] == ["기절"]
 
     # 다른 무기면 발동하지 않는다
     전투상태, p = _무기의_극의_전투("도")
     적 = next(x for x in 전투상태["참가자"] if x["진영"] != "아군")
-    traits.특성_공격명중시_발동(전투상태, p, 적)
+    trait_triggers.특성_공격명중시_발동(전투상태, p, 적)
     assert not 적.get("상태이상")
 
 

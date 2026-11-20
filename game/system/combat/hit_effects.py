@@ -18,6 +18,7 @@ from game.system.combat import (
     status,
     traits,
 )
+from game.system.combat import trait_triggers
 
 
 def 유효_집요함(전투상태, 참가자):
@@ -517,9 +518,9 @@ def 피격_처리(전투상태, 공격자, 대상, 판정, 속성=None, 특성�
     # 운석 폭발처럼 몬스터 본인의 공격이 아닌 피해는 마녀 특성 등을 다시 걸지 않는다
     if not 특성발동:
         return
-    traits.특성_공격명중시_발동(전투상태, 공격자, 대상)
+    trait_triggers.특성_공격명중시_발동(전투상태, 공격자, 대상)
     특성_명중시_대상변동(전투상태, 공격자, 대상)
-    traits.특성_피격시_발동(
+    trait_triggers.특성_피격시_발동(
         전투상태, 공격자, 대상
     )  # 맞은 쪽의 "피격시효과"(독샘의 주인)
     장비_피격시효과(전투상태, 공격자, 대상)  # 맞은 쪽 장비의 "발동":"피격"(알트브라움)

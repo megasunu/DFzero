@@ -22,6 +22,7 @@ from game.system.combat import (
     status,
     traits,
 )
+from game.system.combat import trait_triggers
 from game.system import dice_utils
 from game.system.skill import skill_target
 from tests import support
@@ -449,7 +450,6 @@ def test_종족_루가루는_방어력_마이너스1이라_맞을_때마다_1을
 
 def test_종족_좀비는_AC_마이너스1_방어력_마이너스1():
     # 종족:좀비 특성에 AC -1, 방어력 -1(좀비 네 종 모두)
-    from game.system.combat import traits
 
     상태 = support.새게임()
     gf.전투_시작(상태, ["포레스트 좀비"], 레벨=5, 차수=1)
@@ -1595,7 +1595,7 @@ def test_냉기방출은_내성_결과와_관계없이_모든_적에게_연출(m
     monkeypatch.setattr(
         dice_utils, "내성_굴림", lambda 보정치, 난이도, **kw: (next(결과), 난이도)
     )
-    traits.특성_턴종료시_발동(전투상태, 굴)
+    trait_triggers.특성_턴종료시_발동(전투상태, 굴)
     assert sorted(e["대상id"] for e in 전투상태["공격연출"]) == sorted(
         p["id"] for p in 아군
     )

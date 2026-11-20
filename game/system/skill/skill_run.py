@@ -19,6 +19,7 @@ from game.system.combat import (
     status,
     traits,
 )
+from game.system.combat import trait_triggers
 from game.data.buff import summon_00
 from game.system.skill.skill_grant import (
     값_또는_리스트,
@@ -1480,7 +1481,7 @@ def 스킬_실행(
     # 아수라 "정신이 번쩍!" - 특성의 "스킬사용시효과"
     # 그래플러 "강렬한 테이크 다운" - 명중한 타격마다 맞은 적에게 충격파
     _스킬사용후_스택(전투상태, 시전자, 스킬데이터)
-    traits.특성_스킬사용시_발동(
+    trait_triggers.특성_스킬사용시_발동(
         전투상태,
         시전자,
         스킬이름,

@@ -145,7 +145,7 @@
 #   남은 행동을 이어서 한다), 패턴 "마지막행동"(랜스 차징·돌진 명령 - 마지막이 아닌 행동이면 다시 굴리고 마지막에 쓴다),
 #   특성 "턴시작감옥"(명중 굴림 대 AC + 속도보너스 - hit.명중_판정의 AC추가), "체력소환"의 "분신"
 #   (쓰러진 적의 칸에 사본, 특성 "분신" - "회피불리점"·"받는피해배율"), 버프의 "피격시효과"(전기 방벽 -
-#   traits.특성_피격시_발동), 오라헌터("오라대상명중이점"/"명중시버프강탈"/"처치시오라강화"), "버프스킬반응"
+#   trait_triggers.특성_피격시_발동), 오라헌터("오라대상명중이점"/"명중시버프강탈"/"처치시오라강화"), "버프스킬반응"
 #   (skill_run이 버프스킬 뒤 monster_actions.버프스킬_반응을 부른다).
 
 # 이 패키지는 위 설계를 모듈로 나눈 것이다(R4). 호출부(gameflow, skill_system, tests)는
@@ -154,7 +154,8 @@
 #   core             공용 - 전투 로그 기록, 차수, 전투 종료 판정(전투상태만 보는 함수 - reactions와 flow가 같이 쓴다)
 #   formula          수식 평가 - 데미지 문법/다이스/무기공격력
 #   participants     참가자 인스턴스 생성(아군/몬스터), 몬스터 수식 컨텍스트
-#   traits           몬스터 특성/캐릭터 특성/칭호 수치와 발동(공격명중시/턴종료시/해제시/전투시작시)
+#   traits           몬스터 특성/캐릭터 특성/칭호 수치 조회와 반영(형태 변환, 대체행동, 상태이상 효과 적용 포함)
+#   trait_triggers   특성 발동 - 공격명중시/라운드·턴종료시/피격시/스킬사용시/속성피해시/해제시/전투시작시
 #   status           상태이상 조회 - 정의/면역/플래그/행동제한, 은신 자동해제
 #   stats            수치 집계 - 버프/디버프/장비/특성 반영 능력치, AC/방어력/보호률/최대HP, 이니셔티브/우선도, 수식 컨텍스트, 몬스터 패턴 수식
 #   resources        효과 정의 조회와 자원(보유/소모), 몬스터 버프 부여
@@ -172,6 +173,6 @@
 #                    맨 위 - 다른 combat 모듈은 부르지 않고 도구·테스트만 부른다(버퍼를 끄는 판정은 core.꺼진_효과)
 #
 # 의존 방향(아래가 위를 부르지 않는다): core/formula -> participants/status -> control -> channeling
-# -> resources -> stats/traits -> hit/element -> damage -> hit_effects -> reactions/attacks -> monster_actions -> flow. 다른 모듈에서 부르는 이름은 밑줄 없는
-# 공개 이름이다. 도메인 재귀로 남은 순환(damage와 거기서 나눈 hit/element/hit_effects, reactions/stats/traits)은 tests/structure/test_architecture.py가
+# -> resources -> stats/traits -> hit/element -> damage -> trait_triggers -> hit_effects -> reactions/attacks -> monster_actions -> flow. 다른 모듈에서 부르는 이름은 밑줄 없는
+# 공개 이름이다. 도메인 재귀로 남은 순환 둘(수치: stats/traits/element, 발동: damage와 거기서 나눈 hit/hit_effects, reactions/trait_triggers)은 tests/structure/test_architecture.py가
 # 허용 목록으로 고정한다 - 이 묶음을 키우거나 새 순환을 만들면 테스트가 실패한다.

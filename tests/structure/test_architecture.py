@@ -17,10 +17,11 @@ combat_모듈 = sorted(p.stem for p in combat_폴더.glob("*.py") if p.stem != "
 # 커지면 실패하고, 작아지면 이 목록도 같이 줄이라고 알려 준다.
 # hit(명중 판정)·element(속성 배율·연출)·hit_effects(피격 부가효과)는 damage를 주제별로 나눈 조각이라 같은
 # 묶음에 든다 - 새 의존이 아니라 원래 damage 안에 있던 순환이다. 순환이 없는 조각(control·channeling)은 밖에 있다.
+# 특성 발동을 traits에서 trait_triggers로 나누자(#792) 하나였던 묶음이 둘로 갈렸다: 수치 쪽(능력치 <-> 특성 수치,
+# 속성 배율)과 발동 쪽(피격 -> 특성 발동 -> 피해). 발동 쪽은 수치 쪽을 부르지만 거꾸로는 부르지 않는다.
 허용_순환 = [
-    frozenset(
-        {"damage", "element", "hit", "hit_effects", "reactions", "stats", "traits"}
-    )
+    frozenset({"element", "stats", "traits"}),
+    frozenset({"damage", "hit", "hit_effects", "reactions", "trait_triggers"}),
 ]
 
 

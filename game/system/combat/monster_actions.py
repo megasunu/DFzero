@@ -21,6 +21,7 @@ from game.system.combat import (
     status,
     traits,
 )
+from game.system.combat import trait_triggers
 
 
 def _몬스터_패턴_대상목록(전투상태, 몬스터참가자, 패턴, 기본대상):
@@ -1030,7 +1031,7 @@ def 몬스터_대상_선택(전투상태, 몬스터참가자, 생존아군):
     return monster_ai.타겟_선택(
         생존아군,
         전투상태["상태이상정의"],
-        traits.우선표적_상태이상(전투상태, 몬스터참가자),
+        trait_triggers.우선표적_상태이상(전투상태, 몬스터참가자),
         우선점수=우선점수,
         어그로추가=lambda p: stats.버프디버프_수치(전투상태, p, "어그로"),
     )
