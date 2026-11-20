@@ -2,7 +2,7 @@
 # 캐릭터 스테이터스 양식
 # =====================
 # 파티원의 전투 스테이터스 필드를 정의하는 참고용 파일이다(실제 데이터 없음).
-# 실제 모양과 값 타입은 game/system/state_schema.py가 기록하고 tests/test_state_schema.py가 검사한다.
+# 실제 모양과 값 타입은 game/system/state_schema.py가 기록하고 tests/structure/test_state_schema.py가 검사한다.
 
 # =====================================================
 # <캐릭터 항목 양식>

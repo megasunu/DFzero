@@ -15,7 +15,7 @@ import gameflow as gf
 from game.system.combat import flow, monster_actions, stats, traits
 from game.system import monster_ai
 from tests import support
-from tests.test_combat_skills import 정리, 참가자_요약
+from tests.combat.test_combat_skills import 정리, 참가자_요약
 
 파티 = [("", "귀검사"), ("", "격투가"), ("", "거너"), ("", "프리스트")]
 전직 = {

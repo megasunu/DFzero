@@ -41,7 +41,7 @@ from game.data.equipment.eq_03_accessory_08_bracelet import 팔찌목록
 from game.data.equipment.eq_02_armor_02_bottom import 하의목록
 from game.system.combat import formula, resources
 
-루트 = pathlib.Path(__file__).resolve().parents[1]
+루트 = pathlib.Path(__file__).resolve().parents[2]
 
 
 # ---------------------------------------------------------------- 수식
@@ -515,7 +515,7 @@ def test_공어_몬스터는_그림이_연결된다():
 
 
 def test_용족_몬스터는_그림과_적등급을_가지고_등록된다():
-    """세리말리온 계열(용인족은 tests/test_dragonkin.py)."""
+    """세리말리온 계열(용인족은 tests/monsters/test_dragonkin.py)."""
     용족 = {
         n: d
         for n, d in gf.몬스터목록.items()

@@ -6,7 +6,7 @@ description: 스킬 밸런스 기준표(스킬마다 1~5차수 기대 피해, �
 # 스킬 밸런스 기준표
 
 **손으로 셈하지 않는다.** 표는 `tools/skill_balance.py`가 만든 `docs/balance/스킬기준표.md`에 있고,
-`tests/test_skill_balance.py`가 스킬 데이터와 같은지 검사하므로 `main-branch`의 표는 늘 지금 데이터의 값이다.
+`tests/devtools/test_skill_balance.py`가 스킬 데이터와 같은지 검사하므로 `main-branch`의 표는 늘 지금 데이터의 값이다.
 
 ## 표를 보여 달라고 하면
 

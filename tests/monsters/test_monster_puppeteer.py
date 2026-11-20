@@ -12,7 +12,7 @@ from game.system import dice_utils, monster_ai
 from game.system.combat import flow, monster_actions, stats, status, traits
 from tests import support
 
-루트 = pathlib.Path(__file__).resolve().parent.parent
+루트 = pathlib.Path(__file__).resolve().parents[2]
 
 
 def _한턴(전투상태, 몬스터, 패턴, 대상, monkeypatch):

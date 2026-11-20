@@ -699,13 +699,13 @@ def test_게이트_빠른_확인은_커버리지_없이_고른_테스트만_돌�
 
     단계들 = [("ruff check", ["린트"]), ("pytest", check.PYTEST)]
     코드, 돈_명령 = _게이트_실행(
-        monkeypatch, tmp_path, 단계들, ["--빠른", "tests/test_battle_log.py"]
+        monkeypatch, tmp_path, 단계들, ["--빠른", "tests/combat/test_battle_log.py"]
     )
     assert 코드 == 0
     테스트_명령 = 돈_명령[-1]
     assert 테스트_명령[:3] == [sys.executable, "-m", "pytest"]
     assert not [a for a in 테스트_명령 if a.startswith("--cov")]
-    assert 테스트_명령[-1] == "tests/test_battle_log.py"
+    assert 테스트_명령[-1] == "tests/combat/test_battle_log.py"
 
 
 def test_게이트는_빠른_확인_없이_테스트를_고르면_거절한다(monkeypatch, tmp_path):

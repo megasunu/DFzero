@@ -1,7 +1,7 @@
 ---
 paths:
   - "docs/scenarios.md"
-  - "tests/test_scenario_*.py"
+  - "tests/scenarios/test_scenario_*.py"
   - "tests/scenario.py"
   - "tests/support.py"
   - "tools/scenario_registry.py"

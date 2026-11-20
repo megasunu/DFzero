@@ -12,7 +12,7 @@ from game.data.buff.status_effects import 상태이상목록
 from game.system import rng
 from tests.support import 새게임, 전투_열기
 
-_에셋 = Path(__file__).resolve().parent.parent / "game" / "assets" / "status"
+_에셋 = Path(__file__).resolve().parents[2] / "game" / "assets" / "status"
 
 
 def _전투():

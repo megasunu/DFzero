@@ -173,5 +173,5 @@
 #
 # 의존 방향(아래가 위를 부르지 않는다): core/formula -> participants/status -> control -> channeling
 # -> resources -> stats/traits -> hit/element -> damage -> hit_effects -> reactions/attacks -> monster_actions -> flow. 다른 모듈에서 부르는 이름은 밑줄 없는
-# 공개 이름이다. 도메인 재귀로 남은 순환(damage와 거기서 나눈 hit/element/hit_effects, reactions/stats/traits)은 tests/test_architecture.py가
+# 공개 이름이다. 도메인 재귀로 남은 순환(damage와 거기서 나눈 hit/element/hit_effects, reactions/stats/traits)은 tests/structure/test_architecture.py가
 # 허용 목록으로 고정한다 - 이 묶음을 키우거나 새 순환을 만들면 테스트가 실패한다.

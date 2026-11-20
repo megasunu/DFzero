@@ -9,9 +9,9 @@ import ast
 import pathlib
 
 import gameflow
-from tests.test_architecture import _강연결_묶음
+from tests.structure.test_architecture import _강연결_묶음
 
-루트 = pathlib.Path(__file__).resolve().parents[1]
+루트 = pathlib.Path(__file__).resolve().parents[2]
 컨트롤러_폴더 = 루트 / "game" / "controller"
 모듈들 = sorted(p.stem for p in 컨트롤러_폴더.glob("ctl_*.py"))
 
@@ -98,8 +98,8 @@ def test_창구는_화면_테스트_도구가_쓰는_이름을_빠짐없이_내�
     쓰는 = {}
     대상 = [
         *(루트 / "game" / "screens").glob("*.py"),
-        *(루트 / "tests").glob("*.py"),
-        *(루트 / "tools").glob("*.py"),
+        *(루트 / "tests").rglob("*.py"),
+        *(루트 / "tools").rglob("*.py"),
         루트 / "main.py",
     ]
     for 경로 in 대상:

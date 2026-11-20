@@ -17,7 +17,7 @@ from game.system.combat import flow, stats
 from game.system import skill_system as ss
 from tests import scenario, support
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def test_화면은_game_system을_직접_쓰지_않는다():
@@ -316,7 +316,9 @@ def test_공격연출은_한번_가져오면_비워지고_종류마다_그림이
         {"대상id": 적["id"], "종류": "실패"},
     ]
     assert gf.새_공격연출_가져오기(상태) == []
-    폴더 = os.path.join(os.path.dirname(__file__), "..", "game", "assets", "attack")
+    폴더 = os.path.join(
+        os.path.dirname(__file__), "..", "..", "game", "assets", "attack"
+    )
     종류들 = [
         f"{모양}:{색}"
         for 모양 in ("참격", "타격", "관통", "마법")

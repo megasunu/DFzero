@@ -125,7 +125,7 @@ def test_정령_패턴은_소환수_행동표에_주스탯_보정치와_판정�
 def test_정령은_그림이_연결된다():
     from pathlib import Path
 
-    폴더 = Path(__file__).resolve().parents[1] / "game" / "assets" / "monster"
+    폴더 = Path(__file__).resolve().parents[2] / "game" / "assets" / "monster"
     정령 = {n: d["이미지"] for n, d in gf.몬스터목록.items() if d["분류"] == "정령"}
     assert 정령 == _그림
     for 이미지 in 정령.values():

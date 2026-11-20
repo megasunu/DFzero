@@ -504,7 +504,7 @@ def test_마법부여_데이터_폴더에는_함수가_없다():
     import ast
     from pathlib import Path
 
-    폴더 = Path(__file__).resolve().parent.parent / "game" / "data" / "enchant"
+    폴더 = Path(__file__).resolve().parents[2] / "game" / "data" / "enchant"
     파일들 = sorted(폴더.glob("*.py"))
     assert {p.stem for p in 파일들} >= {"enchant_00_format", *_구역파일}
     for 경로 in 파일들:

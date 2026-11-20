@@ -14,7 +14,7 @@ import gameflow as gf
 from game.system.combat import core
 from tests import support
 
-GOLDEN_DIR = os.path.join(os.path.dirname(__file__), "golden")
+GOLDEN_DIR = os.path.join(os.path.dirname(__file__), "..", "golden")
 문장_골든 = support.문장_골든
 
 

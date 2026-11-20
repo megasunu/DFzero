@@ -348,7 +348,7 @@ def 전체_문서(빌드값=기준빌드):
         "# 스킬 밸런스 기준표",
         "",
         "`tools/skill_balance.py`가 만든 파일이다 - 손으로 고치지 않는다. 스킬 데이터나 기준을 바꾸면",
-        "`python tools/skill_balance.py`로 다시 쓴다(`tests/test_skill_balance.py`가 최신인지 검사한다).",
+        "`python tools/skill_balance.py`로 다시 쓴다(`tests/devtools/test_skill_balance.py`가 최신인지 검사한다).",
         "",
         f"- {빌드_설명(빌드값)}.",
         '- 칸은 `기대 / 기준 (비율)` - 비율은 기대가 기준보다 몇 % 많은지. 기준은 `docs/game-rules.md` "스킬 밸런스 기준".',

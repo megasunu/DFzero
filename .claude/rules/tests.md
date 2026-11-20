@@ -9,6 +9,13 @@ paths:
 파일별로 무엇을 지키는지는 `docs/test-map.md`에 있다. 통째로 읽지 말고 `grep -n "<주제어>" docs/test-map.md`로 찾는다.
 새 테스트 파일을 만들거나 주제가 넓어지면 그 행을 같은 병합 요청에서 고친다.
 
+## 폴더
+
+`tests/` 바로 아래는 공용(`conftest.py`·`support.py`·`scenario.py`, `golden/`)과 어느 묶음에도 안 드는 시험이다. 주제 폴더:
+`combat/`(전투 규칙·효과·자동전투) `items/`(아이템·제작·상점) `jobs/`(직업별) `monsters/`(몬스터·종족·챔피언)
+`scenarios/`(풀 시나리오 s1~) `structure/`(계층·데이터 무결성·저장소 규칙) `devtools/`(tools/ 도구). 새 파일은 맞는 폴더에 둔다.
+`import support`는 pytest가 `tests/conftest.py`를 불러오며 `tests/`를 경로에 넣으므로 어느 폴더에서나 된다. 저장소 뿌리는 `Path(__file__).parents[2]`다.
+
 ## 규칙
 
 - 공용 도우미는 `tests/support.py`(자동 전투, 강제 승리/패배, 경로 걷기, 결정적 성장, 골든 쓰기·골든 로그 모으기, 전투 단위 테스트의

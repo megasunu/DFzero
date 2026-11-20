@@ -5,7 +5,7 @@
 
 git의 `* text=auto eol=lf`(.gitattributes)가 커밋할 때 CRLF를 LF로 정규화하지만,
 GitHub 웹 업로드처럼 git을 거치지 않고 들어온 파일이나 아직 커밋 안 한 작업 파일은
-그 정규화를 받지 않는다 - 그런 것을 이 스크립트와 tests/test_repo_hygiene.py가 잡는다.
+그 정규화를 받지 않는다 - 그런 것을 이 스크립트와 tests/structure/test_repo_hygiene.py가 잡는다.
 """
 
 import os

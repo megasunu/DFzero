@@ -25,7 +25,7 @@ game/data/         직업, 몬스터, 맵, 아이템 데이터(파이썬 딕셔�
                      함수 없이 데이터만 - 합치기와 표시 채우기는 game/system/enchant_system.py
   character/job_info.py  1차 직업 하나의 정보(데이터 파일 이름, 기본 주/보조/약점스탯, 전직 기본스탯, 자동전투 대체스킬)
 game/assets/       폰트, 이미지
-tests/             헤드리스 테스트 + golden/*.json (kivy 없이 돈다, 테스트 지도는 docs/test-map.md)
+tests/             헤드리스 테스트 + golden/*.json (kivy 없이 돈다, 테스트 지도는 docs/test-map.md, 주제 폴더는 rules/tests.md)
 tools/check.py     완료 기준 게이트 (CLAUDE.md "완료 기준"), --골든은 골든 갱신 요약
 tools/ui_smoke.py  화면 스모크(kivy + Xvfb, 스크린샷) 실행 파일 - 단계 순서(`_단계들`)만 둔다. 화면 바꿀 때 직접
   smoke/             스모크 단계 - 주제별 믹스인 party/town/battle/world/jobs/menu, 창 설정·도우미는 common.py

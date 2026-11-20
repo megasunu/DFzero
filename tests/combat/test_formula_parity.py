@@ -15,7 +15,7 @@ import pytest
 from game.system import rng
 from game.system import dice_utils
 from game.system.combat import formula
-from tests.test_data_integrity import _수식_모으기, 호출쪽_치환, 수식_컨텍스트
+from tests.structure.test_data_integrity import _수식_모으기, 호출쪽_치환, 수식_컨텍스트
 
 # ---- 옛 구현 (eval 사용, 바꾸기 전 formula.py 그대로) --------------------------------------
 

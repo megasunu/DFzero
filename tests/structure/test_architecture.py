@@ -8,7 +8,7 @@ R4가 combat_system을 12개 모듈로 나눈 뒤에도 모듈끼리 서로 impo
 import ast
 import pathlib
 
-루트 = pathlib.Path(__file__).resolve().parents[1]
+루트 = pathlib.Path(__file__).resolve().parents[2]
 combat_폴더 = 루트 / "game" / "system" / "combat"
 combat_모듈 = sorted(p.stem for p in combat_폴더.glob("*.py") if p.stem != "__init__")
 검사_모듈 = combat_모듈 + ["skill_system"]  # 밑줄 이름 규칙은 skill_system도 지킨다

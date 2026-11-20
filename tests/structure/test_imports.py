@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 알려진 문제로 import가 안 되는 모듈 - 이슈로 만들고 그 번호를 적는다.
 # 여기 넣으면 strict xfail이 되고, 고치면 XPASS로 실패하므로 그때 지운다.

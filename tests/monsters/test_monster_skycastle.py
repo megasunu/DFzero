@@ -31,7 +31,9 @@ from game.system.combat import (
 from game.data.monster.monster_ability import 특성목록 as _특성
 from tests import support
 
-_그림폴더 = os.path.join(os.path.dirname(__file__), "..", "game", "assets", "monster")
+_그림폴더 = os.path.join(
+    os.path.dirname(__file__), "..", "..", "game", "assets", "monster"
+)
 
 
 def _전장(*이름들):

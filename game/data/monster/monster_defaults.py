@@ -3,7 +3,7 @@
 # =====================
 # monster_race_*.py의 몬스터 항목에 없는 칸은 이 값으로 채운다(ctl_registry가 몬스터목록을 합칠 때).
 # 새 몬스터는 여기와 같은 값인 칸을 생략해도 된다 - 이미 적어 둔 칸은 그대로 쓴다.
-# 칸 목록과 필수 칸은 tests/test_data_integrity.py가 검사한다(필수 칸 = 이 표에 없는 칸).
+# 칸 목록과 필수 칸은 tests/structure/test_data_integrity.py가 검사한다(필수 칸 = 이 표에 없는 칸).
 #
 # 레벨/차수/최대HP/AC가 None이면 전투 때 던전/역할군 공식으로 정한다(gameflow.py 머리 주석).
 # 취약~상태이상의 None은 "없음", 획득골드 "공식"은 loot_system.몬스터_골드의 레벨 공식이다.

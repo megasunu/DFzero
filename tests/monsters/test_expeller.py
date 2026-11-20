@@ -217,7 +217,7 @@ def test_익스펠러_그림_파일이_모두_있다():
     from game.data.buff.status_effects import 상태이상목록
     from game.data.monster.monster_race_expeller import 몬스터목록
 
-    폴더 = Path(__file__).resolve().parent.parent / "game" / "assets" / "monster"
+    폴더 = Path(__file__).resolve().parents[2] / "game" / "assets" / "monster"
     그림들 = [m["이미지"] for m in 몬스터목록.values()]
     그림들.append(상태이상목록["석상"]["효과"]["표시그림"])
     assert all((폴더 / 그림).is_file() for 그림 in 그림들)
