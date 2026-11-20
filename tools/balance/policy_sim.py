@@ -9,8 +9,8 @@
 정책 난수는 게임 난수 흐름(game/system/rng.py)과 따로 둔다. 탐색은 굴려 보기 전에 게임 난수 상태를 저장하고 끝나면 되돌린다 -
 굴려 볼 때는 정책 난수로 만든 다른 시드를 쓴다(실제 전투의 미래 주사위를 미리 보지 않게).
 
-    python tools/policy_sim.py --파티 48 --판 5 --정책 전력전투 분석용 승률용 --병렬 4 --출력 결과.json
-    python tools/policy_sim.py --파티 300 --판 40 --정책 전력전투 분석용 --지표
+    python tools/balance/policy_sim.py --파티 48 --판 5 --정책 전력전투 분석용 승률용 --병렬 4 --출력 결과.json
+    python tools/balance/policy_sim.py --파티 300 --판 40 --정책 전력전투 분석용 --지표
 """
 
 import argparse
@@ -22,8 +22,12 @@ import random
 import sys
 import time
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-for _경로 in (ROOT, os.path.join(ROOT, "tests"), os.path.join(ROOT, "tools")):
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+for _경로 in (
+    ROOT,
+    os.path.join(ROOT, "tests"),
+    os.path.join(ROOT, "tools", "balance"),
+):
     if _경로 not in sys.path:
         sys.path.insert(0, _경로)
 

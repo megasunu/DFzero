@@ -1,11 +1,11 @@
-"""던전 밸런스 측정 도구(tools/dungeon_sim.py) - 조정안 적용, 피해 집계, 판 재현.
+"""던전 밸런스 측정 도구(tools/balance/dungeon_sim.py) - 조정안 적용, 피해 집계, 판 재현.
 
 실제 측정(던전당 수백 판)은 게이트 밖에서 돌린다(결과는 docs/balance/하늘성.md). 여기서는 몇 판만 돌린다.
 """
 
 import gameflow as gf
 from game.system import dungeon_system
-from tools import dungeon_sim as ds
+from tools.balance import dungeon_sim as ds
 
 _D11 = "dungeon_02A_D11_amon_lower"
 

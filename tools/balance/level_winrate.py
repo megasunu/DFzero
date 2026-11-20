@@ -1,7 +1,7 @@
 """레벨별 등록 파티 승률 - 레벨마다 등록한 파티로 그 레벨 던전의 인카운트·보스·원정 승률을 잰다.
 
-    python tools/level_winrate.py --판 100                  # 등록 파일의 모든 레벨
-    python tools/level_winrate.py --레벨 2 --판 50 --표 결과.md --출력 결과.json
+    python tools/balance/level_winrate.py --판 100                  # 등록 파일의 모든 레벨
+    python tools/balance/level_winrate.py --레벨 2 --판 50 --표 결과.md --출력 결과.json
 
 등록 파일(docs/balance/레벨별_파티.json)의 "레벨" 아래에 레벨마다
   던전  재는 던전 코드 목록(D01 ...)
@@ -15,7 +15,7 @@
         봉인 = 그 직업이 무기 칸에 레어 마법봉인 무기를 봉인된 채로, 언커먼무기 = "직업"표의 언커먼 무기,
         언커먼방어구 = 그 직업 방어구 재질의 언커먼 5부위.
 맨 위 "직업"은 1차 직업마다 {"무기": 종류, "언커먼무기": 이름, "방어구": 재질}이다.
-전투는 tools/dungeon_sim.py와 같다 - 아군 전원 자동전투 "전력전투", 판마다 쉬고, 판 i의 시드는 시작시드+i라
+전투는 tools/balance/dungeon_sim.py와 같다 - 아군 전원 자동전투 "전력전투", 판마다 쉬고, 판 i의 시드는 시작시드+i라
 파티끼리 같은 시드를 쓴다(공통 난수). 깃허브 액션 "Level winrate"(버튼 실행)가 이 도구를 돌려 표를 실행 요약에 남긴다.
 """
 
@@ -26,12 +26,12 @@ import math
 import os
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 for _경로 in (ROOT, os.path.join(ROOT, "tests")):
     if _경로 not in sys.path:
         sys.path.insert(0, _경로)
 
-from tools import dungeon_sim as ds  # noqa: E402
+from tools.balance import dungeon_sim as ds  # noqa: E402
 
 등록경로 = os.path.join(ROOT, "docs", "balance", "레벨별_파티.json")
 종류들 = ("인카운트", "보스", "원정")

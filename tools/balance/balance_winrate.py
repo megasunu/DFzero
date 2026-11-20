@@ -1,6 +1,6 @@
 """밸런스 체크 승률용 전투 - 파티원 네 명의 행동 패턴을 돌아가며 다듬어 그 파티의 최고 승률을 찾는다.
 
-    python tools/balance_sim.py 전체 --승률 --묶음 1 --판 20   # 고른 무작위 파티 6개
+    python tools/balance/balance_sim.py 전체 --승률 --묶음 1 --판 20   # 고른 무작위 파티 6개
 
 밸런스 체크 전투는 분석용(무작위성을 키워 넓게)과 이 승률용(승률을 끌어올려)으로 나눈다.
 - 패턴: 파티원마다 차례 1~슬롯수의 행동 - "전력전투"(그 차례는 자동전투 전력전투), "일반공격", 또는 스킬(먼저 쓰고
@@ -20,12 +20,12 @@ import os
 import random
 import sys
 
-_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-from tools import balance_analysis as ba  # noqa: E402
-from tools import balance_sim as bs  # noqa: E402
+from tools.balance import balance_analysis as ba  # noqa: E402
+from tools.balance import balance_sim as bs  # noqa: E402
 
 학습시드_시작 = 200000
 검증시드_시작 = 300000
@@ -267,7 +267,7 @@ def 보고서(요약, 정보):
     줄 = [
         "# 밸런스 체크 - 승률용 전투",
         "",
-        "`python tools/balance_sim.py 전체 --승률` 결과(#691). 파티원 네 명의 행동 패턴을 돌아가며 다듬어(전력전투에서 시작,"
+        "`python tools/balance/balance_sim.py 전체 --승률` 결과(#691). 파티원 네 명의 행동 패턴을 돌아가며 다듬어(전력전투에서 시작,"
         " 같은 학습 판으로 후보를 맞대어 이기는 것만 받아들임) 그 파티의 최고 승률을 찾았다. 승률은 모두 학습에 쓰지 않은"
         " 검증 판에서 다시 잰 값이다. 분석 승률은 같은 검증 판의 분석용 전투(#690, 무작위 행동)다.",
         "",

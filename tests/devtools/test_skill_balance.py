@@ -1,10 +1,10 @@
-"""tools/skill_balance.py - 스킬 밸런스 기준표(기대 피해 vs 기준 피해)."""
+"""tools/balance/skill_balance.py - 스킬 밸런스 기준표(기대 피해 vs 기준 피해)."""
 
 import dataclasses
 
 import pytest
 
-from tools import skill_balance as sb
+from tools.balance import skill_balance as sb
 
 
 def _스킬(이름):
@@ -19,10 +19,10 @@ def _행(이름, 차수, 빌드=sb.기준빌드):
 
 
 def test_스킬기준표가_지금_데이터와_같다():
-    """스킬 데이터나 기준을 바꾸면 `python tools/skill_balance.py`로 표를 다시 쓴다."""
+    """스킬 데이터나 기준을 바꾸면 `python tools/balance/skill_balance.py`로 표를 다시 쓴다."""
     with open(sb.표_경로, encoding="utf-8") as f:
         assert f.read() == sb.전체_문서(), (
-            "docs/balance/스킬기준표.md가 낡았다 - python tools/skill_balance.py"
+            "docs/balance/스킬기준표.md가 낡았다 - python tools/balance/skill_balance.py"
         )
 
 

@@ -1,10 +1,10 @@
-"""tools/balance_analysis.py - 밸런스 체크 분석용 전투: 고른 무작위 파티, 무작위 행동, 판 기록, 집계, 선형 회귀."""
+"""tools/balance/balance_analysis.py - 밸런스 체크 분석용 전투: 고른 무작위 파티, 무작위 행동, 판 기록, 집계, 선형 회귀."""
 
 import collections
 import random
 
-from tools import balance_analysis as ba
-from tools import balance_sim as bs
+from tools.balance import balance_analysis as ba
+from tools.balance import balance_sim as bs
 
 # 전투를 도는 테스트가 쓰는 작은 파티 둘(버퍼·인형·반응이 섞이게)
 파티A = [

@@ -1,13 +1,13 @@
 """직업 밸런스 모의전투 - 시험 직업의 "승률패턴"을 찾고 판을 더할수록 다듬는다.
 
-    python tools/balance_sim.py 검귀 --처음부터   # 다섯 단계 1000판 + 최종 200판
-    python tools/balance_sim.py 검귀 --판 200     # 저장된 승률패턴에서 이어서(승률·랜덤·변형 1/3씩)
-    python tools/balance_sim.py 검귀 --비교       # 같은 200판으로 일반공격만 / 스킬 하나씩 / 승률패턴
-    python tools/balance_sim.py 전체 --딜 --판 200  # 24종 전원 자동전투 판당 딜(인형은 따로, 기록하지 않음)
-    python tools/balance_sim.py 전체 --지표 --판 200  # 딜지분·승률(버퍼를 끈 판까지). --전체지표면 다섯 가지
-    python tools/balance_sim.py 크루세이더 --기대      # 전투 없이 수치만 본 기대값(일반공격·피격·버프별)
-    python tools/balance_sim.py 전체 --분석 --묶음 10 --판 30  # 분석용 전투(tools/balance_analysis.py)
-    python tools/balance_sim.py 전체 --승률 --묶음 1 --판 20   # 승률용 전투(tools/balance_winrate.py)
+    python tools/balance/balance_sim.py 검귀 --처음부터   # 다섯 단계 1000판 + 최종 200판
+    python tools/balance/balance_sim.py 검귀 --판 200     # 저장된 승률패턴에서 이어서(승률·랜덤·변형 1/3씩)
+    python tools/balance/balance_sim.py 검귀 --비교       # 같은 200판으로 일반공격만 / 스킬 하나씩 / 승률패턴
+    python tools/balance/balance_sim.py 전체 --딜 --판 200  # 24종 전원 자동전투 판당 딜(인형은 따로, 기록하지 않음)
+    python tools/balance/balance_sim.py 전체 --지표 --판 200  # 딜지분·승률(버퍼를 끈 판까지). --전체지표면 다섯 가지
+    python tools/balance/balance_sim.py 크루세이더 --기대      # 전투 없이 수치만 본 기대값(일반공격·피격·버프별)
+    python tools/balance/balance_sim.py 전체 --분석 --묶음 10 --판 30  # 분석용 전투(tools/balance/balance_analysis.py)
+    python tools/balance/balance_sim.py 전체 --승률 --묶음 1 --판 20   # 승률용 전투(tools/balance/balance_winrate.py)
 
 패턴 = 시험 직업의 차례 1~슬롯수마다 고를 행동(일반공격 또는 보유 스킬). 차례마다 슬롯의 스킬을 먼저
 쓰고, 그 스킬이 일반행동을 쓰지 않았으면(보조행동·소모 없음) 같은 차례에 다음 슬롯도 쓴다(최대 3칸 -
@@ -34,7 +34,7 @@ import random
 import subprocess
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 기록경로 = os.path.join(ROOT, "docs", "balance", "patterns.json")
 분석보고서경로 = os.path.join(ROOT, "docs", "balance", "분석.md")
 승률보고서경로 = os.path.join(ROOT, "docs", "balance", "승률.md")
@@ -751,7 +751,7 @@ def _분석_명령(a):
         return 2
     if ROOT not in sys.path:
         sys.path.insert(0, ROOT)
-    from tools import balance_analysis as ba
+    from tools.balance import balance_analysis as ba
 
     판 = a.판 or 30
     파티들 = _고른_파티들(ba, a, 10)
@@ -786,8 +786,8 @@ def _승률_명령(a):
         return 2
     if ROOT not in sys.path:
         sys.path.insert(0, ROOT)
-    from tools import balance_analysis as ba
-    from tools import balance_winrate as bw
+    from tools.balance import balance_analysis as ba
+    from tools.balance import balance_winrate as bw
 
     판 = a.판 or 20
     파티들 = _고른_파티들(ba, a, 1)

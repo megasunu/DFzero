@@ -1,9 +1,9 @@
 """던전 밸런스 모의전투 - 던전의 인카운트·전투이벤트(보스)·원정을 시드 여럿으로 싸워 승률을 잰다.
 
-    python tools/dungeon_sim.py D11 D13 --판 300            # 인카운트·보스 각 300판, 진입 레벨, 측정 장비
-    python tools/dungeon_sim.py D11 --종류 원정 --판 100 --레벨 8
-    python tools/dungeon_sim.py D11 --차수 1 --마리 2 3     # 조정안을 임시로 바꿔 끼워 잰다(데이터 파일은 그대로)
-    python tools/dungeon_sim.py --표 하늘성 --판 300 --출력 결과.json   # 보고서(docs/balance/하늘성.md)의 표 전부
+    python tools/balance/dungeon_sim.py D11 D13 --판 300            # 인카운트·보스 각 300판, 진입 레벨, 측정 장비
+    python tools/balance/dungeon_sim.py D11 --종류 원정 --판 100 --레벨 8
+    python tools/balance/dungeon_sim.py D11 --차수 1 --마리 2 3     # 조정안을 임시로 바꿔 끼워 잰다(데이터 파일은 그대로)
+    python tools/balance/dungeon_sim.py --표 하늘성 --판 300 --출력 결과.json   # 보고서(docs/balance/하늘성.md)의 표 전부
 
 전투 종류
   인카운트  던전 데이터의 출현그룹·출현마리수·레벨·차수로 게임과 같은 함수(dungeon_system.인카운트_판정,
@@ -27,7 +27,7 @@ import os
 import subprocess
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 for _경로 in (ROOT, os.path.join(ROOT, "tests")):
     if _경로 not in sys.path:
         sys.path.insert(0, _경로)

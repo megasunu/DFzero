@@ -5,7 +5,7 @@ description: 스킬 밸런스 기준표(스킬마다 1~5차수 기대 피해, �
 
 # 스킬 밸런스 기준표
 
-**손으로 셈하지 않는다.** 표는 `tools/skill_balance.py`가 만든 `docs/balance/스킬기준표.md`에 있고,
+**손으로 셈하지 않는다.** 표는 `tools/balance/skill_balance.py`가 만든 `docs/balance/스킬기준표.md`에 있고,
 `tests/devtools/test_skill_balance.py`가 스킬 데이터와 같은지 검사하므로 `main-branch`의 표는 늘 지금 데이터의 값이다.
 
 ## 표를 보여 달라고 하면
@@ -18,8 +18,8 @@ description: 스킬 밸런스 기준표(스킬마다 1~5차수 기대 피해, �
 ## 빌드를 바꿔 보려면 (파일은 그대로, 화면에만)
 
 ```
-python tools/skill_balance.py --직업 검귀 --보정치 4 --명중보너스 1 --데미지보너스 2 --무기 1d10 --추가공격 2
-python tools/skill_balance.py --측정파티 넨마스터          # 밸런스 측정 파티의 그 전직 캐릭터 수치(그 차수만)
+python tools/balance/skill_balance.py --직업 검귀 --보정치 4 --명중보너스 1 --데미지보너스 2 --무기 1d10 --추가공격 2
+python tools/balance/skill_balance.py --측정파티 넨마스터          # 밸런스 측정 파티의 그 전직 캐릭터 수치(그 차수만)
 ```
 
 - 기준 피해는 빌드와 상관없이 기준 빌드(1d8, 보정치 +3) 값이다 - 비율이 그 빌드의 세기다.
@@ -27,5 +27,5 @@ python tools/skill_balance.py --측정파티 넨마스터          # 밸런스 �
 
 ## 스킬 데이터나 기준을 바꾼 작업
 
-`python tools/skill_balance.py`로 표를 다시 쓰고 같은 커밋에 넣는다. 기준(`docs/game-rules.md` "스킬 밸런스 기준")이
+`python tools/balance/skill_balance.py`로 표를 다시 쓰고 같은 커밋에 넣는다. 기준(`docs/game-rules.md` "스킬 밸런스 기준")이
 바뀌면 도구의 `비용`·`대상_종류`·`명중배율`을 같이 고친다.

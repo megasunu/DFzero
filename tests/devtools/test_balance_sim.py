@@ -1,4 +1,4 @@
-"""밸런스 측정 도구(tools/balance_sim.py) - 승률패턴 계산·변형, 규칙 지문, 기록 이어 쓰기.
+"""밸런스 측정 도구(tools/balance/balance_sim.py) - 승률패턴 계산·변형, 규칙 지문, 기록 이어 쓰기.
 
 실제 측정(수백 판)은 게이트 밖에서 돌린다. 여기서는 몇 판만 돌려 기록이 이어지는지 본다.
 """
@@ -7,7 +7,7 @@ import collections
 import json
 import random
 
-from tools import balance_sim as bs
+from tools.balance import balance_sim as bs
 
 
 def test_승률패턴은_슬롯마다_보정_승률이_가장_높은_행동이고_판수가_모자라면_뺀다():

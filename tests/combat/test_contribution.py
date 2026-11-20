@@ -9,7 +9,7 @@ import pytest
 from game.system.combat import contribution, damage, stats
 from game.system.skill import skill_grant
 from support import 시험_전투
-from tools import balance_sim as bs
+from tools.balance import balance_sim as bs
 
 
 def _끄기(전투상태, 참가자):

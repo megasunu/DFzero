@@ -1,4 +1,4 @@
-"""레벨별 등록 파티 승률 도구(tools/level_winrate.py, #790) - 등록 검사, 파티 준비, 판 재현, 표.
+"""레벨별 등록 파티 승률 도구(tools/balance/level_winrate.py, #790) - 등록 검사, 파티 준비, 판 재현, 표.
 
 실제 측정(조건마다 수백 판)은 깃허브 액션 "Level winrate"(버튼 실행)에서 돌린다. 여기서는 몇 판만 돌린다.
 """
@@ -7,7 +7,7 @@ import copy
 import json
 
 import gameflow as gf
-from tools import level_winrate as lw
+from tools.balance import level_winrate as lw
 
 
 def _등록():

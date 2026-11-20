@@ -1,10 +1,10 @@
-"""tools/balance_winrate.py - 밸런스 체크 승률용 전투: 파티원 전원의 행동 패턴을 돌아가며 다듬어 최고 승률을 찾는다."""
+"""tools/balance/balance_winrate.py - 밸런스 체크 승률용 전투: 파티원 전원의 행동 패턴을 돌아가며 다듬어 최고 승률을 찾는다."""
 
 import random
 
-from tools import balance_analysis as ba
-from tools import balance_sim as bs
-from tools import balance_winrate as bw
+from tools.balance import balance_analysis as ba
+from tools.balance import balance_sim as bs
+from tools.balance import balance_winrate as bw
 
 파티A = [
     ("귀검사", "검귀"),

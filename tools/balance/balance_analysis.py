@@ -1,6 +1,6 @@
 """밸런스 체크 분석용 전투 - 무작위성을 키워 여러 방법을 써 보며 넓게 훑는다.
 
-    python tools/balance_sim.py 전체 --분석 --묶음 10 --판 30   # 고른 무작위 파티 60개 x 30판
+    python tools/balance/balance_sim.py 전체 --분석 --묶음 10 --판 30   # 고른 무작위 파티 60개 x 30판
 
 밸런스 체크 전투는 둘로 나눈다: 이 분석용 전투와, 승률을 끌어올리는 승률용 전투.
 - 파티: 전직 24종이 묶음마다 한 번씩 들어가는 무작위 4인 파티(한 파티에 같은 전직 없음, 고른_파티들).
@@ -16,11 +16,11 @@ import os
 import random
 import sys
 
-_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-from tools import balance_sim as bs  # noqa: E402
+from tools.balance import balance_sim as bs  # noqa: E402
 
 파티_인원 = 4
 
@@ -362,7 +362,7 @@ def 보고서(요약, 정보, 파티_줄=5, 스킬_줄=40):
     줄 = [
         "# 밸런스 체크 - 분석용 전투",
         "",
-        "`python tools/balance_sim.py 전체 --분석` 결과(#690). 무작위 4인 파티(전직마다 같은 출전 횟수)가 무작위 행동"
+        "`python tools/balance/balance_sim.py 전체 --분석` 결과(#690). 무작위 4인 파티(전직마다 같은 출전 횟수)가 무작위 행동"
         f"(아군 차례의 {정보['섞기'] * 100:.0f}%는 자동전투 전력전투)으로 싸운 판들이다. 승률을 끌어올린 값은 승률용 전투(#691)가 잰다.",
         "",
         f"- 파티 {정보['파티']}개 x 파티당 {정보['판']}판 = {요약['판']}판, 전체 승률 {_퍼(요약['승률'])}, "

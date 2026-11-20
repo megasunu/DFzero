@@ -11,7 +11,7 @@ import gameflow
 from game.system.combat import attacks, core, damage, hit_effects
 from game.system.skill import skill_grant
 from support import 시험_전투, 주사위고정
-from tools import balance_sim as bs
+from tools.balance import balance_sim as bs
 
 
 def _출혈(전투상태, 대상, 부여자):

@@ -3,7 +3,7 @@
 #
 # 측정 방식: 같은 시드로 "버퍼 한 명이 남에게 건 버프와 적에게 건 디버프(버프·디버프
 # 목록)만 효과를 내지 않는" 전투를 다시 돌린다(core.꺼진_효과 - 버프는 걸리고 비용도 내서 같은 행동을 한다).
-# 끈 전투를 돌리는 일은 tools/balance_sim.py가 하고, 여기는 그 결과로 지표를 내는 계산과 기대값만 둔다.
+# 끈 전투를 돌리는 일은 tools/balance/balance_sim.py가 하고, 여기는 그 결과로 지표를 내는 계산과 기대값만 둔다.
 # 이 모듈은 다른 combat 모듈이 부르지 않는다(맨 위 - 도구와 테스트만 부른다).
 
 from game.system.combat import core, damage, formula, hit, stats, traits

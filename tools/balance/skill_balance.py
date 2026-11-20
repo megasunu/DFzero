@@ -1,9 +1,9 @@
 """스킬 밸런스 기준표 - 직업 스킬의 기대 피해를 "스킬 밸런스 기준"(docs/game-rules.md)의 기준 피해와 견준다.
 
-    python tools/skill_balance.py                     # 기준 빌드로 docs/balance/스킬기준표.md를 다시 쓴다
-    python tools/skill_balance.py --직업 웨펀마스터    # 그 직업만 화면에 (파일은 그대로)
-    python tools/skill_balance.py --직업 검귀 --보정치 4 --명중보너스 1 --데미지보너스 2 --무기 1d10
-    python tools/skill_balance.py --측정파티 넨마스터   # 밸런스 측정 파티(scenario.측정_파티_준비)의 그 전직 캐릭터 수치로
+    python tools/balance/skill_balance.py                     # 기준 빌드로 docs/balance/스킬기준표.md를 다시 쓴다
+    python tools/balance/skill_balance.py --직업 웨펀마스터    # 그 직업만 화면에 (파일은 그대로)
+    python tools/balance/skill_balance.py --직업 검귀 --보정치 4 --명중보너스 1 --데미지보너스 2 --무기 1d10
+    python tools/balance/skill_balance.py --측정파티 넨마스터   # 밸런스 측정 파티(scenario.측정_파티_준비)의 그 전직 캐릭터 수치로
 
 전투를 돌리지 않는다 - 데이터의 피해 식을 엔진의 수식 계산(formula.수식_평가, 주사위는 평균)으로 셈한다.
 기준 빌드: 1d8 무기, 보정치·주문시전보정치 +3, 추가공격 = 차수 - 1, 명중보너스·데미지보너스 0.
@@ -27,7 +27,7 @@ import pkgutil
 import re
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
@@ -347,8 +347,8 @@ def 전체_문서(빌드값=기준빌드):
     줄 = [
         "# 스킬 밸런스 기준표",
         "",
-        "`tools/skill_balance.py`가 만든 파일이다 - 손으로 고치지 않는다. 스킬 데이터나 기준을 바꾸면",
-        "`python tools/skill_balance.py`로 다시 쓴다(`tests/devtools/test_skill_balance.py`가 최신인지 검사한다).",
+        "`tools/balance/skill_balance.py`가 만든 파일이다 - 손으로 고치지 않는다. 스킬 데이터나 기준을 바꾸면",
+        "`python tools/balance/skill_balance.py`로 다시 쓴다(`tests/devtools/test_skill_balance.py`가 최신인지 검사한다).",
         "",
         f"- {빌드_설명(빌드값)}.",
         '- 칸은 `기대 / 기준 (비율)` - 비율은 기대가 기준보다 몇 % 많은지. 기준은 `docs/game-rules.md` "스킬 밸런스 기준".',
@@ -396,8 +396,8 @@ def 캐릭터_빌드(전투상태, 참가자, 대상=None):
 
 
 def 측정파티_빌드(전직):
-    """밸런스 측정 파티(tools/balance_sim.py와 같은 조건)에서 그 전직 캐릭터로 전투를 열고 빌드를 만든다."""
-    from tools import balance_sim as bs
+    """밸런스 측정 파티(tools/balance/balance_sim.py와 같은 조건)에서 그 전직 캐릭터로 전투를 열고 빌드를 만든다."""
+    from tools.balance import balance_sim as bs
 
     m = bs.측정(전직)
     상태 = m._상태(m.기본파티)
