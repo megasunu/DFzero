@@ -17,6 +17,7 @@ from game.system.combat import (
     status,
     traits,
 )
+from game.system.combat import stat_breakdown
 
 
 def 몬스터_패턴_대상목록(전투상태, 몬스터참가자, 패턴, 기본대상):
@@ -488,7 +489,11 @@ def 몬스터_회복패턴_실행(전투상태, 몬스터참가자, 패턴):
 
 def _내성_계산칸(전투상태, 스탯, 보정치):
     """자세한 로그용 - 내성 굴림의 스탯과 보정치(상세로그가 아니면 빈 dict)."""
-    return {"내성스탯": 스탯, "내성보정": 보정치} if stats.상세로그(전투상태) else {}
+    return (
+        {"내성스탯": 스탯, "내성보정": 보정치}
+        if stat_breakdown.상세로그(전투상태)
+        else {}
+    )
 
 
 def 몬스터_내성패턴_실행(전투상태, 몬스터참가자, 패턴, 대상목록, 중심대상=None):
@@ -582,7 +587,7 @@ def 몬스터_내성패턴_실행(전투상태, 몬스터참가자, 패턴, 대�
         "타격": 타격들,
         "총피해": 총피해,
     }
-    if stats.상세로그(전투상태):
+    if stat_breakdown.상세로그(전투상태):
         결과["DC식"] = str(패턴.get("난이도", 10))
     core.로그(전투상태, 결과, 종류="타격")
     return 결과

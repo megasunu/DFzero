@@ -6,6 +6,7 @@ import gameflow as gf
 from game.system import rng
 from game.system import skill_system as ss
 from game.system.combat import flow, hit, hit_effects, stats, status
+from game.system.combat import stat_breakdown
 from tests import support
 
 
@@ -124,7 +125,7 @@ def _명중():
 
 
 def _출처값(전투상태, 참가자, 변동대상, 이름):
-    return dict(stats.출처별_내역(전투상태, 참가자, 변동대상)).get(이름, 0)
+    return dict(stat_breakdown.출처별_내역(전투상태, 참가자, 변동대상)).get(이름, 0)
 
 
 def _주문보정(전투상태, 참가자):
@@ -213,7 +214,7 @@ def test_살의의_파동은_행동_MP_없이_10턴_아군_전체_치명타범�
     # 관조와 겹친다 - 20에서 2 내려간다(전투 스타일 몫은 따로 뺀다)
     스타일 = sum(
         값
-        for 이름, 값 in stats.출처별_내역(전투상태, 아수라, "치명타범위")
+        for 이름, 값 in stat_breakdown.출처별_내역(전투상태, 아수라, "치명타범위")
         if 이름 not in ("관조", "살의의 파동")
     )
     assert hit.유효_치명타범위(전투상태, 아수라) == 18 - 스타일

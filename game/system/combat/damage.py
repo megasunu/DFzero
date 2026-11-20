@@ -19,6 +19,7 @@ from game.system.combat import (
     status,
     traits,
 )
+from game.system.combat import stat_breakdown
 from game.system.combat import trait_triggers
 
 
@@ -188,9 +189,9 @@ def 피해내역(
     출처는 부르는 쪽이 계산한 앞항목 [(이름, 값)](스킬/역할군/추가피해 굴림 등)과 장비 값, 그리고 출처별
     버프/특성/칭호(명중률종류/대상/속성/스킬타입 조건 반영 - 피해 계산과 같은 인수를 넘긴다). 배수(원펀맨)는
     장비·출처 몫에 곱하는 늘어난 몫을 따로 적는다. 그래도 남으면 "기타". 상세로그가 아니면 None."""
-    if not stats.상세로그(전투상태):
+    if not stat_breakdown.상세로그(전투상태):
         return None
-    출처 = [("장비", 장비)] + stats.출처별_내역(
+    출처 = [("장비", 장비)] + stat_breakdown.출처별_내역(
         전투상태,
         공격자,
         "데미지보너스",
@@ -201,7 +202,7 @@ def 피해내역(
     )
     추가 = list(앞항목) + 출처 + [("원펀맨", (배수 - 1) * sum(v for _, v in 출처))]
     추가 = [(n, v) for n, v in 추가 if v]
-    stats.기타_채우기(추가, 합 - 굴림합)
+    stat_breakdown.기타_채우기(추가, 합 - 굴림합)
     return {"식": str(식), "굴림합": 굴림합, "추가": 추가, "합": 합, "최종": 최종}
 
 
