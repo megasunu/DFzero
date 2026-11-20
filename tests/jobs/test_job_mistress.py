@@ -11,7 +11,7 @@ import pytest
 import gameflow as gf
 from game.system import rng
 from game.system import skill_system as ss
-from game.system.skill import skill_run
+from game.system.skill import skill_turn
 from game.system.combat import flow, hit, resources, stats
 from tests import support
 
@@ -177,7 +177,7 @@ def test_슬로스_바디는_죄업_나태로_슈퍼아머와_속도_5_감소(�
     assert 결과["캐스팅"]
     assert m["캐스팅"]["밀림"]["우선도"] == -1
     assert m["현재MP"] == 50  # 죄악 스킬은 MP 0
-    skill_run.캐스팅_발사(전투상태, m)
+    skill_turn.캐스팅_발사(전투상태, m)
     assert any(s["이름"] == "둔화" for s in 적[0]["상태이상"])
     assert 기록[0][0] == 10 + stats.평타_능력치_보정치(전투상태, m)
     assert any(s["이름"] == "슈퍼아머" for s in m["상태이상"])
@@ -273,5 +273,5 @@ def test_죄악_스킬_피해는_무기와_상관없이_1d8_보정치_없음(
     assert _스킬(이름)["데미지"] == "1d8"
     monkeypatch.setattr(rng.주사위, "randint", lambda a, b: b)  # 주사위 최대 눈
     if _쓰기(전투상태, m, 이름, 적[0]).get("캐스팅"):
-        skill_run.캐스팅_발사(전투상태, m)  # 슬로스 바디는 캐스팅을 거쳐 맞는다
+        skill_turn.캐스팅_발사(전투상태, m)  # 슬로스 바디는 캐스팅을 거쳐 맞는다
     assert 적[0]["현재HP"] == 999 - 8  # 낫(1d10) 최대 눈이면 10이 된다

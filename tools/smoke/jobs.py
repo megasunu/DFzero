@@ -127,7 +127,7 @@ class 직업스킬단계:
         """인형사의 골렘 소환: 적 칸이 다섯 다 찼으면 부른 골렘이 쓰러진 적의 칸을 넘겨받아 칸은 다섯 그대로,
         골렘 그림과 이름이 그 칸에 뜨고 쓰러진 적은 칸에서 빠진다."""
         from game.system.combat import damage, monster_actions, stats
-        from game.system.skill import skill_run
+        from game.system.skill import skill_turn
 
         gf.전투_시작(상태, ["진흙 인형사"] + ["고블린"] * 4, 레벨=3, 차수=1)
         support.반응_처리(상태)
@@ -142,7 +142,7 @@ class 직업스킬단계:
         전투상태["현재턴"] = 전투상태["참가자"].index(인형사)
         monster_actions.몬스터_턴_실행(전투상태, 인형사)
         for _ in range(40):
-            다음 = skill_run.다음_턴(전투상태)
+            다음 = skill_turn.다음_턴(전투상태)
             if 다음 is 인형사:
                 break
             if 다음["진영"] == "적":

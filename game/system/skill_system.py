@@ -108,7 +108,7 @@
 #   그 턴의 추가행동이 열리고(combat.resources.추가행동_열기), 열린 동안 일반공격취급
 #   스킬의 "일반행동"은 추가행동으로 낸다(skill_usage.일반행동_지불수단_목록).
 #
-# 구현은 game/system/skill/ 패키지(모듈 6개)에 있고 이 파일은 공개 이름만 다시 내보낸다(창구).
+# 구현은 game/system/skill/ 패키지(모듈 7개)에 있고 이 파일은 공개 이름만 다시 내보낸다(창구).
 
 from game.system.skill.skill_grant import (
     정수_평가,
@@ -146,8 +146,8 @@ from game.system.skill.skill_attack import (
     귀참드라이브_구성,
     깔린_장판,
 )
+from game.system.skill.skill_turn import 다음_턴
 from game.system.skill.skill_run import (
-    다음_턴,
     버프자원소환_스킬_실행,
     해제스킬_실행,
     회복스킬_실행,

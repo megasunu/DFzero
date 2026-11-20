@@ -7,7 +7,7 @@
 
 from game.system import monster_ai
 from game.system.combat import monster_actions
-from game.system.skill import skill_run
+from game.system.skill import skill_turn
 from tests import support
 
 
@@ -50,7 +50,7 @@ def _몬스터_행동(전투상태, 몬스터):
 def _다음_몬스터_차례(전투상태, 몬스터):
     """아군은 아무것도 하지 않고 다음 몬스터 차례까지 넘긴다 - (라운드, 밀린 차례인지)."""
     for _ in range(20):
-        다음 = skill_run.다음_턴(전투상태)
+        다음 = skill_turn.다음_턴(전투상태)
         if 다음 is 몬스터:
             return 전투상태["라운드"], bool(몬스터.get("캐스팅발사"))
     raise AssertionError("차례가 오지 않는다")

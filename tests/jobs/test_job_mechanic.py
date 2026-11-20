@@ -14,7 +14,7 @@ import gameflow as gf
 from game.system import rng
 from game.system import skill_system as ss
 from game.system.combat import core, damage, flow, reactions, stats
-from game.system.skill import skill_run
+from game.system.skill import skill_turn
 from tests import support
 
 
@@ -120,7 +120,7 @@ def test_랜드러너는_적에게_붙었다가_그_라운드가_끝날_때_자�
     assert [(i["이름"], i["대상id"]) for i in 전투상태["설치소환수"]] == [
         ("랜드러너", 적[1]["id"])
     ]
-    assert skill_run.라운드종료_처리(전투상태)
+    assert skill_turn.라운드종료_처리(전투상태)
     # (차수)d8 = 2d8 - 이점(파이어볼트)으로 [3, 5] 대 [1, 1] 중 8. + 주문시전보정치 + 데미지보너스 1, 화속성강화 2
     보정 = stats.주문시전_보정치(전투상태, m)
     assert _피해(적)[1] == -(-(8 + 보정 + 1) * 12 // 10)
@@ -132,7 +132,7 @@ def test_랜드러너가_붙은_적이_쓰러지면_다른_적이_맞는다(메�
     _명중(monkeypatch)
     _쓰기(전투상태, m, "랜드러너", 적[0])
     적[0]["생존"] = False
-    skill_run.라운드종료_처리(전투상태)
+    skill_turn.라운드종료_처리(전투상태)
     assert _피해(적)[0] == 0
     assert sum(_피해(적)[1:]) > 0
 
@@ -141,10 +141,10 @@ def test_카운트다운은_다음_라운드가_끝날_때_자폭한다(메카�
     _, 전투상태, 적, m = 메카전장
     _명중(monkeypatch)
     _쓰기(전투상태, m, "카운트다운", 적[2])
-    assert not skill_run.라운드종료_처리(전투상태)
+    assert not skill_turn.라운드종료_처리(전투상태)
     assert _피해(적) == [0, 0, 0]
     전투상태["라운드"] += 1
-    assert skill_run.라운드종료_처리(전투상태)
+    assert skill_turn.라운드종료_처리(전투상태)
     assert _피해(적)[2] > 0
     assert 전투상태["설치소환수"] == []
 
@@ -199,7 +199,7 @@ def test_1차수_랜드러너는_피해식의_차수를_1로_굴린다(메카전
         "건가드": 1
     }  # 건가드(피해 감소)가 반응행동을 먼저 쓰지 않게
     damage.피해_적용(전투상태, m, 3, 공격자=적[0])
-    skill_run.라운드종료_처리(전투상태)
+    skill_turn.라운드종료_처리(전투상태)
     보정 = stats.주문시전_보정치(전투상태, m)
     # 1d8 = 8 (2차수면 16)
     assert _피해(적)[0] == -(-(8 + 보정 + 1) * 12 // 10)
@@ -209,7 +209,7 @@ def test_메카드롭은_3턴_동안_자기_턴이_끝날_때마다_랜드러너
     _, 전투상태, _, m = 메카전장
     _쓰기(전투상태, m, "메카드롭")
     for 턴 in range(3):
-        skill_run.턴종료_버프공격(전투상태, m)
+        skill_turn.턴종료_버프공격(전투상태, m)
         assert len(전투상태["설치소환수"]) == 2 * (턴 + 1)
         flow.턴_시작_처리(전투상태, m)
     assert "메카드롭" not in [b["이름"] for b in m["버프"]]
@@ -292,7 +292,7 @@ def test_카운트다운이_정해진_라운드에_터지면_남은_임시생명
     _명중(monkeypatch)
     _쓰기(전투상태, m, "카운트다운", 적[0])
     전투상태["라운드"] += 1
-    assert skill_run.라운드종료_처리(전투상태)
+    assert skill_turn.라운드종료_처리(전투상태)
     HP = m["현재HP"]
     _맞기(전투상태, m, 2, 적[1])
     assert m["현재HP"] == HP - 2
@@ -368,7 +368,7 @@ def test_트랜스폼_G2는_드론_데미지보너스가_붙는다(메카전장,
 def test_G1은_자기_턴이_끝날_때_무작위_적_1체를_친다(메카전장, monkeypatch):
     _, 전투상태, 적, m = 메카전장
     _명중(monkeypatch)
-    skill_run.턴종료_버프공격(전투상태, m)
+    skill_turn.턴종료_버프공격(전투상태, m)
     assert sum(1 for d in _피해(적) if d) == 1
 
 
@@ -377,11 +377,11 @@ def test_G3은_라운드가_끝날_때_무작위_적에게_2회(메카전장, mo
     _명중(monkeypatch)
     m["상태이상"] = [b for b in m["상태이상"] if b["이름"] != "G-1"] + [{"이름": "G-3"}]
     로그수 = len(전투상태["로그"])
-    assert skill_run.라운드종료_처리(전투상태)
+    assert skill_turn.라운드종료_처리(전투상태)
     assert sum(1 for d in _피해(적) if d) == 1
     assert len(전투상태["로그"]) - 로그수 == 2
     # G-3은 턴 끝에는 치지 않는다
-    skill_run.턴종료_버프공격(전투상태, m)
+    skill_turn.턴종료_버프공격(전투상태, m)
     assert len(전투상태["로그"]) - 로그수 == 2
 
 
@@ -391,7 +391,7 @@ def test_G3의_대상이_쓰러지면_두번째는_다른_적(메카전장, monk
     m["상태이상"] = [{"이름": "G-3"}]
     for p in 적:
         p["현재HP"] = 1
-    skill_run.라운드종료_처리(전투상태)
+    skill_turn.라운드종료_처리(전투상태)
     assert sum(1 for p in 적 if not p["생존"]) == 2
 
 

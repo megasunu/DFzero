@@ -9,7 +9,7 @@ import pytest
 import gameflow as gf
 from game.system import rng
 from game.system import skill_system as ss
-from game.system.skill import skill_run
+from game.system.skill import skill_turn
 from game.system.combat import attacks, damage, flow, hit, stats, traits
 from tests import support
 
@@ -469,7 +469,7 @@ def test_악귀참수는_차징_우선도2_동안_슈퍼아머이고_밀린_차�
     assert 검귀["캐스팅"]["밀림"] == {"우선도": -2, "이니셔티브": 0}
     assert 검귀["현재MP"] == MP - 30 and 상태["소지품"]["재료"]["무색 큐브 조각"] == 2
     assert _슈퍼아머(검귀)  # 차징하는 동안
-    skill_run.캐스팅_발사(전투상태, 검귀)
+    skill_turn.캐스팅_발사(전투상태, 검귀)
     assert 피해들 == [(적[0]["이름"], 63)]  # 보정공격력 9 x (2차수+5)
     assert not _슈퍼아머(검귀) and not 적[0]["상태이상"]  # 피해만 준다
     assert _스킬("악귀참수")["명중보너스"] == 1
@@ -480,7 +480,7 @@ def test_악귀참수_차징이_끊기면_슈퍼아머도_풀린다(스킬전장
     상태["소지품"]["재료"]["무색 큐브 조각"] = 5
     _쓰기(전투상태, 검귀, "악귀참수", 적[0])
     검귀["캐스팅"]["취소"] = True
-    assert skill_run.캐스팅_발사(전투상태, 검귀) is None
+    assert skill_turn.캐스팅_발사(전투상태, 검귀) is None
     assert 피해들 == [] and not _슈퍼아머(검귀)
 
 

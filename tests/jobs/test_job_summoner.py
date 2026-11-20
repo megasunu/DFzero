@@ -2,7 +2,7 @@
 오라, 환수희생, 교감 무료 소환."""
 
 from game.system import rng, skill_system
-from game.system.skill import skill_run
+from game.system.skill import skill_turn
 from game.system.combat import stats
 import gameflow as gf
 from tests import support
@@ -167,11 +167,11 @@ def test_환수폭주는_소환수마다_한_번_더_행동하고_명중이_2_�
     전투상태 = 상태["전투상태"]
     gf.아군_스킬사용(상태, "정령소환 : 아도르")
     시작 = len(전투상태["로그"])
-    skill_run._소환수_행동_실행(전투상태, p)
+    skill_turn._소환수_행동_실행(전투상태, p)
     평소 = _명중결과(상태, 시작)
     gf.아군_스킬사용(상태, "환수폭주")
     시작 = len(전투상태["로그"])
-    skill_run._소환수_행동_실행(전투상태, p)
+    skill_turn._소환수_행동_실행(전투상태, p)
     폭주 = _명중결과(상태, 시작)
     assert len(폭주) == len(평소) + 1
     assert 폭주[0] == 평소[0] - 2
@@ -209,7 +209,7 @@ def test_저놈잡아라가_맞은_적이_살아_있으면_소환수는_그_적�
     assert {d["이름"] for d in 적[2]["디버프"]} >= {"저놈잡아라", "방어감소"}
     for _ in range(5):
         시작 = len(전투상태["로그"])
-        skill_run._소환수_행동_실행(전투상태, p)
+        skill_turn._소환수_행동_실행(전투상태, p)
         대상들 = {t["대상"] for e in _새로그(상태, 시작) for t in e.get("타격") or []}
         assert 대상들 <= {적[2]["이름"]}, 대상들
 

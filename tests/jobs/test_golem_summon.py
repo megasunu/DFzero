@@ -13,7 +13,7 @@ import pytest
 import gameflow as gf
 from game.system import loot_system
 from game.system.combat import damage, monster_actions, stats
-from game.system.skill import skill_run
+from game.system.skill import skill_turn
 from tests import support
 
 
@@ -41,7 +41,7 @@ def _반피_아래(전투상태, 몬스터):
 def _차례로(전투상태, 몬스터):
     """몬스터 차례가 될 때까지 다음_턴을 넘긴다(아군은 아무것도 하지 않음, 다른 적은 패턴대로)."""
     for _ in range(40):
-        다음 = skill_run.다음_턴(전투상태)
+        다음 = skill_turn.다음_턴(전투상태)
         if 다음 is 몬스터:
             return 다음
         if 다음["진영"] == "적":
@@ -122,7 +122,7 @@ def test_부른_골렘은_그_라운드에는_쉬고_다음_라운드부터_움�
     라운드 = 전투상태["라운드"]
     차례받음 = []
     for _ in range(30):
-        다음 = skill_run.다음_턴(전투상태)
+        다음 = skill_turn.다음_턴(전투상태)
         if 다음 is 골렘:
             차례받음.append(전투상태["라운드"])
             break

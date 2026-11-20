@@ -8,6 +8,7 @@ import pytest
 import gameflow as gf
 from game.system.combat import hit_effects, monster_actions, stats
 from game.system.skill import skill_run
+from game.system.skill import skill_turn
 from tests import support
 
 성공 = {"성공": True}
@@ -64,7 +65,7 @@ def test_내성에_실패하면_취소되고_쓴_행동과_MP는_돌려받지_�
     글 = [str(x.get("비고", "")) for x in 전투상태["로그"]]
     assert any(f"{스킬} {종류}이 피격으로 취소되었다" in g for g in 글)
     HP = 적["현재HP"]
-    assert skill_run.캐스팅_발사(전투상태, p) is None  # 밀린 차례에 쏘지 않는다
+    assert skill_turn.캐스팅_발사(전투상태, p) is None  # 밀린 차례에 쏘지 않는다
     assert 적["현재HP"] == HP
     assert p["현재MP"] == 20
     assert (p["행동자원"]["일반행동"], p["행동자원"]["보조행동"]) == (0, 1)

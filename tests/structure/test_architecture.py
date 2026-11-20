@@ -112,6 +112,7 @@ skill_계층 = [
     ["skill_apply"],
     ["skill_attack"],
     ["skill_run"],
+    ["skill_turn"],
 ]
 
 

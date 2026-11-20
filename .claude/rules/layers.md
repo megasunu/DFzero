@@ -16,7 +16,7 @@ game/screens/      Kivy 화면 (kivy 의존은 여기와 main.py에만)
 game/system/       전투, 스킬, 장비, 세이브 등 게임 로직
   combat/            전투 패키지(모듈 목록은 combat/__init__.py). 쓰는 쪽은
                      `from game.system.combat import flow, stats` 처럼 모듈을 직접 불러 쓴다
-  skill/             스킬 실행 엔진 모듈 6개(skill_grant -> usage/target -> apply -> attack -> run, 아래로만).
+  skill/             스킬 실행 엔진 모듈 7개(skill_grant -> usage/target -> apply -> attack -> run -> turn, 아래로만).
                      쓰는 쪽은 `game.system.skill_system`(재수출 창구)을 부른다
 game/system/rng.py 모든 무작위의 출처 - 용도별 흐름(주사위/확률/대상/던전/보상/칭호/대화). 전역 random을 직접 쓰지 않는다
 game/data/         직업, 몬스터, 맵, 아이템 데이터(파이썬 딕셔너리)
