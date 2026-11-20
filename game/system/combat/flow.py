@@ -22,6 +22,7 @@ from game.system.combat import (
     status,
     traits,
 )
+from game.system.combat import monster_patterns
 from game.system.combat import trait_triggers
 
 # =====================================================
@@ -814,7 +815,7 @@ def 턴_종료_처리(전투상태, 참가자):
 
     # 특성의 "명중시턴종료공격"(특수패턴:펜릴 달려들기 -> 물어뜯기), 몬스터 소환수는 그 몬스터의 턴 종료 시 행동한다.
     if 참가자["진영"] == "적" and 참가자["생존"]:
-        monster_actions.턴종료공격_실행(전투상태, 참가자)
+        monster_patterns.턴종료공격_실행(전투상태, 참가자)
         monster_actions.몬스터_소환수_행동_실행(전투상태, 참가자)
     reactions.반응대기_처리(전투상태)
     traits.도망_검사(전투상태, 참가자)

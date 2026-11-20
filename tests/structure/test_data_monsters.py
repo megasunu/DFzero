@@ -518,7 +518,7 @@ def test_몬스터_특성_발동조건과_효과_형태를_지킨다():
 
 
 def test_명중시버프강탈은_True_또는_전부다():
-    """monster_actions.버프_강탈은 "전부"만 따로 보고 나머지 참값은 하나 강탈로 처리한다.
+    """monster_patterns.버프_강탈은 "전부"만 따로 보고 나머지 참값은 하나 강탈로 처리한다.
     True == 1 이므로 is True로 따로 본다."""
     from game.data.monster.monster_ability import 특성목록
 

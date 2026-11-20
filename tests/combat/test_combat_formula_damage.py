@@ -15,6 +15,7 @@ from game.system.combat import (
     participants,
     stats,
 )
+from game.system.combat import monster_patterns
 from game.system import skill_system as ss
 from tests import support
 
@@ -154,7 +155,7 @@ def test_역할군_보너스는_탱커_데미지_명중_마이너스1_메이지_
         몬스터["원본"] = dict(몬스터["원본"], 역할군=역할군)
         판정 = hit.명중_판정_계산(전투상태, 몬스터, 아군[0], "근력판정")
         결과[역할군] = (
-            monster_actions.몬스터_데미지보너스(전투상태, 몬스터),
+            monster_patterns.몬스터_데미지보너스(전투상태, 몬스터),
             판정["명중결과"],
         )
     assert 결과["탱커"][0] == 결과["딜러"][0] - 1 == 결과["메이지"][0] - 1

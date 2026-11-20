@@ -3,7 +3,7 @@
 # =====================
 # job_skill_XX.py "스킬목록"에 정의된 스킬(job_skill_format.py 양식)을
 # 실제로 해석해서 실행한다. 아군(플레이어 캐릭터) 전용이다 - 몬스터는
-# 스킬이 아니라 monster_ai.py/combat.monster_actions._몬스터_패턴_실행()이 다루는
+# 스킬이 아니라 monster_ai.py/combat.monster_patterns.몬스터_패턴_실행()이 다루는
 # "패턴"을 쓰므로 이 파일과 무관하다.
 #
 # combat 패키지의 공용 계산 함수(수식_평가/명중_판정/피해_적용/차수/

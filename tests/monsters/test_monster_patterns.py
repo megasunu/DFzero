@@ -22,6 +22,7 @@ from game.system.combat import (
     status,
     traits,
 )
+from game.system.combat import monster_patterns
 from game.system.combat import trait_triggers
 from game.system import dice_utils
 from game.system.skill import skill_target
@@ -72,7 +73,7 @@ def test_초전자포는_한_번_굴려_주대상은_전부_양옆은_절반_민
     결과 = monster_actions.몬스터_턴_실행(전투상태, 키놀)
 
     # 2d4(8) + 지능보정치(1) + 몬스터 공통 데미지보너스
-    원래피해 = 8 + 1 + monster_actions.몬스터_데미지보너스(전투상태, 키놀)
+    원래피해 = 8 + 1 + monster_patterns.몬스터_데미지보너스(전투상태, 키놀)
 
     def 기대(값, p):
         return damage.최종피해_계산(
@@ -209,7 +210,7 @@ def test_특수패턴_키놀은_넘어짐이면_넘어짐을_풀고_1_6번_대�
     assert 결과["패턴"] == "기상번개"
     assert all(i["이름"] != "넘어짐" for i in 키놀["상태이상"])
     # 1d8(6) + 지능보정치(1) + 몬스터 공통 데미지보너스, 민첩 내성 실패
-    원래피해 = 6 + 1 + monster_actions.몬스터_데미지보너스(전투상태, 키놀)
+    원래피해 = 6 + 1 + monster_patterns.몬스터_데미지보너스(전투상태, 키놀)
     for p in 아군:
         기대 = damage.최종피해_계산(
             원래피해, stats.유효_방어력(전투상태, p), stats.유효_보호률(전투상태, p)
@@ -769,7 +770,7 @@ def test_포효는_매력내성_성공시_데미지_절반_대포효는_기절�
 
     원래피해 = stats.몬스터_수식값(
         전투상태, 샤우타, 패턴["실패시데미지"]
-    ) + monster_actions.몬스터_데미지보너스(전투상태, 샤우타)
+    ) + monster_patterns.몬스터_데미지보너스(전투상태, 샤우타)
 
     def 기대(값, p):
         return damage.최종피해_계산(
@@ -834,7 +835,7 @@ def test_몬스터_공격_데미지의_근력보정치는_버프_디버프를_�
     support.주사위고정(monkeypatch, 4)  # 1d4 = 4
     결과 = monster_actions.몬스터_턴_실행(전투상태, 아미)
 
-    원래피해 = 4 + 보정 + monster_actions.몬스터_데미지보너스(전투상태, 아미)
+    원래피해 = 4 + 보정 + monster_patterns.몬스터_데미지보너스(전투상태, 아미)
     기대 = damage.최종피해_계산(
         원래피해, stats.유효_방어력(전투상태, 대상), stats.유효_보호률(전투상태, 대상)
     )
@@ -953,9 +954,9 @@ def test_타우의_왕은_샤우타의_방어력과_데미지보너스를_1씩_�
         stats.유효_방어력(전투상태, 샤우타) == (샤우타["원본"].get("방어력") or 0) + 1
     )
     원래 = list(샤우타["원본"]["특성"])
-    보너스 = monster_actions.몬스터_데미지보너스(전투상태, 샤우타)
+    보너스 = monster_patterns.몬스터_데미지보너스(전투상태, 샤우타)
     샤우타["원본"] = dict(샤우타["원본"], 특성=[x for x in 원래 if x != "타우의 왕"])
-    assert monster_actions.몬스터_데미지보너스(전투상태, 샤우타) == 보너스 - 1
+    assert monster_patterns.몬스터_데미지보너스(전투상태, 샤우타) == 보너스 - 1
 
 
 # ------------------------------- 타우 조정 - 종족:타우, 포효 난이도, 타우 가드 가드
@@ -979,12 +980,12 @@ def test_종족_타우는_데미지보너스_플러스1_명중보너스_마이�
     def 명중결과():
         return hit.명중_판정_계산(전투상태, 아미, 아군, "근력판정")["명중결과"]
 
-    보너스 = monster_actions.몬스터_데미지보너스(전투상태, 아미)
+    보너스 = monster_patterns.몬스터_데미지보너스(전투상태, 아미)
     명중 = 명중결과()
     아미["원본"] = dict(
         아미["원본"], 특성=[x for x in 아미["원본"]["특성"] if x != "종족:타우"]
     )
-    assert monster_actions.몬스터_데미지보너스(전투상태, 아미) == 보너스 - 1
+    assert monster_patterns.몬스터_데미지보너스(전투상태, 아미) == 보너스 - 1
     assert 명중결과() == 명중 + 1
 
 

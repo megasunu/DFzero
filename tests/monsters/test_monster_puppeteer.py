@@ -10,6 +10,7 @@ import pathlib
 import gameflow as gf
 from game.system import dice_utils, monster_ai
 from game.system.combat import flow, monster_actions, stats, status, traits
+from game.system.combat import monster_patterns
 from tests import support
 
 루트 = pathlib.Path(__file__).resolve().parents[2]
@@ -251,7 +252,7 @@ def test_진흙은_방어력과_데미지보너스가_1_적고_강철은_1_많�
     assert stats.유효_방어력(전투상태, 진흙) == 기본 - 1
     assert stats.유효_방어력(전투상태, 강철) == 기본 + 1
     # 데미지보너스는 데이터가 아니라 특성으로(데이터는 역할군 반영 전 0) - 메이지 역할군 0
-    뎀보 = [monster_actions.몬스터_데미지보너스(전투상태, p) for p in (진흙, 돌, 강철)]
+    뎀보 = [monster_patterns.몬스터_데미지보너스(전투상태, p) for p in (진흙, 돌, 강철)]
     assert 뎀보 == [-1, 0, 1]
 
 

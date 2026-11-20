@@ -13,6 +13,7 @@ import pytest
 from game.system import rng
 import gameflow as gf
 from game.system.combat import flow, monster_actions, stats, traits
+from game.system.combat import monster_patterns
 from game.system import monster_ai
 from tests import support
 from tests.combat.test_combat_skills import 정리, 참가자_요약
@@ -124,7 +125,7 @@ def 칭호_비교(이름):
             "보호률": stats.유효_보호률(전투상태, m),
             "이니셔티브": m["이니셔티브"],
             "우선도": m["우선도"],
-            "데미지보너스": monster_actions.몬스터_데미지보너스(전투상태, m),
+            "데미지보너스": monster_patterns.몬스터_데미지보너스(전투상태, m),
             "칭호_데미지배율": traits.칭호_배율(전투상태, m, "데미지"),
             "시작로그": 정리(전투상태["로그"]),
         }

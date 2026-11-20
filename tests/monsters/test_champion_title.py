@@ -10,11 +10,11 @@ from game.system import dungeon_system, loot_system, rng
 from game.system.combat import (
     element,
     hit_effects,
-    monster_actions,
     stats,
     status,
     traits,
 )
+from game.system.combat import monster_patterns
 from game.system.combat import formula
 from tests.support import 새게임, 전투_열기
 
@@ -133,8 +133,8 @@ def test_챔피언은_HP_1점5배_AC_명중_데미지보너스가_1씩_오른다
     assert _명중(전투상태, 챔피언) == _명중(전투상태, 보통) + 1
     # 돌연변이(돌연변이:무)의 데미지보너스 2까지 더해 3
     assert (
-        monster_actions.몬스터_데미지보너스(전투상태, 챔피언)
-        == monster_actions.몬스터_데미지보너스(전투상태, 보통) + 3
+        monster_patterns.몬스터_데미지보너스(전투상태, 챔피언)
+        == monster_patterns.몬스터_데미지보너스(전투상태, 보통) + 3
     )
 
 
@@ -209,8 +209,8 @@ def test_강화_공격력은_데미지보너스_2다():
     전투상태 = 상태["전투상태"]
     a, b = gf.적_목록(상태)
     assert (
-        monster_actions.몬스터_데미지보너스(전투상태, b)
-        == monster_actions.몬스터_데미지보너스(전투상태, a) + 2
+        monster_patterns.몬스터_데미지보너스(전투상태, b)
+        == monster_patterns.몬스터_데미지보너스(전투상태, a) + 2
     )
 
 
