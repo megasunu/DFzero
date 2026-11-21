@@ -12,6 +12,7 @@ import pytest
 
 import gameflow as gf
 from game.system import rng
+from game.data.buff import summon_00
 from game.system import skill_system as ss
 from game.system.combat import core, damage, flow, reactions, stats, traits
 from game.system.skill import skill_turn
@@ -450,7 +451,7 @@ def _메카들(m):
     return [
         n
         for n in m.get("소환수", [])
-        if n in ("템페스트", "게일포스", "스패로우 팩토리")
+        if n in ("템페스트", "게일포스", "스패로우 팩토리", "바이퍼")
     ]
 
 
@@ -471,15 +472,29 @@ def test_템페스트는_자기_턴_끝에_1에서3은_머신건_4에서6은_미
     assert _메카들(m) == ["템페스트"]
     _명중(monkeypatch)
     보정 = stats.주문시전_보정치(전투상태, m)
-    _주사위(monkeypatch, [3])  # 머신건 1d4 = 1 (메카 피해 이점도 1)
+    _주사위(monkeypatch, [3, 6, 6])  # 머신건 1d8 = 6 (메카 피해 이점), 데미지보너스 +1
     skill_turn._소환수_행동_실행(전투상태, m)
-    assert sum(_피해(적)) == _올림12(1 + 보정)
+    assert sum(_피해(적)) == _올림12(6 + 보정 + 1)
     for p in 적:
         p["현재HP"] = 999
-    _주사위(monkeypatch, [4, 7, 7])  # 미사일 1d8 = 7
+    _주사위(monkeypatch, [4, 11, 11])  # 미사일 1d12 = 11, 데미지보너스 +1
     skill_turn._소환수_행동_실행(전투상태, m)
-    assert sum(_피해(적)) == _올림12(7 + 보정)
+    assert sum(_피해(적)) == _올림12(11 + 보정 + 1)
     assert _메카들(m) == ["템페스트"]  # 지속턴 없이 남는다
+
+
+def test_템페스트_게일포스_공격은_명중보너스_1_데미지보너스_1이고_자폭은_보너스가_없다():
+    for 이름 in ("템페스트", "게일포스"):
+        정의 = summon_00.소환수목록[이름]
+        for 눈, 행동 in 정의["행동표"].items():
+            assert (행동["명중보너스"], 행동["데미지보너스"]) == (1, 1)
+            assert 행동["데미지"] == (
+                "1d8+주문시전보정치" if 눈 <= 3 else "1d12+주문시전보정치"
+            )
+        assert (정의["자폭공격"]["명중보너스"], 정의["자폭공격"]["데미지보너스"]) == (
+            0,
+            0,
+        )
 
 
 def test_스패로우_팩토리는_자기_턴_끝에_화명_다속성_1d8(메카13, monkeypatch):
@@ -569,7 +584,7 @@ def test_원포올이면_메카가_여섯_보정치_합으로_치고_자폭_피�
     assert 합 != stats.주문시전_보정치(전투상태, m)
     _주사위(monkeypatch, [1])
     skill_turn._소환수_행동_실행(전투상태, m)
-    assert sum(_피해(적)) == _올림12(1 + 합)
+    assert sum(_피해(적)) == _올림12(1 + 합 + 1)  # 머신건 데미지보너스 +1
     assert "_주문시전보정치대체" not in m
     for p in 적:
         p["현재HP"] = 999
@@ -579,3 +594,87 @@ def test_원포올이면_메카가_여섯_보정치_합으로_치고_자폭_피�
     skill_turn.라운드종료_처리(전투상태)
     assert 전투상태["설치소환수"] == []
     assert _피해(적) == [0, 0, 0]
+
+
+# ------------------------------------------------------------------ 바이퍼 (2차수 골드, 2026-11-22)
+
+
+def _바이퍼_버프(m):
+    return next(b for b in m["버프"] if b["이름"] == "바이퍼소환")
+
+
+def _자폭기록(전투상태, 이름):
+    return [x for x in 전투상태["로그"] if x.get("스킬") == f"{이름} 자폭"]
+
+
+def test_바이퍼는_2차수_골드_일반행동_MP10_5턴_메카(메카전장):
+    _, _, _, m = 메카전장
+    assert "바이퍼" in m["원본"]["보유스킬"]
+    스킬 = _스킬("바이퍼")
+    assert (스킬["습득방법"], 스킬["습득레벨"], 스킬["행동"], 스킬["MP소모"]) == (
+        "구매습득",
+        6,
+        "일반행동",
+        10,
+    )
+    assert "메카" in 스킬["타입"]
+    정의 = summon_00.소환수목록["바이퍼"]
+    assert "메카" in 정의["태그"] and 정의["만료시자폭"]
+    assert {
+        (h["데미지"], h["속성"], h["공격타입"], h["데미지보너스"])
+        for h in 정의["행동표"].values()
+    } == {("1d6+주문시전보정치", "화속성", "관통", -1)}
+    assert 정의["자폭공격"]["데미지"] == "(차수)d12+주문시전보정치"
+
+
+def test_바이퍼는_자기_턴_끝에_1d6_화속성_관통에_데미지보너스_마이너스1(
+    메카13, monkeypatch
+):
+    _, 전투상태, 적, m = 메카13
+    _쓰기(전투상태, m, "바이퍼")
+    assert _바이퍼_버프(m)["지속턴"] == 5
+    _명중(monkeypatch)
+    _주사위(monkeypatch, [2, 5, 5])  # 행동표 눈 2, 1d6 = 5 (메카 피해 이점)
+    skill_turn._소환수_행동_실행(전투상태, m)
+    보정 = stats.주문시전_보정치(전투상태, m)
+    assert sum(_피해(적)) == _올림12(5 + 보정 - 1)
+
+
+def test_바이퍼는_다섯_번_치고_마지막_공격_뒤_자폭한다(메카13, monkeypatch):
+    _, 전투상태, 적, m = 메카13
+    _쓰기(전투상태, m, "바이퍼")
+    _명중(monkeypatch)
+    for 턴 in range(5):
+        assert "바이퍼" in _메카들(m)
+        전 = len([x for x in 전투상태["로그"] if x.get("스킬") == "바이퍼의 바이퍼"])
+        skill_turn._소환수_행동_실행(전투상태, m)
+        뒤 = len([x for x in 전투상태["로그"] if x.get("스킬") == "바이퍼의 바이퍼"])
+        assert 뒤 == 전 + 1
+        if 턴 < 4:
+            assert not _자폭기록(전투상태, "바이퍼")
+            _바이퍼_버프(m)["지속턴"] -= 1  # 다음 자기 차례 시작(flow._지속턴_감소)
+    assert "바이퍼" not in _메카들(m)
+    assert not any(b["이름"] == "바이퍼소환" for b in m["버프"])
+    assert len(_자폭기록(전투상태, "바이퍼")) == 1
+
+
+def test_바이퍼_버프가_먼저_끝났으면_다음_행동에서_자폭한다(메카13, monkeypatch):
+    """캐스팅한 턴은 소환수가 치지 않아 버프가 차례 시작에 먼저 끝날 수 있다 - 등록만 남은 바이퍼도 터진다."""
+    _, 전투상태, _, m = 메카13
+    _쓰기(전투상태, m, "바이퍼")
+    _명중(monkeypatch)
+    m["버프"].remove(_바이퍼_버프(m))
+    skill_turn._소환수_행동_실행(전투상태, m)
+    assert "바이퍼" not in _메카들(m)
+    assert len(_자폭기록(전투상태, "바이퍼")) == 1
+
+
+def test_바이퍼는_다른_메카와_함께_붙고_로봇전폭에_자폭한다(메카13, monkeypatch):
+    _, 전투상태, 적, m = 메카13
+    _명중(monkeypatch)
+    for 이름 in ("템페스트", "스패로우 팩토리", "바이퍼"):
+        _쓰기(전투상태, m, 이름)
+    assert sorted(_메카들(m)) == ["바이퍼", "스패로우 팩토리", "템페스트"]
+    _쓰기(전투상태, m, "로봇전폭")
+    assert _메카들(m) == []
+    assert len(_자폭기록(전투상태, "바이퍼")) == 1
