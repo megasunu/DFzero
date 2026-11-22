@@ -218,3 +218,34 @@ def test_매드의_4_5번_패턴은_부른_사람이_배웠을_때만_쓰고_아
     MP, 조각 = 매드.get("현재MP"), 상태["소지품"]["재료"]["무색 큐브 조각"]
     assert 쓴_스킬() == {스킬}
     assert 매드.get("현재MP") == MP and 상태["소지품"]["재료"]["무색 큐브 조각"] == 조각
+
+
+# ---------------------- 인형 : 매드는 소환스킬(#822)
+
+
+def test_인형_매드는_소환스킬이고_습득_비용은_반값이_아니다():
+    데이터 = gf.스킬데이터모음_생성()["인형 : 매드"]
+    assert 데이터["분류"] == "소환스킬"
+    assert (
+        "소환스킬" not in 데이터["타입"]
+    )  # 마법사 소환 스킬의 반값(타입)은 받지 않는다 - 주인 결정
+    from game.system import skill_learn_system
+
+    assert skill_learn_system.스킬습득_비용(2, 데이터) == 100
+
+
+def test_자동전투는_부른_매드가_없을_때만_인형_매드를_부른다(monkeypatch):
+    from game.controller import ctl_autobattle
+
+    상태, p, _ = _인챈트리스(monkeypatch, 둘=True)
+    데이터 = 상태["스킬데이터모음"]["인형 : 매드"]
+    assert not gf.부른_인형_있나(상태, p)
+    assert (
+        ctl_autobattle._전력전투_단계(데이터) == "버프스킬"
+    )  # 버프와 같은 단계에서 겨룬다
+    assert ctl_autobattle._전력전투_쓸만한가(상태, p, "인형 : 매드", 데이터)
+    매드 = _매드_부르기(상태)
+    assert gf.부른_인형_있나(상태, p)
+    assert not ctl_autobattle._전력전투_쓸만한가(상태, p, "인형 : 매드", 데이터)
+    매드["생존"] = False
+    assert ctl_autobattle._전력전투_쓸만한가(상태, p, "인형 : 매드", 데이터)
