@@ -177,7 +177,7 @@ class _정책:
             if not scenario._쓸_가치가_있나(상태, 참가자, 이름, self.사용기록):
                 self.걸러짐[(참가자["원본"].get("전직"), 이름)] += 1
                 continue
-            if 타겟 and 타겟.startswith("적"):
+            if 타겟 and 타겟.startswith("적") and 타겟 != "적반복지정":
                 후보 += [(이름, i) for i in _표적들(상태, 이름)]
             elif scenario._스킬_인수(상태, 참가자, 이름) is not None:
                 후보.append((이름, None))
