@@ -21,6 +21,7 @@ from game.controller.ctl_party import (
     캐릭터_최대MP,
 )
 from game.controller.ctl_session import 자동_저장
+from game.controller.ctl_skills import 캐릭터_선행스킬_맞추기
 from game.controller.ctl_registry import (
     전직_레지스트리,
     전직_시작레벨,
@@ -533,6 +534,7 @@ def _캐릭터_레벨업_적용(캐릭터, 선택):
     )
     if 레벨업항목["타입"] == "퍽획득" and 선택.get("퍽이름"):
         캐릭터["보유퍽"].append(선택["퍽이름"])
+    캐릭터_선행스킬_맞추기(캐릭터)  # 선행스킬이 없으면 레벨 13 매드 더 빅을 미룬다
     return 결과
 
 

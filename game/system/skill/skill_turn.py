@@ -221,7 +221,7 @@ def 캐스팅_발사(전투상태, 시전자):
 
 
 def _채널링공격_항목들(참가자):
-    return [b for b in 참가자.get("버프") or [] if "채널링종료공격" in b]
+    return [b for b in 참가자.get("버프") or [] if "채널링횟수" in b]
 
 
 def 채널링공격_턴종료(전투상태, 참가자):
