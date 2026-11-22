@@ -444,6 +444,13 @@ def _커밋():
         return "?"
 
 
+def _인카운트_있음(코드):
+    """맵에 무작위 인카운트 표가 있나 - 부유성(D17)처럼 없는 던전은 인카운트 측정을 건너뛴다."""
+    import gameflow as gf  # 다른 곳처럼 늦게 불러온다(일꾼 프로세스가 각자 불러옴)
+
+    return "인카운트" in gf.던전_레지스트리[던전_찾기(코드, gf.던전_레지스트리)]
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("던전", nargs="*", help="D11 같은 던전 코드")
@@ -494,7 +501,11 @@ def main(argv=None):
             )
             for d in a.던전
             for 종류 in a.종류
+            if 종류 != "인카운트" or _인카운트_있음(d)
         ]
+        for d in a.던전:
+            if "인카운트" in a.종류 and not _인카운트_있음(d):
+                print(f"건너뜀\t{d} 인카운트\t무작위 인카운트가 없는 던전", flush=True)
     결과 = {"커밋": _커밋(), "시작시드": a.시드, "판": a.판, "행": []}
     for 표, 행, 조건 in 조건들:
         판수 = (
