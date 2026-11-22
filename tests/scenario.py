@@ -217,6 +217,8 @@ def _쓸_가치가_있나(상태, 시전자, 이름, 사용기록, 돌림=None):
             return True
         return not 시전자.get("보유자원")
     if 분류 == "소환스킬":
+        if 데이터.get("인형소환"):  # 인형 : 매드 - 부른 인형이 없을 때만(#822)
+            return not gf.부른_인형_있나(상태, 시전자)
         return not 시전자.get("소환수")
     return True
 
