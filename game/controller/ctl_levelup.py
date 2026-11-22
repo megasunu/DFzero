@@ -15,7 +15,11 @@ from game.data.perks.perks_class_0000 import 퍽목록 as 공용퍽
 from game.system import character_creation_system as 캐릭터생성
 from game.system import character_data_system as 캐릭터데이터
 from game.system import character_levelup_system as 캐릭터레벨업
-from game.controller.ctl_party import 스킬데이터모음_생성
+from game.controller.ctl_party import (
+    스킬데이터모음_생성,
+    캐릭터_최대HP,
+    캐릭터_최대MP,
+)
 from game.controller.ctl_session import 자동_저장
 from game.controller.ctl_registry import (
     전직_레지스트리,
@@ -351,8 +355,14 @@ def 캐릭터_레벨업_적용(캐릭터, **선택):
 
 def 캐릭터_레벨업_확정(게임상태, 캐릭터, **선택):
     """화면의 [레벨업] 확정 - 캐릭터_레벨업_적용 뒤 자동 저장 칸에 덮어쓴다. 던전 안이어도
-    자동 저장은 마을 상태로 쓴다(불러오면 마을에서 시작)."""
+    자동 저장은 마을 상태로 쓴다(불러오면 마을에서 시작).
+    약점증가처럼 최대HP/MP를 낮추는 선택이면 현재값을 장비 반영 최대치로 자른다(#813 - 장비 교체와 같다)."""
     캐릭터_레벨업_적용(캐릭터, **선택)
+    if (
+        캐릭터 in 게임상태["파티"]["파티원"]
+    ):  # 숙소 동료는 캐릭터_최대HP가 장비 없이 계산된다
+        캐릭터["현재HP"] = min(캐릭터["현재HP"], 캐릭터_최대HP(게임상태, 캐릭터))
+        캐릭터["현재MP"] = min(캐릭터["현재MP"], 캐릭터_최대MP(게임상태, 캐릭터))
     자동_저장(게임상태)
     return 캐릭터
 
