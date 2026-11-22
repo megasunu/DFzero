@@ -22,7 +22,7 @@ from game.system import (
 from game.system.item import equipment_system, loot_system, shop_system
 from game.system.combat import channeling, core, flow, resources, stats, status
 from game.controller.ctl_battle import 현재_턴_참가자
-from game.controller.ctl_levelup import 능력치_역할_바꾸기, 전직전_이름
+from game.controller.ctl_levelup import 능력치_역할_바꾸기, 전직전_이름, 현재값_자르기
 from game.controller.ctl_skills import 캐릭터_배운스킬_골드
 from game.controller.ctl_party import (
     캐릭터_생성,
@@ -784,6 +784,7 @@ def 레테의_눈물_사용(게임상태, 캐릭터, 스탯구성):
     능력치_역할_바꾸기(사본, 스탯구성)
     캐릭터.clear()
     캐릭터.update(사본)
+    현재값_자르기(게임상태, 캐릭터)
     potion_system.소지품_차감_카테고리(게임상태["소지품"], "소모품", "레테의 눈물")
     return 캐릭터
 
