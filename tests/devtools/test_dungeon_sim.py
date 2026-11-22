@@ -84,3 +84,12 @@ def test_보스와_원정도_끝까지_돌고_챔피언_조정은_끝나면_되�
     )
     assert 원정["판"] == 1 and 원정["평균라운드"] > 0
     assert dungeon_system.챔피언_확률 == 전
+
+
+def test_무작위_인카운트가_없는_던전의_인카운트는_건너뛰고_보스는_잰다(capsys):
+    # 부유성(D17)은 맵에 "인카운트"가 없다 - 전에는 인카운트 측정이 KeyError로 실행 전체를 멈췄다
+    assert "인카운트" not in gf.던전_레지스트리[ds.던전_찾기("D17", gf.던전_레지스트리)]
+    ds.main(["D17", "--종류", "인카운트", "보스", "--판", "1", "--일꾼", "1"])
+    줄들 = capsys.readouterr().out.splitlines()
+    assert any(줄.startswith("건너뜀\tD17 인카운트") for 줄 in 줄들)
+    assert any(줄.startswith("직접\tD17 보스\t") for 줄 in 줄들)
