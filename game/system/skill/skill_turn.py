@@ -6,6 +6,7 @@ skill_run.py(스킬_실행과 스킬 종류별 실행)에서 갈라져 나왔다
 
 from game.data import common_names
 from game.system.combat import (
+    channeling,
     control,
     core,
     flow,
@@ -32,6 +33,7 @@ from game.system.skill.skill_run import (
     공격_시전자버프,
     공격스킬_분기,
     무작위_적,
+    아리아_턴시작,
     설치소환수_목록,
     설치소환수_붙이기,
     설치소환수_폭발,
@@ -370,6 +372,13 @@ def 다음_턴(전투상태):
         core.종료판정_갱신(전투상태)
     elif 다음.get("다음턴추가공격"):  # 공력의 구 2단계 - 자기 턴 시작
         다음턴_추가공격(전투상태, 다음)
+    if channeling.아리아_목록(다음) or any(
+        s.get("아리아슈퍼아머") for s in 다음.get("상태이상") or []
+    ):
+        아리아_턴시작(
+            전투상태, 다음
+        )  # 크루세이더 아리아 - 자기 차례 시작(남은 슈퍼아머 정리 포함)
+        core.종료판정_갱신(전투상태)
     return 다음
 
 

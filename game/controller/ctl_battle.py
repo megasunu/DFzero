@@ -329,7 +329,9 @@ def 채널링_확인대기(게임상태):
     return [
         b["이름"]
         for b in channeling.채널링_목록(참가자)
-        if not b.get("채널링시전턴") and not b.get("채널링확인")
+        if not b.get("채널링시전턴")
+        and not b.get("채널링확인")
+        and not b.get("아리아")  # 아리아는 묻지 않는다(다른 행동을 하면 풀린다)
     ]
 
 
@@ -340,7 +342,7 @@ def 채널링_선택(게임상태, 유지):
     for 항목 in channeling.채널링_목록(참가자):
         항목["채널링확인"] = True
     if not 유지:
-        channeling.채널링_행동해제(전투상태, 참가자, 까닭="해제")
+        channeling.채널링_행동해제(전투상태, 참가자, 까닭="해제", 아리아행동=True)
 
 
 def 적_목록(게임상태):
