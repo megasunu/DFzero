@@ -10,6 +10,7 @@
 import pytest
 
 import gameflow as gf
+from game.data.buff.job_buff import 직업버프목록
 from game.system import rng
 from game.system import skill_system as ss
 from game.system.combat import attacks, damage, hit, stats, traits
@@ -97,11 +98,11 @@ def test_전장정보는_지능과_지혜를_1씩_올린다():
 
 
 def test_무기강화와_용맹의_축복은_MP_0_휴식당_1회_버프A군():
-    for 이름 in ("무기강화", "용맹의 축복"):
+    for 이름 in ("무기강화", "용맹의 축복", "금단의 저주"):
         스킬 = _스킬(이름)
         assert 스킬["MP소모"] == 0 and 스킬["휴식당횟수"] == 1, 이름
         assert "버프A군" in 스킬["타입"], 이름
-        assert 스킬["버프획득"] == ["근력증가", "지능증가"] and 스킬["지속턴"] == 10
+        assert 스킬["버프획득"] == ["근력증가", "지능증가"] and 스킬["지속턴"] == 5
     assert "버프B군" in _스킬("수호의 축복")["타입"]
     assert "버프B군" in _스킬("장갑강화")["타입"]
     assert "버프C군" in _스킬("신성한 빛")["타입"]
@@ -306,3 +307,33 @@ def test_영거리_제압은_큐브조각이_모자라면_쓸_수_없다(monkeyp
     상태, p, _, _ = _13레벨_메딕(monkeypatch, 큐브=4)
     가능, 사유 = ss.사용_가능여부(상태["전투상태"], p, _스킬("영거리 제압"))
     assert not 가능 and "무색 큐브 조각" in 사유
+
+
+def test_에디피케이션은_기동강화와_같은_3차수_골드_D군():
+    이름 = "에디피케이션"
+    기준, 데이터 = _스킬("기동강화"), _스킬(이름)
+    같아야할키 = (
+        "분류",
+        "타입",
+        "습득방법",
+        "습득레벨",
+        "습득차수",
+        "행동",
+        "타겟",
+        "MP소모",
+        "지속턴",
+    )
+    assert {k: 데이터[k] for k in 같아야할키} == {k: 기준[k] for k in 같아야할키}
+    assert 데이터["버프획득"] == [이름]
+    assert 직업버프목록[이름]["효과"] == 직업버프목록["기동강화"]["효과"]
+
+
+def test_에디피케이션은_기동강화와_겹치지_않고_나중에_건_것만_남는다(메딕전장):
+    _, 전투상태, _, m, k = 메딕전장
+    _쓰기(전투상태, m, "기동강화")
+    AC = stats.최종AC(전투상태, m)
+    _쓰기(전투상태, k, "에디피케이션")
+    assert not _버프(m, "기동강화") and _버프(m, "에디피케이션")[0]["지속턴"] == 3
+    assert stats.최종AC(전투상태, m) == AC  # 효과가 같아 겹치지 않는다
+    _쓰기(전투상태, m, "기동강화")
+    assert not _버프(k, "에디피케이션") and _버프(k, "기동강화")
