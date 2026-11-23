@@ -1,6 +1,6 @@
 """전투 화면 상태 아이콘 - 그림 칸 오른쪽 아래에 쌓을 아이콘 고르기.
 
-아이콘은 game/assets/status/의 19개뿐이고, 그 밖의 상태는 아이콘이 없다.
+아이콘 그림은 game/assets/status/의 19개뿐이고(소각은 화상 그림을 같이 쓴다), 그 밖의 상태는 아이콘이 없다.
 """
 
 from pathlib import Path
@@ -26,12 +26,12 @@ def _이름들(상태, 참가자):
     return [이름 for 이름, _ in gf.상태_아이콘(상태, 참가자)]
 
 
-def test_아이콘은_19개이고_그림이_모두_있다():
-    assert len(gf.상태아이콘_파일) == 19
+def test_아이콘은_20개이고_그림이_모두_있다():
+    assert len(gf.상태아이콘_파일) == 20  # 소각은 화상 그림을 같이 쓴다
     for 파일 in gf.상태아이콘_파일.values():
         assert (_에셋 / 파일).is_file(), 파일
     assert sorted(p.name for p in _에셋.glob("*.png")) == sorted(
-        gf.상태아이콘_파일.values()
+        set(gf.상태아이콘_파일.values())
     )
 
 

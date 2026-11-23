@@ -409,6 +409,7 @@ def 적_챔피언버프(적참가자):
 상태아이콘_파일 = {
     "출혈": "asset_status_bleeding.png",
     "화상": "asset_status_burn.png",
+    "소각": "asset_status_burn.png",  # 그림 없음 - 화상 그림을 같이 쓴다
     "감전": "asset_status_shock.png",
     "중독": "asset_status_poison.png",
     "암흑": "asset_status_darkness.png",
