@@ -12,7 +12,7 @@ import gameflow as gf
 from game.data.job_level import job_level_053f_shaman
 from game.system import rng
 from game.system import skill_system as ss
-from game.system.combat import flow, stats, traits
+from game.system.combat import contribution, flow, hit, stats, traits
 from tests import support
 
 
@@ -232,3 +232,147 @@ def test_공력의_구_2단계는_대상이_쓰러졌으면_나가지_않는다(
     로그수 = len(전투상태["로그"])
     _무녀_차례까지(전투상태, m)
     assert not any("공력의 구" in str(줄) for 줄 in 전투상태["로그"][로그수:])
+
+
+# ------------------------------------------------------------------ 3차수 - 레벨 13 부동주박진, 골드 백팔염주
+
+
+@pytest.fixture
+def 무녀13():
+    """프리스트 -> 무녀 레벨 13(3차수, 골드 스킬 전부, 조악한 염주 1d4)과 고블린 셋(HP 10**6), 무색 큐브 조각 5."""
+    rng.시드(5)
+    상태 = support.새게임([("", "프리스트")])
+    c = 상태["파티"]["파티원"][0]
+    support.성장(상태, c, 13, 전직="무녀", 스킬습득=True)
+    상태["소지품"]["장비"]["조악한 염주"] = 1
+    gf.장비_교체(상태, c, "무기", "조악한 염주")
+    상태["소지품"]["재료"]["무색 큐브 조각"] = 5
+    gf.전투_시작(상태, ["고블린", "고블린", "고블린"], 레벨=2, 차수=1)
+    support.반응_처리(상태)
+    전투상태 = 상태["전투상태"]
+    적 = sorted(
+        (p for p in 전투상태["참가자"] if p["진영"] == "적"),
+        key=lambda p: p["대형위치"],
+    )
+    for p in 적:
+        p.update(생존=True, 현재HP=10**6, 최대HP=10**6, 상태이상=[])
+    m = next(p for p in 전투상태["참가자"] if p["원본"] is c)
+    m["장비보너스"] = {}
+    return 상태, 전투상태, 적, m
+
+
+def test_레벨13에_부동주박진을_얻고_백팔염주는_11레벨부터_3차수_골드다(무녀13):
+    _, _, _, m = 무녀13
+    assert job_level_053f_shaman.레벨업테이블[13]["획득"]["획득스킬"] == ["부동주박진"]
+    assert {"부동주박진", "백팔염주"} <= set(m["원본"]["보유스킬"])
+    백팔 = _스킬("백팔염주")
+    assert (백팔["습득방법"], 백팔["습득레벨"], 백팔["습득차수"]) == ("구매습득", 11, 3)
+    assert (백팔["MP소모"], 백팔["공격횟수"], 백팔["공격타입"]) == (30, 108, "타격")
+    for 이름 in ("부동주박진", "백팔염주"):
+        assert _스킬(이름)["사용무기"] == "염주"
+
+
+def test_부동주박진은_맞은_적만_피해와_경직이고_내성굴림은_명중과_상관없이(
+    무녀13, monkeypatch
+):
+    상태, 전투상태, 적, m = 무녀13
+    _고정(monkeypatch)
+    맞을 = 적[0]["이름"]
+    monkeypatch.setattr(
+        hit,
+        "명중_판정",
+        lambda 전투상태, 공격자, 대상, *a, **kw: {
+            "성공": 대상["이름"] == 맞을,
+            "자연눈": 15,
+            "치명타": False,
+            "자동실패": False,
+        },
+    )
+    난이도들 = []
+
+    def 내성(보정치, 난이도, 이점=False, 불리=False):
+        난이도들.append(난이도)
+        return False, 1
+
+    monkeypatch.setattr(stats.dice_utils, "내성_굴림", 내성)
+    이니 = [p["이니셔티브"] for p in 적]
+    결과 = _쓰기(전투상태, m, "부동주박진")
+    assert m["현재MP"] == 20 and not 상태["소지품"]["재료"].get("무색 큐브 조각")
+    # (차수+1)d4 = 4d4 -> 4 + 주문시전보정치, 맞은 적만
+    assert [t["피해"] for t in 결과["타격"]] == [
+        4 + stats.주문시전_보정치(전투상태, m),
+        0,
+        0,
+    ]
+    assert [p["이니셔티브"] for p in 적] == [이니[0] - 5, 이니[1], 이니[2]]
+    # 빗나간 적도 내성굴림(DC 10+지능보정치)을 하고, 실패하면 구속·몹몰이 2턴
+    지능 = stats.유효_능력치_보정치(전투상태, m, "지능")
+    assert 난이도들 == [10 + 지능] * 3
+    for p in 적:
+        assert {s["이름"] for s in p["상태이상"]} >= {"구속", "몹몰이"}
+
+
+@pytest.mark.parametrize(
+    "눈, 감옥, 맞음",
+    [(20, False, True), (19, False, False), (2, True, True), (1, True, False)],
+)
+def test_주사위20_명중은_눈_20에만_맞고_치명타가_아니다(
+    무녀13, monkeypatch, 눈, 감옥, 맞음
+):
+    _, 전투상태, 적, m = 무녀13
+    받은 = []
+
+    def d20(이점=False, 불리=False):
+        받은.append((이점, 불리))
+        return 눈
+
+    monkeypatch.setattr(stats.dice_utils, "d20_굴림", d20)
+    monkeypatch.setattr(
+        hit, "유효_치명타범위", lambda *a: 15
+    )  # 치명타범위 확장도 보지 않는다
+    if 감옥:
+        적[0]["감옥"] = True
+    판정 = hit.명중_판정(전투상태, m, 적[0], "주사위20", 명중보너스=30, 명중이점=True)
+    assert (판정["성공"], 판정["치명타"]) == (맞음, False)
+    assert 받은 == [(False, False)]  # 이점·불리점 없이 한 번
+    if not 감옥:
+        assert contribution.스킬_명중확률(전투상태, m, 적[0], "주사위20") == 1 / 20
+
+
+def _백팔_기록(전투상태):
+    return gf.로그_문장들(next(h for h in 전투상태["로그"] if h.get("명중만기록")))
+
+
+def test_백팔염주는_적_하나당_10번까지_맞고_남은_공격은_버린다(무녀13, monkeypatch):
+    _, 전투상태, 적, m = 무녀13
+    _고정(monkeypatch, 눈=20)
+    support.주사위고정(monkeypatch, 4)
+    결과 = _쓰기(전투상태, m, "백팔염주")
+    assert m["현재MP"] == 20
+    친 = [t for t in 결과["타격"] if "판정" in t]
+    assert len(친) == 30 and all(not t["판정"]["치명타"] for t in 친)
+    for p in 적:
+        assert sum(t["대상"] == p["이름"] for t in 친) == 10
+    # (차수+1)d4 + 주문시전보정치 - (차수+3), 3차수 주사위 최대 -> 16 + 보정치 - 6
+    assert {t["피해"] for t in 친} == {stats.주문시전_보정치(전투상태, m) + 10}
+    줄들 = _백팔_기록(전투상태)
+    assert 줄들[:2] == [f"{m['이름']}의 백팔염주!!", "30번 중 30번 명중!"]
+    assert len(줄들) == 2 + 3  # 맞은 적마다 한 줄
+
+
+def test_백팔염주는_빗나간_공격을_세지_않는다(무녀13, monkeypatch):
+    _, 전투상태, 적, m = 무녀13
+    _고정(monkeypatch)
+    눈들 = iter([20, 1] * 54)
+    monkeypatch.setattr(
+        stats.dice_utils, "d20_굴림", lambda 이점=False, 불리=False: next(눈들)
+    )
+    결과 = _쓰기(전투상태, m, "백팔염주")
+    친 = [t for t in 결과["타격"] if "판정" in t]
+    assert (
+        len(친) == 59
+    )  # 30번째로 맞은 59번째 공격에서 모든 적이 10번 - 남은 공격은 버린다
+    assert sum(t["판정"]["성공"] for t in 친) == 30
+    줄들 = _백팔_기록(전투상태)
+    assert 줄들[1] == "59번 중 30번 명중!"
+    assert all("번 맞아" in 줄 for 줄 in 줄들[2:5])

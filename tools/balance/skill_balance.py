@@ -72,6 +72,7 @@ from game.system.combat import contribution, formula  # noqa: E402
     "사용무기",
     "경직량",
     "치명타불가",
+    "명중만기록",  # 전투 기록 모양만 바꾼다
     "효과",
     "조건부효과",
     "공격단계1",
