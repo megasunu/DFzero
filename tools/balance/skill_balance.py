@@ -34,6 +34,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
+from game.system import skill_system  # noqa: E402
 from game.system.combat import contribution, formula  # noqa: E402
 
 표_경로 = os.path.join(ROOT, "docs", "balance", "스킬기준표.md")
@@ -77,6 +78,7 @@ from game.system.combat import contribution, formula  # noqa: E402
     "조건부효과",
     "공격단계1",
     "공격단계2",
+    "공격단계3",
     "크기별공격횟수",
     "추가무작위대상",
     "명중반복",
@@ -305,7 +307,7 @@ def 부분_기대(부분, 빌드값, 차수):
 def 스킬_행(이름, 데이터, 빌드값, 차수):
     """{"기대", "기준", "비율", "대상", "비용", "비고"} - 셀 수 없으면 "기대"가 None."""
     비용값, 비용글 = 비용(데이터, 차수)
-    부분들 = [데이터[k] for k in ("공격단계1", "공격단계2") if k in 데이터] or [데이터]
+    부분들 = [데이터[k] for k in skill_system.공격단계_키들(데이터)] or [데이터]
     비고 = []
     빠진 = sorted(set(데이터) - 반영키)
     for 부분 in 부분들:

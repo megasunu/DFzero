@@ -330,7 +330,10 @@ def test_스킬_데이터의_키는_엔진이_읽는다():
     안읽힘 = {
         k
         for k in 키들 - set(설명용_키) - _값으로_쓰는_키(스킬데이터)
-        if f'"{k}"' not in 소스 and f"'{k}'" not in 소스
+        if f'"{k}"' not in 소스
+        and f"'{k}'" not in 소스
+        # 분할공격 단계는 번호로 읽는다(skill_attack.공격단계_키들 - "공격단계"+번호, 헤븐리 컴비네이션 3단계)
+        and not re.fullmatch(r"공격단계\d+", k)
     }
     assert 안읽힘 == set()
     # 허용 목록이 낡지 않게 - 실제로 데이터에 있고 엔진이 안 읽는 키만
