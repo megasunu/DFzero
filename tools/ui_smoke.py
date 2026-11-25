@@ -115,6 +115,7 @@ class 스모크앱(
         yield from self._단계_인형(상태, 매니저)
         yield from self._단계_란마(상태, 매니저)
         yield from self._단계_축염포(상태, 매니저)
+        yield from self._단계_추적(상태, 매니저)
         yield from self._단계_연계_팝업(매니저)
         yield from self._단계_넨가드_채널링(매니저)
         yield from self._단계_합격(상태, 매니저)

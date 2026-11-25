@@ -78,6 +78,7 @@ from game.system.combat import contribution, formula  # noqa: E402
     "조건부효과",
     "공격단계1",
     "공격단계2",
+    "공격단계3",
     "크기별공격횟수",
     "추가무작위대상",
     "명중반복",
