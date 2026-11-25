@@ -221,6 +221,53 @@ def test_gameflow는_손상오류를_그대로_올린다(임시_세이브폴더)
     assert gf.전체_세이브_요약()[1] == {"슬롯번호": 1, "손상": True}
 
 
+def _첫_파티원_고치기(폴더, 고치기, 접미=""):
+    경로 = 폴더 / f"slot_1.json{접미}"
+    데이터 = json.loads(경로.read_text(encoding="utf-8"))
+    고치기(데이터["플레이어"]["파티"]["파티원"][0])
+    경로.write_text(json.dumps(데이터, ensure_ascii=False), encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "고치기",
+    [
+        lambda c: c.__setitem__("직업", "데이터에_없는_직업"),  # KeyError
+        lambda c: c.__setitem__("보유특성", 3),  # TypeError
+        lambda c: c.__setitem__("장착장비", {"무기": 1.5}),  # TypeError(강화 이름 해석)
+    ],
+)
+def test_읽혔지만_게임상태로_못_만드는_세이브는_백업으로_불러온다(
+    임시_세이브폴더, 고치기
+):
+    """파일 검사는 통과하지만 컨트롤러가 다시 계산하다 죽는 세이브(#845) - 예외 대신 백업으로,
+    백업도 그렇게 망가졌으면 세이브_손상오류. 슬롯 목록에도 복구본/손상으로 보인다."""
+    상태 = support.새게임()
+    gf.게임_저장(상태, 1)
+    상태["소지품"]["골드"] = 77
+    gf.게임_저장(상태, 1)  # .bak = 골드 0인 앞 세이브
+    _첫_파티원_고치기(임시_세이브폴더, 고치기)
+
+    assert gf.게임_불러오기(1)["소지품"]["골드"] == 0  # 백업
+    assert gf.전체_세이브_요약()[1]["복구본"] is True
+
+    _첫_파티원_고치기(임시_세이브폴더, 고치기, ".bak")
+    with pytest.raises(gf.세이브_손상오류):
+        gf.게임_불러오기(1)
+    assert gf.전체_세이브_요약()[1] == {"슬롯번호": 1, "손상": True}
+
+
+def test_백업_없이_게임상태로_못_만드는_세이브는_손상오류(임시_세이브폴더):
+    gf.게임_저장(support.새게임(), 1)  # 첫 저장이라 .bak이 없다
+    _첫_파티원_고치기(임시_세이브폴더, lambda c: c.__setitem__("보유특성", 3))
+    with pytest.raises(gf.세이브_손상오류):
+        gf.게임_불러오기(1)
+    with pytest.raises(FileNotFoundError):  # 빈 슬롯은 그대로 FileNotFoundError
+        gf.게임_불러오기(2)
+    요약 = gf.전체_세이브_요약()
+    assert 요약[1] == {"슬롯번호": 1, "손상": True}
+    assert 요약[2] == {"슬롯번호": 2, "비어있음": True}
+
+
 # 세이브 버전과 마이그레이션(N1b)
 
 
