@@ -48,6 +48,7 @@ from game.system.skill.skill_apply import (
     효과_적용,
 )
 from game.system.skill.skill_attack import (
+    공격단계_키들,
     공격스킬_실행,
     스킬_명중_판정,
     분할공격_실행,
@@ -1648,7 +1649,7 @@ def 그랩캐넌_적용(전투상태, 시전자, 스킬데이터, 중심대상):
     이름은 그대로 두고 그 적 1체에게 명중굴림 한 번으로 그랩캐넌_피해식만큼 치는 사본. 원래 스킬의
     부가효과(넘어짐·홀딩·몹몰이·던지기·명중반복)는 없다. 아니면 그대로."""
     태그 = set(스킬데이터.get("타입") or [])
-    for 단계 in ("공격단계1", "공격단계2"):
+    for 단계 in 공격단계_키들(스킬데이터):
         태그.update((스킬데이터.get(단계) or {}).get("타입") or [])
     if "잡기" not in 태그 or 중심대상 is None:
         return 스킬데이터
