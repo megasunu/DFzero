@@ -14,6 +14,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.spinner import Spinner
 from kivy.metrics import dp
 from kivy.uix.widget import Widget
+from kivy.utils import escape_markup
 import gameflow
 from game.screens.screens_common import (
     _버튼_높이,
@@ -686,7 +687,7 @@ class 전문직업화면(상점화면):
             orientation="horizontal", size_hint=(1, None), height=56, spacing=4
         )
         위치 = (
-            f"{항목['캐릭터']['캐릭터명']} 착용"
+            f"{escape_markup(항목['캐릭터']['캐릭터명'])} 착용"
             if 항목["캐릭터"] is not None
             else f"소지품 {항목['수량']}개"
         )
@@ -769,7 +770,7 @@ class 전문직업화면(상점화면):
             orientation="horizontal", size_hint=(1, None), height=72, spacing=4
         )
         위치 = (
-            f" (착용중) - {항목['캐릭터']['캐릭터명']}"
+            f" (착용중) - {escape_markup(항목['캐릭터']['캐릭터명'])}"
             if 항목["캐릭터"] is not None
             else f" x{항목['수량']}"
         )
@@ -877,7 +878,7 @@ class 전문직업화면(상점화면):
         )
         if "아이템" in 항목:
             위치 = (
-                f" (착용중) - {항목['캐릭터']['캐릭터명']}"
+                f" (착용중) - {escape_markup(항목['캐릭터']['캐릭터명'])}"
                 if 항목["캐릭터"] is not None
                 else f" x{항목['수량']}"
             )
