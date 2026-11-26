@@ -93,3 +93,37 @@ def test_무작위_인카운트가_없는_던전의_인카운트는_건너뛰고
     줄들 = capsys.readouterr().out.splitlines()
     assert any(줄.startswith("건너뜀\tD17 인카운트") for 줄 in 줄들)
     assert any(줄.startswith("직접\tD17 보스\t") for 줄 in 줄들)
+
+
+def test_보스전투가_여럿인_던전은_보스_칭호_전투를_재고_원정은_보스까지_차례로_이긴다(
+    monkeypatch,
+):
+    # 부유성(D17)은 보스전투가 9개(틴소드맨 ... 이블아이) - 전에는 첫 전투만 쟀다(#762)
+    맵 = gf.던전_레지스트리[ds.던전_찾기("D17", gf.던전_레지스트리)]
+    목록 = ds.보스전투_목록(맵)
+    assert len(목록) > 1
+    위치, 오브젝트 = ds.보스_오브젝트(맵)
+    assert 위치 != 목록[0][0]
+    assert any(m.get("칭호") == "보스" for m in 오브젝트["전투몬스터"])
+    # 보스전투가 하나인 던전은 그대로 그 전투
+    assert (
+        ds.보스_오브젝트(gf.던전_레지스트리[_D11])
+        == ds.보스전투_목록(gf.던전_레지스트리[_D11])[0]
+    )
+
+    import support
+
+    싸운_적 = []
+
+    def 이김(self):
+        싸운_적.append(sorted(적["이름"] for 적 in gf.적_목록(self.상태)))
+        support.강제_승리(self.상태)
+        return True, 1, {}
+
+    monkeypatch.setattr(ds.판, "_싸우기_열린채", 이김)
+    결과 = ds.판("D17", "원정", 14).한판(3)
+    보스전투수 = 목록.index((위치, 오브젝트)) + 1
+    assert 결과["승"] and 결과["인카운트"] == len(싸운_적) - 보스전투수
+    assert len(싸운_적) == 보스전투수 and any(
+        "이블아이의 왼쪽눈" in 이름 for 이름 in 싸운_적[-1]
+    )
