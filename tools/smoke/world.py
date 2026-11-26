@@ -908,16 +908,25 @@ class 세계단계:
 
             # [퀘스트] - 받기 -> 진행 중
             yield from 메뉴("라이너스")
-            _팝업_버튼("퀘스트").trigger_action(duration=0)
+            # 닫히는 중인 메뉴의 [퀘스트]가 두 번 눌려도 퀘스트 팝업은 하나(#846)
+            퀘스트버튼 = _팝업_버튼("퀘스트")
+            퀘스트버튼.trigger_action(duration=0)
+            퀘스트버튼.trigger_action(duration=0)
             yield 0.4
             assert _팝업수() == 1, _팝업수()
             _찍기("town_npc_linus")
-            _팝업_버튼("퀘스트 받기").trigger_action(duration=0)
+            받기버튼 = _팝업_버튼("퀘스트 받기")
+            받기버튼.trigger_action(duration=0)
             yield 0.4
             assert _팝업수() == 1, _팝업수()
             assert _팝업_버튼("진행 중").disabled
             assert 진행도["퀘스트"] == {"세리아_구출_의뢰": "진행중"}
             assert "받았습니다" in 마을.메시지라벨.text, 마을.메시지라벨.text
+            # 사라진 팝업의 [퀘스트 받기]가 늦게 눌려도 오류 팝업 없이 이유만 보이고 다시 그린다
+            받기버튼.trigger_action(duration=0)
+            yield 0.4
+            assert _팝업수() == 1, _팝업수()
+            assert "이미 받았다" in 마을.메시지라벨.text, 마을.메시지라벨.text
             _팝업_닫기()
             yield 0.2
 

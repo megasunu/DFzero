@@ -460,7 +460,11 @@ class 마을화면(Screen):
             )
 
     def _NPC_퀘스트_열기(self, 이름):
-        """NPC 퀘스트 팝업 - 그 NPC의 퀘스트(받기/완료 보고)."""
+        """NPC 퀘스트 팝업 - 그 NPC의 퀘스트(받기/완료 보고). 열려 있던 퀘스트 팝업은 먼저 닫는다 -
+        닫히는 중인 메뉴의 [퀘스트]가 한 번 더 눌려도 팝업이 겹치지 않게(#846)."""
+        이전 = getattr(self, "_NPC_퀘스트_팝업", None)
+        if 이전 is not None:
+            이전.dismiss(animation=False)
         게임상태 = App.get_running_app().게임상태
         대화 = gameflow.NPC_대화(게임상태, 이름)
         본문 = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12))
@@ -476,12 +480,21 @@ class 마을화면(Screen):
             self.메시지라벨.text = 문구
             self._NPC_퀘스트_열기(이름)
 
+        # 닫히는 중인 팝업의 버튼이 늦게 눌리면 이미 받은/보고한 퀘스트일 수 있다 - 그 이유를 보이고 다시 그린다
         def 받기(퀘스트):
-            gameflow.퀘스트_수락(게임상태, 퀘스트["ID"])
+            try:
+                gameflow.퀘스트_수락(게임상태, 퀘스트["ID"])
+            except ValueError as 오류:
+                다시_열기(str(오류))
+                return
             다시_열기(f"퀘스트 [{퀘스트['이름']}]을(를) 받았습니다.")
 
         def 보고(퀘스트):
-            보상 = gameflow.퀘스트_완료_보고(게임상태, 퀘스트["ID"])
+            try:
+                보상 = gameflow.퀘스트_완료_보고(게임상태, 퀘스트["ID"])
+            except ValueError as 오류:
+                다시_열기(str(오류))
+                return
             다시_열기(
                 f"퀘스트 [{퀘스트['이름']}] 완료 - {보상.get('골드', 0)}G를 받았습니다."
             )
