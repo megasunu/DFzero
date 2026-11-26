@@ -315,7 +315,7 @@ class 마을단계:
         )
 
     def _단계_봉인(self, 상태, 매니저):
-        """[전문직업] 봉인해제(소지품 + 장착 중) -> 마법의 장비, 봉인변환 -> 다른 능력, 돈/소울 부족"""
+        """[전문직업] 봉인해제(소지품 + 장착 중, 이름의 [ ]는 글자로) -> 마법의 장비, 봉인변환 -> 다른 능력, 돈/소울 부족"""
         화면 = 매니저.get_screen("전문직업")
         소지품 = 상태["소지품"]
         귀검사 = 상태["파티"]["파티원"][0]
@@ -331,12 +331,27 @@ class 마을단계:
                 if isinstance(w, Button) and w.text == 글
             ]
 
-        화면._메인_그리기()
-        next(
-            w
-            for w in 화면.내용틀.walk(restrict=True)
-            if isinstance(w, Button) and w.text == "봉인해제"
-        ).dispatch("on_release")
+        def 봉인해제_목록():
+            화면._메인_그리기()
+            next(
+                w
+                for w in 화면.내용틀.walk(restrict=True)
+                if isinstance(w, Button) and w.text == "봉인해제"
+            ).dispatch("on_release")
+
+        # 이름의 [ ]는 마크업이 아니라 글자로 보여야 한다(#847) - 이름을 잠깐 바꿔 목록을 그려 본다
+        원래이름 = 귀검사["캐릭터명"]
+        귀검사["캐릭터명"] = "[i]귀검"
+        봉인해제_목록()
+        yield 0.3
+        착용줄 = [
+            w.text
+            for w in 화면._목록틀.walk(restrict=True)
+            if isinstance(w, Label) and "귀검 착용" in w.text
+        ]
+        귀검사["캐릭터명"] = 원래이름
+        assert 착용줄 and all("&bl;i&br;귀검" in t for t in 착용줄), 착용줄
+        봉인해제_목록()
         yield 0.3
         assert len(실행버튼들("봉인해제")) == 2  # 착용 1줄 + 소지품 1줄
         _찍기("profession_unseal_list")
