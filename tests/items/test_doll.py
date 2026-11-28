@@ -5,6 +5,7 @@ import pytest
 import gameflow as gf
 from game.system.combat import (
     core,
+    damage,
     flow,
     monster_actions,
     stats,
@@ -236,6 +237,67 @@ def test_몬스터는_인형도_공격_대상으로_고른다():
     시작 = len(전투상태["로그"])
     monster_actions.몬스터_턴_실행(전투상태, 고블린)
     assert "28호" in str(전투상태["로그"][시작:])
+
+
+# ------------------------------------------------------------------ 특성 인형:28호 - 나선의 넨·뇌명 상시(#223)
+
+
+def _뇌명(인형):
+    return [b for b in 인형.get("버프") or [] if b["이름"] == "뇌명"]
+
+
+def test_28호는_전투_시작부터_뇌명을_지속턴_없이_가진다():
+    상태, 인형 = _인형_전투()
+    (뇌명,) = _뇌명(인형)
+    assert 뇌명.get("지속턴") is None
+    assert stats.일반공격_대체(상태["전투상태"], 인형)["속성"] == "명속성"
+    for _ in range(8):  # 몇 라운드가 지나도 남는다
+        flow.턴_시작_처리(상태["전투상태"], 인형)
+    assert len(_뇌명(인형)) == 1
+
+
+def test_전투_중에_부른_28호도_뇌명을_가진다():
+    상태, _ = _인형_전투()
+    gf.인형_사용(상태, "28호")
+    (새인형,) = [q for q in gf.아군_목록(상태) if q.get("인형")]
+    assert len(_뇌명(새인형)) == 1
+
+
+def test_몬스터에게_맞은_28호는_때린_적에게_반격한다(monkeypatch):
+    상태, 인형 = _인형_전투()
+    전투상태 = 상태["전투상태"]
+    고블린 = gf.적_목록(상태)[0]
+    고블린["현재HP"] = 999
+    인형["현재HP"] = 999  # 맞아도 쓰러지지 않게
+    for p in gf.아군_목록(상태):
+        if p is not 인형:
+            p["생존"] = False
+    support.주사위고정(monkeypatch, 20)
+    시작 = len(전투상태["로그"])
+    monster_actions.몬스터_턴_실행(전투상태, 고블린)
+    반격 = [
+        e
+        for e in 전투상태["로그"][시작:]
+        if isinstance(e, dict)
+        and e.get("공격자") == 인형["이름"]
+        and str(e.get("비고", "")).startswith("나선의 넨 반격")
+    ]
+    assert 반격 and 고블린["현재HP"] < 999, 전투상태["로그"][시작:]
+
+
+def test_28호는_맞으면_MP_없이_나선의_넨으로_반격한다(monkeypatch):
+    상태, 인형 = _인형_전투()
+    전투상태 = 상태["전투상태"]
+    고블린 = gf.적_목록(상태)[0]
+    고블린["현재HP"] = 999
+    support.주사위고정(monkeypatch, 20)
+    시작 = len(전투상태["로그"])
+    damage.나선의넨_반격(전투상태, 인형, 고블린)
+    assert 고블린["현재HP"] < 999, 전투상태["로그"][시작:]
+    assert 인형["피격반격스택"] == 1  # 최대 2에서 하나 썼다
+    MP = 인형.get("현재MP")
+    flow.턴_종료_처리(전투상태, 인형)
+    assert 인형.get("현재MP") == MP  # 턴 끝 MP 소모 없음(토글 나선의 넨과 다르다)
 
 
 def test_인형과_전투_참가자는_상태_스키마에_맞는다():
