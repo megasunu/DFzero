@@ -5,6 +5,7 @@ from game.system import (
     achievement_system,
     character_creation_system,
     character_data_system as 캐릭터데이터,
+    character_levelup_system,
     collection_system,
     dungeon_system,
     effect_engine,
@@ -255,6 +256,12 @@ def _게임상태_복원(플레이어, 진행도):
         character_creation_system.레벨1_스킬_습득(
             캐릭터, 직업_레지스트리[캐릭터["직업"]]["스킬목록"]
         )
+        # 레벨 3 방어 스킬·특성은 레벨 3~5 작업 전에 레벨 3을 넘긴 캐릭터에게 없다(#167) - 빠진 것만 준다.
+        if 캐릭터["레벨"] >= 3:
+            직업 = 직업_레지스트리[캐릭터["직업"]]
+            character_levelup_system.레벨진행_누락_채우기(
+                캐릭터, 직업["레벨업테이블"].get(3), 직업["특성목록"]
+            )
     # 마법부여·강화한 장비는 이름으로만 저장된다 - 소지품/장착 칸의 이름으로 카탈로그에
     # 다시 만든다. 부여한 장비를 먼저 만들어야 그것을 강화한 장비를 만들 수 있다.
     저장된_이름들 = [
