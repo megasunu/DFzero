@@ -2,7 +2,7 @@
 
 import pytest
 
-from game.system import rng
+from game.system import dice_utils, rng
 import gameflow as gf
 from game.system import skill_system as ss
 from game.system.combat import core, hit_effects, traits
@@ -268,3 +268,80 @@ def test_반복지정_마법은_고른_대상을_맡겨_두었다가_친다(엘�
     _차례로(상태, e)
     assert [x["현재HP"] for x in 적][:2] == HP[:2]
     assert 적[2]["현재HP"] < HP[2]
+
+
+# ------------------------------------------------------------------ 잔비·가뭄 날씨 동안(#306)
+# 비가 오는 동안 썬더콜링은 명중굴림에 이점, 아크틱 피스트는 캐스팅 없이 바로. 햇살이 강한 동안 할로윈 버스터는
+# 캐스팅 없이 바로. 날씨가 이어지는 동안 매번(한 번만이 아니다 - 2026-11-27 주인 결정).
+
+
+def _날씨(전투상태, 이름):
+    전투상태["날씨"] = {"이름": 이름, "남은라운드": 3}
+
+
+@pytest.mark.parametrize(
+    "이름, 날씨", [("아크틱 피스트", "비"), ("할로윈 버스터", "햇살")]
+)
+def test_날씨_동안_캐스팅_없이_바로_쓴다(엘마전장, monkeypatch, 이름, 날씨):
+    상태, 전투상태, 적, e = 엘마전장
+    _이동캐스팅_빼기(e)
+    _날씨(전투상태, 날씨)
+    support.주사위고정(monkeypatch, 15)
+    for _ in range(2):  # 날씨가 이어지는 동안 매번
+        _차례로(상태, e)
+        e["현재MP"] = 99
+        이니 = e["이니셔티브"]
+        HP = sum(x["현재HP"] for x in 적)
+        gf.아군_스킬사용(상태, 이름, 중심대상=적[1])
+        assert not _캐스팅중(e)
+        assert sum(x["현재HP"] for x in 적) < HP
+        assert e["이니셔티브"] == 이니
+        gf.턴_넘기기(상태)
+
+
+@pytest.mark.parametrize(
+    "이름, 날씨", [("아크틱 피스트", "햇살"), ("할로윈 버스터", "비")]
+)
+def test_다른_날씨에는_그대로_캐스팅한다(엘마전장, 이름, 날씨):
+    상태, 전투상태, 적, e = 엘마전장
+    _이동캐스팅_빼기(e)
+    _날씨(전투상태, 날씨)
+    _차례로(상태, e)
+    e["현재MP"] = 99
+    gf.아군_스킬사용(상태, 이름, 중심대상=적[1])
+    assert _캐스팅중(e)
+
+
+def _이점_기록(monkeypatch):
+    기록 = []
+    원래 = dice_utils.d20_굴림
+
+    def 굴림(이점=False, 불리=False):
+        기록.append(이점 and not 불리)
+        return 원래(이점=이점, 불리=불리)
+
+    monkeypatch.setattr(dice_utils, "d20_굴림", 굴림)
+    return 기록
+
+
+@pytest.mark.parametrize("날씨, 이점", [("비", True), ("햇살", False), (None, False)])
+def test_비가_오는_동안_썬더콜링은_명중굴림에_이점(엘마전장, monkeypatch, 날씨, 이점):
+    상태, 전투상태, 적, e = 엘마전장
+    if 날씨:
+        _날씨(전투상태, 날씨)
+    _차례로(상태, e)
+    e["현재MP"] = 99
+    횟수 = 2 + core.차수(e)
+    gf.아군_스킬사용(상태, "썬더콜링", 지정대상목록=[적[2]] * 횟수)
+    기록 = _이점_기록(monkeypatch)
+    시작 = len(전투상태["로그"])
+    gf.턴_넘기기(상태)
+    _차례로(상태, e)
+    썬더 = [
+        x
+        for x in 전투상태["로그"][시작:]
+        if isinstance(x, dict) and x.get("스킬") == "썬더콜링"
+    ]
+    assert 썬더 and any(기록) == 이점
+    if 이점:
+        assert 기록.count(True) >= 횟수
